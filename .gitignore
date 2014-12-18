@@ -21,5 +21,6 @@ pyang
 *JPyang.java
 jnc/lib
 jnc/.gradle
+jnc.pyc
 **/.idea
 **/*.iml
