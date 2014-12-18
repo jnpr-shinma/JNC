@@ -20,6 +20,6 @@ bin
 pyang
 *JPyang.java
 jnc/lib
-
+jnc/.gradle
 **/.idea
 **/*.iml
