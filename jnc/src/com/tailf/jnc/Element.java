@@ -1,14 +1,11 @@
 package com.tailf.jnc;
 
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+
+import java.io.*;
+import java.math.BigInteger;
+import java.util.*;
 
 /**
  * A configuration element sub-tree. Makes it possible to create and/or
@@ -39,6 +36,9 @@ import java.util.Set;
 public class Element implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
+    private static final JsonFactory jsonFactory = new JsonFactory();
+
 
     /**
      * The NETCONF namespace. "urn:ietf:params:xml:ns:netconf:base:1.0".
@@ -559,6 +559,7 @@ public class Element implements Serializable {
             } else {
                 i++;
             }
+
         }
 
         children.add(pos, child);
@@ -1663,6 +1664,9 @@ public class Element implements Serializable {
         return s.toString();
     }
 
+
+
+
     private void toXMLString(int indent, StringBuffer s) {
         final boolean flag = hasChildren();
         final String qName = qualifiedName();
@@ -1720,6 +1724,135 @@ public class Element implements Serializable {
     }
 
     /**
+     * Use this to convert the object into JSON string representation that will be streamed to the output stream
+     * @param outputStream
+     * @throws IOException
+     */
+
+    public void toJson(OutputStream outputStream) throws IOException {
+        try (JsonGenerator generator = jsonFactory.createGenerator(outputStream)) {
+            generator.writeStartObject();
+            toJsonString(generator);
+            generator.writeEndObject();
+        }
+    }
+
+    /**
+     * Convert object to JSON string and write it a string writer. If pretty print is set to true the
+     * output string is formatted
+     * @param outputStream
+     * @param prettyPrint
+     * @throws IOException
+     */
+    public void toJson(StringWriter outputStream, boolean prettyPrint) throws IOException {
+        try (JsonGenerator generator = jsonFactory.createGenerator(outputStream)) {
+            if (prettyPrint) generator.useDefaultPrettyPrinter();
+            generator.writeStartObject();
+            toJsonString(generator);
+            generator.writeEndObject();
+        }
+    }
+
+    /**
+     * Convert object to JSON string. This API can either be schema aware if the schema is registered.
+     * If schema is registered list will be written as JSON Array otherwise lists will be printed as a leaf-list
+     * @param generator
+     * @throws IOException
+     */
+    private void toJsonString(JsonGenerator generator) throws IOException {
+        final boolean flag = hasChildren();
+        final String qName = qualifiedName();
+        // add children elements if any
+        SchemaNode currentSchemaNode = SchemaNode.get(this);
+        if (flag) {
+            if (!isList(currentSchemaNode)) {
+                generator.writeObjectFieldStart(qName);
+            } else if (currentSchemaNode == null) {
+                generator.writeObjectFieldStart(qName);
+            }
+            //Mark list node processed
+            String processedNode = null;
+            for (final Element child : children) {
+                SchemaNode schemaNode = SchemaNode.get(child);
+                String childQName = child.qualifiedName();
+                if (schemaNode != null) {
+                    if (processedNode != null && processedNode.equals(childQName)) {
+                        continue;
+                    }
+                    if (isList(schemaNode)) {
+                        processedNode = child.qualifiedName();
+                        generator.writeArrayFieldStart(childQName);
+                        //Add all children of a list being processed here
+                        for (final Element peer : children) {
+                            if (peer.qualifiedName().equals(childQName)) {
+                                generator.writeStartObject();
+                                peer.toJsonString(generator);
+                                generator.writeEndObject();
+                            }
+                        }
+                        generator.writeEndArray();
+                    } else {
+                        child.toJsonString(generator);
+                    }
+                } else {
+                    child.toJsonString(generator);
+                }
+            }
+
+            if ( !isList(currentSchemaNode) ) {
+                generator.writeEndObject();
+            } else if(currentSchemaNode == null) {
+                generator.writeEndObject();
+            }
+        } else { // add value if any
+            if (value != null) {
+                if (value instanceof YangBaseInt) {
+                    writeYangNumberTypes(generator, qName, (YangBaseInt)value);
+                } else if (value instanceof  YangBoolean) {
+                    generator.writeBooleanField(qName, ((YangBoolean) value).getValue());
+                } else {
+                    final String stringValue = value.toString().replaceAll("&",
+                            "&amp;");
+                    generator.writeStringField(qName, stringValue);
+                }
+            } else {
+                return;
+            }
+        }
+        currentSchemaNode = null;
+    }
+
+    /**
+     * Verify if schema node can have more than one element
+     * @param schemaNode
+     * @return
+     */
+    private boolean isList(SchemaNode schemaNode) {
+       return schemaNode != null && ( schemaNode.max_occurs > 1 || schemaNode.max_occurs == -1);
+    }
+
+    private void writeYangNumberTypes(JsonGenerator generator,String qName, YangBaseInt value) throws IOException {
+        if (value instanceof YangDecimal64) {
+            generator.writeNumberField(qName, ((YangDecimal64) value).getValue());
+        } else if (value instanceof  YangInt64 || value instanceof YangUInt32 ) {
+            generator.writeNumberField(qName, ((YangInt64)value).getValue());
+        } else if (value instanceof YangUInt64) {
+            generator.writeFieldName(qName);
+            generator.writeNumber( ((YangUInt64)value).getValue());
+        } else if (value instanceof YangInt16) {
+            generator.writeFieldName(qName);
+            generator.writeNumber(((YangInt16)value).getValue());
+        } else if (value instanceof YangInt8){
+            generator.writeObjectField(qName, ((YangInt8)value).getValue());
+        } else if (value instanceof YangUInt8 || value instanceof YangUInt8){
+            generator.writeObjectField(qName, ((YangUInt16)value).getValue());
+        } else {
+            generator.writeStringField(qName, value.toString().replaceAll("&",
+                    "&amp;"));
+        }
+    }
+
+    /**
      * Encode to XML and send it to the provided stream. Similar to the
      * toXMLString(), but without the pretty printing.
      * <p>
@@ -1773,7 +1906,7 @@ public class Element implements Serializable {
      * 
      * @param out Stream to send the encoded version of this element to.
      * @param newline_at_end If 'true' a newline is printed at the end.
-     * @param c Capabilities, used by YangElement instances.
+     * @param capas Capabilities, used by YangElement instances.
      * @throws JNCException If a YangElement encode implementation fails.
      */
     protected void encode(Transport out, boolean newline_at_end,

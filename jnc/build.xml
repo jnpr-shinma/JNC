@@ -9,6 +9,7 @@
 
     <path id="classpath.base">
         <pathelement location="lib/ganymed-ssh2-262.jar"/>
+        <pathelement location="lib/jackson-core-2.4.4.jar"/>
     </path>
 
     <path id="classpath.test">
@@ -28,6 +29,9 @@
              usetimestamp="true"/>
         <get src="http://repo1.maven.org/maven2/ch/ethz/ganymed/ganymed-ssh2/262/ganymed-ssh2-262.jar"
              dest="${main.lib.dir}/ganymed-ssh2-262.jar"
+             usetimestamp="true"/>
+        <get src="http://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/2.4.4/jackson-core-2.4.4.jar"
+             dest="${main.lib.dir}/jackson-core-2.4.4.jar"
              usetimestamp="true"/>
     </target>
 
