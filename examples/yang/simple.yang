@@ -16,6 +16,61 @@ module simple {
         type uint32;
         mandatory true;
       }
+      leaf mybits {
+         type bits {
+              bit disable-nagle {
+              position 0;
+                    }
+                    bit auto-sense-speed {
+                        position 1;
+                    }
+                    bit ten-Mb-only {
+                        position 2;
+                    }
+                }
+                default "auto-sense-speed";
+       }
+       list host-info {
+              key id;
+              leaf id {
+                 type string;
+              }
+              leaf name {
+                 type string;
+              }
+              leaf running {
+                 type boolean;
+              }
+              list processes {
+                 key id;
+                 leaf id {
+                   type string;
+                 }
+                 leaf name {
+                    type string;
+                 }
+                 leaf running {
+                    type boolean;
+                 }
+              }
+         }
     }
+
+    list users {
+       key username;
+       leaf username {
+         type string;
+       }
+       leaf enabled {
+         type boolean;
+       }
+    }
+
+    container status {
+         leaf config {
+            type string;
+         }
+      }
   }
+
 }

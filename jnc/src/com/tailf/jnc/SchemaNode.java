@@ -10,6 +10,10 @@ public class SchemaNode {
 
     public Tagpath tagpath;
     public String namespace;
+    //Yang schema type
+    public String yang_node_type;
+    //Field type
+    public String type;
 
     public int primitive_type; // C_*
     public int min_occurs;
