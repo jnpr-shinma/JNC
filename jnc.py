@@ -831,6 +831,13 @@ def is_config(stmt):
         stmt = get_parent(stmt)
     return config is None or config.arg == 'true'
 
+def get_typename(stmt):
+    t = search_one(stmt, 'type')
+    if t is not None:
+        return t.arg
+    else:
+       return ''
+
 
 class SchemaNode(object):
 
@@ -855,7 +862,13 @@ class SchemaNode(object):
         ns = search_one(module, 'namespace').arg
         res.append('<namespace>' + ns + '</namespace>')
         res.append('<primitive_type>0</primitive_type>')
-
+        
+        """Append "schema" and "type" for schema node"""
+        res.append('<schema>' + stmt.keyword + '</schema>')
+        typename = get_typename(stmt)
+        if typename != "":
+            res.append('<type>' + typename + '</type>')
+    
         min_occurs = '0'
         max_occurs = '-1'
 
