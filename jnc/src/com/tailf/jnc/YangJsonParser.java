@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * Juniper Networks INC
+ * Yang Jason Parser for parsing json and converting to Element
  *
  */
 public class YangJsonParser {
