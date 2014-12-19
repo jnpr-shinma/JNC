@@ -1,0 +1,75 @@
+description = "JNC Library"
+apply plugin: "java"
+apply plugin: "application"
+apply plugin: "maven-publish"
+version = "0.1.1"
+defaultTasks "clean", "build"
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src'
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+task distribution(dependsOn: ['build', 'sourceJar']) << {
+    println "Building snapshot with version=$version"
+}
+
+task release(dependsOn: ['build', 'sourceJar']) << {
+    println "Building release version: $version"
+}
+
+gradle.taskGraph.whenReady {taskGraph ->
+    if (taskGraph.hasTask(release)) {
+        version = "${version}"
+    } else {
+        version = "${version}-SNAPSHOT"
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = "2.1"
+}
+
+dependencies {
+    compile group: "ch.ethz.ganymed", name: "ganymed-ssh2", version: "262"
+    compile group: "junit", name: "junit", version: "4.11"
+    compile group: "org.hamcrest", name: "hamcrest-core", version: "1.3"
+    compile group: "com.fasterxml.jackson.core", name: "jackson-databind", version: "2.4.4"
+}
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            groupId "net.juniper.jspace"
+            artifactId "jnc-library"
+            version "${version}"
+            artifact sourceJar {
+                classifier "sources"
+            }
+        }
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            if (project.version.endsWith("-SNAPSHOT")) {
+                url "$rootDir/../../mavenrepo/snapshot"
+            } else {
+                url "$rootDir/../../mavenrepo/release"
+            }
+        }
+    }
+}
