@@ -136,6 +136,10 @@ public class SchemaParser {
                 final RevisionInfo[] riArray = new RevisionInfo[riArrayList
                         .size()];
                 node.revInfo = riArrayList.toArray(riArray);
+            } else if (localName.equals("yang_node_type")) {
+                node.yang_node_type = value;
+            } else if (localName.equals("yang_type")) {
+                node.type = value;
             }
 
             value = null;

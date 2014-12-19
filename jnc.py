@@ -864,10 +864,10 @@ class SchemaNode(object):
         res.append('<primitive_type>0</primitive_type>')
         
         """Append "schema" and "type" for schema node"""
-        res.append('<schema>' + stmt.keyword + '</schema>')
+        res.append('<yang_node_type>' + stmt.keyword + '</yang_node_type>')
         typename = get_typename(stmt)
         if typename != "":
-            res.append('<type>' + typename + '</type>')
+            res.append('<yang_type>' + typename + '</yang_type>')
     
         min_occurs = '0'
         max_occurs = '-1'

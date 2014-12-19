@@ -37,9 +37,6 @@ public class Element implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private static final JsonFactory jsonFactory = new JsonFactory();
-
-
     /**
      * The NETCONF namespace. "urn:ietf:params:xml:ns:netconf:base:1.0".
      */
@@ -1729,8 +1726,9 @@ public class Element implements Serializable {
      * @throws IOException
      */
 
-    public void toJson(OutputStream outputStream) throws IOException {
-        try (JsonGenerator generator = jsonFactory.createGenerator(outputStream)) {
+    public void toJson(OutputStream outputStream, boolean prettyPrint) throws IOException {
+        try (JsonGenerator generator = YangJsonFactory.jsonFactory().createGenerator(outputStream)) {
+            if (prettyPrint) generator.useDefaultPrettyPrinter();
             generator.writeStartObject();
             toJsonString(generator);
             generator.writeEndObject();
@@ -1745,7 +1743,7 @@ public class Element implements Serializable {
      * @throws IOException
      */
     public void toJson(StringWriter outputStream, boolean prettyPrint) throws IOException {
-        try (JsonGenerator generator = jsonFactory.createGenerator(outputStream)) {
+        try (JsonGenerator generator = YangJsonFactory.jsonFactory().createGenerator(outputStream)) {
             if (prettyPrint) generator.useDefaultPrettyPrinter();
             generator.writeStartObject();
             toJsonString(generator);
@@ -1762,6 +1760,7 @@ public class Element implements Serializable {
     private void toJsonString(JsonGenerator generator) throws IOException {
         final boolean flag = hasChildren();
         final String qName = qualifiedName();
+
         // add children elements if any
         SchemaNode currentSchemaNode = SchemaNode.get(this);
         if (flag) {
@@ -1828,7 +1827,7 @@ public class Element implements Serializable {
      * @return
      */
     private boolean isList(SchemaNode schemaNode) {
-       return schemaNode != null && ( schemaNode.max_occurs > 1 || schemaNode.max_occurs == -1);
+       return schemaNode != null && ( schemaNode.yang_node_type.equals("list") );
     }
 
     private void writeYangNumberTypes(JsonGenerator generator,String qName, YangBaseInt value) throws IOException {
