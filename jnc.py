@@ -152,13 +152,20 @@ class JNCPlugin(plugin.PyangPlugin):
                 ctx.opts.directory = 'src/gen'
                 print_warning(msg=('Option -d (or --java-package) not set, ' +
                     'defaulting to "src/gen".'))
-            elif 'src' not in ctx.opts.directory:
-                ctx.opts.directory = 'src/gen'
-                print_warning(msg=('No "src" in output directory path, ' +
-                    'defaulting to "src/gen".'))
-            ctx.rootpkg = ctx.opts.directory.rpartition('src')[2][1:]
-            self.ctx = ctx
-            self.d = ctx.opts.directory.split('.')
+            #elif 'src' not in ctx.opts.directory:
+            #    ctx.opts.directory = 'src/gen'
+            #    print_warning(msg=('No "src" in output directory path, ' +
+            #        'defaulting to "src/gen".'))
+
+            # Fix path issue, the path in --jnc-output must contain src_managed/main
+            if 'src_managed/main' in ctx.opts.directory:
+                ctx.rootpkg = ctx.opts.directory.partition('src_managed/main')[2][1:]
+                self.ctx = ctx
+                self.d = ctx.opts.directory.split('.')
+            elif 'src' in ctx.opts.directory:
+                ctx.rootpkg = ctx.opts.directory.rpartition('src')[2][1:]
+                self.ctx = ctx
+                self.d = ctx.opts.directory.split('.')
 
     def setup_fmt(self, ctx):
         """Disables implicit errors for the Context"""
@@ -863,12 +870,12 @@ class SchemaNode(object):
         res.append('<namespace>' + ns + '</namespace>')
         res.append('<primitive_type>0</primitive_type>')
         
-        """Append "schema" and "type" for schema node"""
+        """Append "yang_node_type" and "yang_type" for schema node"""
         res.append('<yang_node_type>' + stmt.keyword + '</yang_node_type>')
         typename = get_typename(stmt)
         if typename != "":
             res.append('<yang_type>' + typename + '</yang_type>')
-    
+
         min_occurs = '0'
         max_occurs = '-1'
 
@@ -1198,6 +1205,17 @@ class ClassGenerator(object):
                                      stmt.pos.ref]),
                 source=self.src,
                 superclass='YangElement')
+
+        # Set tagpath field in class
+        root_fields = [JavaValue()]
+        root_fields[0].set_name('tagpath')
+        tagpath = (self.package + '.' + stmt.arg).replace('.' , '/')
+        root_fields[0].value = 'new Tagpath("' + tagpath + '")'
+        for root_field in root_fields:
+            for modifier in ('public', 'static', 'final', 'Tagpath'):
+                root_field.add_modifier(modifier)
+            self.java_class.add_field(root_field)
+        self.java_class.imports.add('com.tailf.jnc.Tagpath')
 
         for ch in search(stmt, yangelement_stmts | leaf_stmts):
             field = self.generate_child(ch)
