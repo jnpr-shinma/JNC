@@ -1158,6 +1158,7 @@ class ClassGenerator(object):
         enabler.add_line(enabler.indent + '"'.join(['YangElement.setPackage(NAMESPACE, ',
                                    self.java_class.package, ');']))
         enabler.add_line(enabler.indent + normalize(prefix.arg) + '.registerSchema();')
+        enabler.add_line('}')
         enabler.add_line('catch(Exception e) {')
         enabler.add_line(enabler.indent + 'e.printStackTrace();')
         enabler.add_line('}')
@@ -1234,8 +1235,10 @@ class ClassGenerator(object):
                 root_field.add_modifier(modifier)
             self.java_class.add_field(root_field)
 
+        module_stmt = get_module(stmt)
+        prefix = search_one(module_stmt, 'prefix')
         indent =  ' ' * 4
-        test_field = JavaValue(exact=[indent + "static {", indent * 2 + self.prefix_name+".enable();", indent + "}"])
+        test_field = JavaValue(exact=[indent + "static {", indent * 2 + normalize(prefix.arg)+".enable();", indent + "}"])
         self.java_class.add_field(test_field)
         self.java_class.imports.add('com.tailf.jnc.Tagpath')
 
