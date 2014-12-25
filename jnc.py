@@ -161,11 +161,11 @@ class JNCPlugin(plugin.PyangPlugin):
             if 'src_managed/main' in ctx.opts.directory:
                 ctx.rootpkg = ctx.opts.directory.partition('src_managed/main')[2][1:]
                 self.ctx = ctx
-                self.d = ctx.opts.directory.split('.')
+                self.d = ctx.opts.directory
             elif 'src' in ctx.opts.directory:
                 ctx.rootpkg = ctx.opts.directory.rpartition('src')[2][1:]
                 self.ctx = ctx
-                self.d = ctx.opts.directory.split('.')
+                self.d = ctx.opts.directory
 
     def setup_fmt(self, ctx):
         """Disables implicit errors for the Context"""
@@ -243,10 +243,10 @@ class JNCPlugin(plugin.PyangPlugin):
         self.done.add(module)
         subpkg = camelize(module.arg)
         if self.ctx.rootpkg:
-            fullpkg = '.'.join([self.ctx.rootpkg, subpkg])
+            fullpkg = '.'.join([self.ctx.rootpkg, subpkg]).replace('/', '.')
         else:
             fullpkg = subpkg
-        d = os.sep.join(self.d + [subpkg])
+        d = os.sep.join([self.d , subpkg])
         if not self.ctx.opts.no_classes:
             # Generate Java classes
             src = ('module "' + module.arg + '", revision: "' +
@@ -476,7 +476,7 @@ def write_file(d, file_name, file_content, ctx):
     named file_name with file_content in it.
 
     """
-    d = d.replace('.', os.sep)
+    #d = d.replace('.', os.sep)
     wd = os.getcwd()
     try:
         os.makedirs(d, 0o777)
@@ -1133,17 +1133,34 @@ class ClassGenerator(object):
                 root_field.add_modifier(modifier)
             self.java_class.add_field(root_field)
 
+        enable_field = JavaValue()
+        enable_field.set_name('enabled')
+        enable_field.value = 'false'
+        for modifier in ('private', 'static', 'boolean'):
+            enable_field.add_modifier(modifier)
+        self.java_class.add_field(enable_field)
+
         # Add method 'enable' to root class
         enabler = JavaMethod(return_type='void', name='enable')
-        enabler.exceptions = ['JNCException']  # XXX: Don't use add method
+        #enabler.exceptions = ['JNCException']  # XXX: Don't use add method
         enabler.add_dependency('com.tailf.jnc.JNCException')
+        enabler.add_dependency('com.tailf.jnc.YangElement')
+        enabler.add_dependency('java.net.MalformedURLException')
+        enabler.add_dependency('java.net.URISyntaxException')
+        enabler.add_dependency('java.net.URL')
+
         enabler.modifiers = ['public', 'static']
         enabler.add_javadoc('Enable the elements in this namespace to be aware')
         enabler.add_javadoc('of the data model and use the generated classes.')
-        enabler.add_line('"'.join(['YangElement.setPackage(NAMESPACE, ',
+        enabler.add_line('if(enabled)')
+        enabler.add_line(enabler.indent + 'return;')
+        enabler.add_line('try {')
+        enabler.add_line(enabler.indent + '"'.join(['YangElement.setPackage(NAMESPACE, ',
                                    self.java_class.package, ');']))
-        enabler.add_dependency('com.tailf.jnc.YangElement')
-        enabler.add_line(normalize(prefix.arg) + '.registerSchema();')
+        enabler.add_line(enabler.indent + normalize(prefix.arg) + '.registerSchema();')
+        enabler.add_line('catch(Exception e) {')
+        enabler.add_line(enabler.indent + 'e.printStackTrace();')
+        enabler.add_line('}')
         self.java_class.add_enabler(enabler)
 
         # Add method 'registerSchema' to root class
@@ -1210,12 +1227,16 @@ class ClassGenerator(object):
         root_fields = [JavaValue()]
         root_fields[0].set_name('tagpath')
         package = self.package.replace('.', '/')
-        tagpath = (package.partition(self.ctx.rootpkg)[2] + '/' + stmt.arg)
+        tagpath = (package.partition(self.ctx.rootpkg)[2][1:] + '/' + stmt.arg)
         root_fields[0].value = 'new Tagpath("' + tagpath + '")'
         for root_field in root_fields:
             for modifier in ('public', 'static', 'final', 'Tagpath'):
                 root_field.add_modifier(modifier)
             self.java_class.add_field(root_field)
+
+        indent =  ' ' * 4
+        test_field = JavaValue(exact=[indent + "static {", indent * 2 + self.prefix_name+".enable();", indent + "}"])
+        self.java_class.add_field(test_field)
         self.java_class.imports.add('com.tailf.jnc.Tagpath')
 
         for ch in search(stmt, yangelement_stmts | leaf_stmts):
