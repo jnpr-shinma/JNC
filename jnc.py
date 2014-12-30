@@ -2846,7 +2846,9 @@ class ListMethodGenerator(MethodGenerator):
                 key_arg = camelize(key.arg)
                 key_type = search_one(key, 'type')
                 jnc, primitive = get_types(key_type, self.ctx)
-                jnc = constructor.add_dependency(jnc)
+		#This seems a bug in original code, the return is only class name not include package name 
+		#jnc = constructor.add_dependency(jnc)
+		constructor.add_dependency(jnc)
                 javadoc = ['@param ', key_arg, 'Value Key argument of child.']
                 constructor.add_javadoc(''.join(javadoc))
                 newLeaf = ['Leaf ', key_arg, ' = new Leaf']
