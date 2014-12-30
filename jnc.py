@@ -1227,8 +1227,12 @@ class ClassGenerator(object):
         # Set tagpath field in class
         root_fields = [JavaValue()]
         root_fields[0].set_name('TAG_PATH')
-        #package = self.package.replace('.', '/')
-        tagpath = stmt.arg
+        package = self.package.replace('.', '/')
+        package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name))[2]
+        if package_name:
+            tagpath = package_name[1:] + '/' + stmt.arg
+        else:
+            tagpath = stmt.arg
         root_fields[0].value = 'new Tagpath("' + tagpath + '")'
         for root_field in root_fields:
             for modifier in ('public', 'static', 'final', 'Tagpath'):
