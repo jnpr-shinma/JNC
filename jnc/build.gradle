@@ -52,7 +52,7 @@ publishing {
     publications {
         maven(MavenPublication) {
             from components.java
-            groupId "net.juniper.jspace"
+            groupId "net.juniper"
             artifactId "jnc-library"
             version "${version}"
             artifact sourceJar {
@@ -66,9 +66,9 @@ publishing {
     repositories {
         maven {
             if (project.version.endsWith("-SNAPSHOT")) {
-                url "$rootDir/../../mavenrepo/snapshot"
+                url System.getProperty("user.home") + "/mavenrepo/snapshot"
             } else {
-                url "$rootDir/../../mavenrepo/release"
+                url System.getProperty("user.home") + "/mavenrepo/release"
             }
         }
     }
