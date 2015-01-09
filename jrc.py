@@ -205,15 +205,15 @@ class JNCPlugin(plugin.PyangPlugin):
 
         # Sweep, adding included and imported modules, until no change
         module_set = set(modules)
-        num_modules = 0
-        while num_modules != len(module_set):
-            num_modules = len(module_set)
-            for module in list(module_set):
-                imported = map(lambda x: x.arg, search(module, 'import'))
-                included = map(lambda x: x.arg, search(module, 'include'))
-                for (module_stmt, rev) in self.ctx.modules:
-                    if module_stmt in (imported + included):
-                        module_set.add(self.ctx.modules[(module_stmt, rev)])
+        # num_modules = 0
+        # while num_modules != len(module_set):
+        #     num_modules = len(module_set)
+        #     for module in list(module_set):
+        #         imported = map(lambda x: x.arg, search(module, 'import'))
+        #         included = map(lambda x: x.arg, search(module, 'include'))
+        #         for (module_stmt, rev) in self.ctx.modules:
+        #             if module_stmt in (imported + included):
+        #                 module_set.add(self.ctx.modules[(module_stmt, rev)])
 
         # Generate files from main modules
         for module in filter(lambda s: s.keyword == 'module', module_set):
@@ -256,31 +256,31 @@ class JNCPlugin(plugin.PyangPlugin):
                 package=fullpkg, src=src, ctx=self.ctx)
             generator.generate()
 
-        if not self.ctx.opts.no_schema:
-            # Generate external schema
-            schema_nodes = ['<schema>']
-            stmts = search(module, node_stmts)
-            module_root = SchemaNode(module, '/')
-            schema_nodes.extend(module_root.as_list())
-            if self.ctx.opts.verbose:
-                print('Generating schema node "/"...')
-            schema_generator = SchemaGenerator(stmts, '/', self.ctx)
-            schema_nodes.extend(schema_generator.schema_nodes())
-            for i in range(1, len(schema_nodes)):
-                # Indent all but the first and last line
-                if schema_nodes[i] in ('<node>', '</node>'):
-                    schema_nodes[i] = ' ' * 4 + schema_nodes[i]
-                else:
-                    schema_nodes[i] = ' ' * 8 + schema_nodes[i]
-            schema_nodes.append('</schema>')
+        # if not self.ctx.opts.no_schema:
+        #     # Generate external schema
+        #     schema_nodes = ['<schema>']
+        #     stmts = search(module, node_stmts)
+        #     module_root = SchemaNode(module, '/')
+        #     schema_nodes.extend(module_root.as_list())
+        #     if self.ctx.opts.verbose:
+        #         print('Generating schema node "/"...')
+        #     schema_generator = SchemaGenerator(stmts, '/', self.ctx)
+        #     schema_nodes.extend(schema_generator.schema_nodes())
+        #     for i in range(1, len(schema_nodes)):
+        #         # Indent all but the first and last line
+        #         if schema_nodes[i] in ('<node>', '</node>'):
+        #             schema_nodes[i] = ' ' * 4 + schema_nodes[i]
+        #         else:
+        #             schema_nodes[i] = ' ' * 8 + schema_nodes[i]
+        #     schema_nodes.append('</schema>')
+        #
+        #     name = normalize(search_one(module, 'prefix').arg)
+        #     write_file(d, name + '.schema', '\n'.join(schema_nodes), self.ctx)
 
-            name = normalize(search_one(module, 'prefix').arg)
-            write_file(d, name + '.schema', '\n'.join(schema_nodes), self.ctx)
-
-        if not self.ctx.opts.no_pkginfo:
-            # Generate package-info.java for javadoc
-            pkginfo_generator = PackageInfoGenerator(d, module, self.ctx)
-            pkginfo_generator.generate_package_info()
+        # if not self.ctx.opts.no_pkginfo:
+        #     # Generate package-info.java for javadoc
+        #     pkginfo_generator = PackageInfoGenerator(d, module, self.ctx)
+        #     pkginfo_generator.generate_package_info()
 
         if self.ctx.opts.debug or self.ctx.opts.verbose:
             print('pkg ' + fullpkg + ' generated')
@@ -1063,48 +1063,48 @@ class ClassGenerator(object):
                     pass
 
         # Generate the typedef classes
-        for stmt in typedef_stmts:
-            name = normalize(stmt.arg)
-            description = ''.join(['This class represents an element from ',
-                                   '\n * the namespace ', self.ns,
-                                   '\n * generated to "',
-                                   self.path, os.sep, stmt.arg,
-                                   '"\n * <p>\n * See line ',
-                                   str(stmt.pos.line), ' in\n * ',
-                                   stmt.pos.ref])
-            java_class = JavaClass(filename=name + '.java',
-                                        package=self.package,
-                                        description=description,
-                                        source=self.src,
-                                        superclass='YangElement')
-            if self.ctx.opts.verbose:
-                print('Generating Java class "' + name + '.java' + '"...')
-
-            gen = MethodGenerator(stmt, self.ctx)
-
-            for constructor in gen.constructors():
-                java_class.add_constructor(constructor)
-
-            for i, method in enumerate(gen.setters()):
-                java_class.append_access_method(str(i), method)
-
-            java_class.append_access_method('check', gen.checker())
-
-            type_stmt = search_one(stmt, 'type')
-            super_type = get_types(type_stmt, self.ctx)[0]
-            java_class.superclass = super_type.rpartition('.')[2]
-            java_class.imports.add(super_type)
-            if super_type == 'com.tailf.jnc.YangDecimal64':
-                java_class.imports.add('java.math.BigDecimal')
-            elif super_type in ('com.tailf.jnc.YangBits',
-                                'com.tailf.jnc.YangUInt64'):
-                java_class.imports.add('java.math.BigInteger')
-            elif super_type in ('com.tailf.jnc.YangLeafref',
-                                'com.tailf.jnc.YangIdentityref'):
-                java_class.imports.add('com.tailf.jnc.Element')
-
-            write_file(self.path, java_class.filename,
-                       java_class.as_list(), self.ctx)
+        # for stmt in typedef_stmts:
+        #     name = normalize(stmt.arg)
+        #     description = ''.join(['This class represents an element from ',
+        #                            '\n * the namespace ', self.ns,
+        #                            '\n * generated to "',
+        #                            self.path, os.sep, stmt.arg,
+        #                            '"\n * <p>\n * See line ',
+        #                            str(stmt.pos.line), ' in\n * ',
+        #                            stmt.pos.ref])
+        #     java_class = JavaClass(filename=name + '.java',
+        #                                 package=self.package,
+        #                                 description=description,
+        #                                 source=self.src,
+        #                                 superclass='YangElement')
+        #     if self.ctx.opts.verbose:
+        #         print('Generating Java class "' + name + '.java' + '"...')
+        #
+        #     gen = MethodGenerator(stmt, self.ctx)
+        #
+        #     for constructor in gen.constructors():
+        #         java_class.add_constructor(constructor)
+        #
+        #     for i, method in enumerate(gen.setters()):
+        #         java_class.append_access_method(str(i), method)
+        #
+        #     java_class.append_access_method('check', gen.checker())
+        #
+        #     type_stmt = search_one(stmt, 'type')
+        #     super_type = get_types(type_stmt, self.ctx)[0]
+        #     java_class.superclass = super_type.rpartition('.')[2]
+        #     java_class.imports.add(super_type)
+        #     if super_type == 'com.tailf.jnc.YangDecimal64':
+        #         java_class.imports.add('java.math.BigDecimal')
+        #     elif super_type in ('com.tailf.jnc.YangBits',
+        #                         'com.tailf.jnc.YangUInt64'):
+        #         java_class.imports.add('java.math.BigInteger')
+        #     elif super_type in ('com.tailf.jnc.YangLeafref',
+        #                         'com.tailf.jnc.YangIdentityref'):
+        #         java_class.imports.add('com.tailf.jnc.Element')
+        #
+        #     write_file(self.path, java_class.filename,
+        #                java_class.as_list(), self.ctx)
 
         # Generate root class
         if self.ctx.opts.verbose:
@@ -1306,7 +1306,7 @@ class ClassGenerator(object):
 
         indent =  ' ' * 4
         getall_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "list(",
-                                        ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[Array[" +
+                                        ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[Seq[" +
                                         normalize(self.n2) + "]]]"])
         self.java_class.add_field(getall_field)
 
@@ -1448,18 +1448,20 @@ class ClassGenerator(object):
         field = None
         add = parent.java_class.append_access_method  # XXX: add is a function
 
-        marshell = [' ' * 4 + 'implicit object '+self.n2+'Marshaller extends FromRequestUnmarshaller['+self.n2+'] {']
-        marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized[Element] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), null))')
+        marshell = [' ' * 4 + 'implicit object '+self.n2+'Marshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
+        marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), null))')
         marshell.append(' ' * 4 + '}')
         marsheller = JavaValue(marshell)
 
-        api = [' ' * 4 + 'lazy val '+self.n2+'ApiImpl = ApiImplRegistry.getImplementation(classOf['+self.n2+'Api])']
+        api = [' ' * 4 + 'lazy val '+self.n2+'ApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(self.n2)+'Api])']
         apiimpl = JavaValue(api)
 
         for key in self.key_stmts:
                 key_arg = camelize(key.arg)
                 key_type = search_one(key, 'type')
                 jnc, primitive = get_types(key_type, self.ctx)
+
+        value = jnc[jnc.rfind('.')+1:]
 
         indent = ' ' * 6
         body_indent = ' ' * 8
@@ -1540,7 +1542,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "          intercept(apiCtx, user) {")
         exact.append(body_indent + "            respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "              onComplete(OnCompleteFutureMagnet[Option[Unit]] {")
-        exact.append(body_indent + "                "+self.n2+"ApiImpl.delete"+normalize(self.n2)+"(new " + jnc + key_arg + ", apiCtx)")
+        exact.append(body_indent + "                "+self.n2+"ApiImpl.delete"+normalize(self.n2)+"(new " + value + "("+ key_arg + "), apiCtx)")
         exact.append(body_indent + "              }) {")
         exact.append(body_indent + '                case Success(_) => complete("")')
         exact.append(body_indent + "                case Failure(ex) => throw ex")
@@ -1555,6 +1557,22 @@ class ClassGenerator(object):
 
         add('marsheller', marsheller)
         add('apiimpl', apiimpl)
+        parent.java_class.imports.add("com.tailf.jnc.{Element, YangJsonParser}")
+        parent.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
+        parent.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
+        parent.java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
+        parent.java_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
+        parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
+        parent.java_class.imports.add("net.juniper.easyrest.yang.mapping.helper.JsonUtil")
+
+        parent.java_class.imports.add("net.juniper.yang.mo.petStore."+normalize(self.n2))
+        parent.java_class.imports.add("spray.http.{HttpCharsets, HttpRequest}")
+        parent.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
+        parent.java_class.imports.add("spray.routing.HttpService")
+        parent.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
+
+        parent.java_class.imports.add("scala.util.{Failure, Success}")
+        parent.java_class.imports.add(jnc)
 
         return exact
 
@@ -1773,7 +1791,7 @@ class JavaClass(object):
 
         # package and import statement goes here
         header.append('')
-        header.append('package ' + self.package + ';')
+        header.append('package ' + self.package)# + ';')
         if self.body is None:
             for method in flatten(self.attrs):
                 if hasattr(method, 'imports'):
@@ -1799,7 +1817,7 @@ class JavaClass(object):
                     basepkg = import_[:import_.find('.')]
                     if basepkg != prevpkg:
                         header.append('')
-                    header.append('import ' + import_ + ';')
+                    header.append('import ' + import_) # + ';')
                     prevpkg = basepkg
 
         # Class doc-comment and declaration, with modifiers
