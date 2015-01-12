@@ -3,9 +3,9 @@ package com.tailf.jnc;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.sun.org.apache.xml.internal.utils.MutableAttrListImpl;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.AttributesImpl;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -21,7 +21,7 @@ public class YangJsonParser {
 
     private final ElementHandler elementHandler = new ElementHandler();
 
-    private final Attributes attr  = new MutableAttrListImpl();
+    private final Attributes attr  = new AttributesImpl();
     /**
      * Read a json file and convert into Element. If prefixMap has the default namespace and prefix then
      * the element returned will be of type YangElement if the generated files exist

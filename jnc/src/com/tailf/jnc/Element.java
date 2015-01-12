@@ -1752,6 +1752,18 @@ public class Element implements Serializable {
     }
 
     /**
+     * Get JSON string representation
+     * @param prettyPrint
+     * @return
+     * @throws IOException
+     */
+    public String toJson(boolean prettyPrint) throws IOException {
+        StringWriter writer = new StringWriter();
+        toJson(writer, prettyPrint);
+        return writer.toString();
+    }
+
+    /**
      * Convert object to JSON string. This API can either be schema aware if the schema is registered.
      * If schema is registered list will be written as JSON Array otherwise lists will be printed as a leaf-list
      * @param generator
