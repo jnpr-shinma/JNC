@@ -1119,7 +1119,7 @@ class ClassGenerator(object):
                 source=self.src,
                 superclass='EasyRestRoutingDSL with LazyLogging with HttpService')
 
-        routing = [' ' * 4 + "val " + camelize(self.n2) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
+        routing = [' ' * 4 + "val " + camelize(prefix.arg) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
 
         res = search(self.stmt, list(yangelement_stmts | {'augment'}))
         if (len(res) > 0):
@@ -1485,7 +1485,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "              onComplete(OnCompleteFutureMagnet[Option[Seq["+normalize(self.n2)+"]]] {")
         exact.append(body_indent + "                "+self.n2+"ApiImpl.get"+normalize(self.n2)+"list(apiCtx)")
         exact.append(body_indent + "              }) {")
-        exact.append(body_indent + "                case Success(result) => complete (JsonUtil.toJson(result.get))")
+        exact.append(body_indent + "                case Success(result) => complete (JsonUtil.elementSeqToJson(result))")
         exact.append(body_indent + "                case Failure(ex) => throw ex")
         exact.append(body_indent + "              }")
         exact.append(body_indent + "            }")
@@ -1505,7 +1505,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "                onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "                  "+self.n2+"ApiImpl.get"+normalize(self.n2)+ "By" + value +"(new " + value + "("+ key_arg + "), apiCtx)")
         exact.append(body_indent + "                }) {")
-        exact.append(body_indent + '                  case Success(result) => complete (JsonUtil.toJson(result.get))')
+        exact.append(body_indent + '                  case Success(result) => complete (JsonUtil.elementToJson(result))')
         exact.append(body_indent + "                  case Failure(ex) => throw ex")
         exact.append(body_indent + "                }")
         exact.append(body_indent + "              }")
@@ -1527,7 +1527,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "                onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "                  "+self.n2+"ApiImpl.create"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "                }) {")
-        exact.append(body_indent + "                  case Success(result) => complete (JsonUtil.toJson(result.get))")
+        exact.append(body_indent + "                  case Success(result) => complete (JsonUtil.elementToJson(result))")
         exact.append(body_indent + "                  case Failure(ex) => throw ex")
         exact.append(body_indent + "                }")
         exact.append(body_indent + "              }")
@@ -1550,7 +1550,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "                onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "                  "+self.n2+"ApiImpl.update"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "                }) {")
-        exact.append(body_indent + "                  case Success(result) => complete (JsonUtil.toJson(result.get))")
+        exact.append(body_indent + "                  case Success(result) => complete (JsonUtil.elementToJson(result))")
         exact.append(body_indent + "                  case Failure(ex) => throw ex")
         exact.append(body_indent + "                }")
         exact.append(body_indent + "              }")
@@ -1592,7 +1592,7 @@ class ClassGenerator(object):
         parent.java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
         parent.java_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
         parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-        parent.java_class.imports.add("net.juniper.easyrest.yang.mapping.helper.JsonUtil")
+        parent.java_class.imports.add("net.juniper.easyrest.util.JsonUtil")
 
         parent.java_class.imports.add(self.mopackage + '.' + normalize(self.n2))
         parent.java_class.imports.add("spray.http.{HttpCharsets, HttpRequest}")
