@@ -1119,6 +1119,10 @@ class ClassGenerator(object):
                 source=self.src,
                 superclass='EasyRestRoutingDSL with LazyLogging with HttpService')
 
+        dispatcher_import = [' ' * 4 + "import net.juniper.easyrest.core.EasyRestActionSystem.system.dispatcher"]
+        dispatcher = JavaValue(dispatcher_import)
+        self.java_class.append_access_method("dispatcher", dispatcher)
+
         routing = [' ' * 4 + "val " + camelize(prefix.arg) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
 
         res = search(self.stmt, list(yangelement_stmts | {'augment'}))
