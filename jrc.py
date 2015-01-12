@@ -1121,81 +1121,85 @@ class ClassGenerator(object):
 
         routing = [' ' * 4 + "val " + camelize(self.n2) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
 
-        # Generate classes for children and keep track of augmented modules
-        for stmt in search(self.stmt, list(yangelement_stmts | {'augment'})):
-            child_generator = ClassGenerator(stmt, package=self.package, mopackage=self.mopackage,
-                ns=ns_arg, prefix_name=self.n, parent=self)
-            child_generator.generate()
-            routing.extend(child_generator.generate_routes(self))
+        res = search(self.stmt, list(yangelement_stmts | {'augment'}))
+        if (len(res) > 0):
+            # Generate classes for children and keep track of augmented modules
+            for stmt in search(self.stmt, list(yangelement_stmts | {'augment'})):
+                child_generator = ClassGenerator(stmt, package=self.package, mopackage=self.mopackage,
+                    ns=ns_arg, prefix_name=self.n, parent=self)
+                child_generator.generate()
+                routing.extend(child_generator.generate_routes(self))
 
-        res = JavaValue(routing)
-        self.java_class.append_access_method("routing", res)
-        # Set fields in root class
-        # root_fields = [JavaValue(), JavaValue()]
-        # root_fields[0].set_name('NAMESPACE')
-        # root_fields[1].set_name('PREFIX')
-        # root_fields[0].value = '"' + ns_arg + '"'
-        # root_fields[1].value = '"' + prefix.arg + '"'
-        # for root_field in root_fields:
-        #     for modifier in ('public', 'static', 'final', 'String'):
-        #         root_field.add_modifier(modifier)
-        #     self.java_class.add_field(root_field)
-        #
-        # enable_field = JavaValue()
-        # enable_field.set_name('enabled')
-        # enable_field.value = 'false'
-        # for modifier in ('private', 'static', 'boolean'):
-        #     enable_field.add_modifier(modifier)
-        # self.java_class.add_field(enable_field)
-        #
-        # # Add method 'enable' to root class
-        # enabler = JavaMethod(return_type='void', name='enable')
-        # #enabler.exceptions = ['JNCException']  # XXX: Don't use add method
-        # enabler.add_dependency('com.tailf.jnc.JNCException')
-        # enabler.add_dependency('com.tailf.jnc.YangElement')
-        # enabler.add_dependency('java.net.MalformedURLException')
-        # enabler.add_dependency('java.net.URISyntaxException')
-        # enabler.add_dependency('java.net.URL')
-        #
-        # enabler.modifiers = ['public', 'static']
-        # enabler.add_javadoc('Enable the elements in this namespace to be aware')
-        # enabler.add_javadoc('of the data model and use the generated classes.')
-        # enabler.add_line('if(enabled)')
-        # enabler.add_line(enabler.indent + 'return;')
-        # enabler.add_line('try {')
-        # enabler.add_line(enabler.indent + '"'.join(['YangElement.setPackage(NAMESPACE, ',
-        #                            self.java_class.package, ');']))
-        # enabler.add_line(enabler.indent + normalize(prefix.arg) + '.registerSchema();')
-        # enabler.add_line('}')
-        # enabler.add_line('catch(Exception e) {')
-        # enabler.add_line(enabler.indent + 'e.printStackTrace();')
-        # enabler.add_line('}')
-        # self.java_class.add_enabler(enabler)
+            routing[len(routing)-1] = ' ' * 6 + '}'
+            routing.append(' ' * 4 + '}')
+            res = JavaValue(routing)
+            self.java_class.append_access_method("routing", res)
+            # Set fields in root class
+            # root_fields = [JavaValue(), JavaValue()]
+            # root_fields[0].set_name('NAMESPACE')
+            # root_fields[1].set_name('PREFIX')
+            # root_fields[0].value = '"' + ns_arg + '"'
+            # root_fields[1].value = '"' + prefix.arg + '"'
+            # for root_field in root_fields:
+            #     for modifier in ('public', 'static', 'final', 'String'):
+            #         root_field.add_modifier(modifier)
+            #     self.java_class.add_field(root_field)
+            #
+            # enable_field = JavaValue()
+            # enable_field.set_name('enabled')
+            # enable_field.value = 'false'
+            # for modifier in ('private', 'static', 'boolean'):
+            #     enable_field.add_modifier(modifier)
+            # self.java_class.add_field(enable_field)
+            #
+            # # Add method 'enable' to root class
+            # enabler = JavaMethod(return_type='void', name='enable')
+            # #enabler.exceptions = ['JNCException']  # XXX: Don't use add method
+            # enabler.add_dependency('com.tailf.jnc.JNCException')
+            # enabler.add_dependency('com.tailf.jnc.YangElement')
+            # enabler.add_dependency('java.net.MalformedURLException')
+            # enabler.add_dependency('java.net.URISyntaxException')
+            # enabler.add_dependency('java.net.URL')
+            #
+            # enabler.modifiers = ['public', 'static']
+            # enabler.add_javadoc('Enable the elements in this namespace to be aware')
+            # enabler.add_javadoc('of the data model and use the generated classes.')
+            # enabler.add_line('if(enabled)')
+            # enabler.add_line(enabler.indent + 'return;')
+            # enabler.add_line('try {')
+            # enabler.add_line(enabler.indent + '"'.join(['YangElement.setPackage(NAMESPACE, ',
+            #                            self.java_class.package, ');']))
+            # enabler.add_line(enabler.indent + normalize(prefix.arg) + '.registerSchema();')
+            # enabler.add_line('}')
+            # enabler.add_line('catch(Exception e) {')
+            # enabler.add_line(enabler.indent + 'e.printStackTrace();')
+            # enabler.add_line('}')
+            # self.java_class.add_enabler(enabler)
 
-        # Add method 'registerSchema' to root class
-        # reg = JavaMethod(return_type='void', name='registerSchema')
-        # reg.exceptions = ['JNCException']  # XXX: Don't use add method
-        # reg.add_dependency('com.tailf.jnc.JNCException')
-        # reg.modifiers = ['public', 'static']
-        # reg.add_javadoc('Register the schema for this namespace in the global')
-        # reg.add_javadoc('schema table (CsTree) making it possible to lookup')
-        # reg.add_javadoc('CsNode entries for all tagpaths')
-        # reg.add_line('SchemaParser parser = new SchemaParser();')
-        # reg.add_dependency('com.tailf.jnc.SchemaParser')
-        # reg.add_line('HashMap<Tagpath, SchemaNode> h = SchemaTree.create(NAMESPACE);')
-        # reg.add_dependency('java.util.HashMap')
-        # reg.add_dependency('com.tailf.jnc.Tagpath')
-        # reg.add_dependency('com.tailf.jnc.SchemaNode')
-        # reg.add_dependency('com.tailf.jnc.SchemaTree')
-        # schema = os.sep.join([self.ctx.opts.directory.replace('.', os.sep),
-        #                       self.n2, normalize(prefix.arg)])
-        # if self.ctx.opts.classpath_schema_loading:
-        #     reg.add_line('parser.findAndReadFile("' + normalize(prefix.arg) + '.schema", h, ' + normalize(prefix.arg) + '.class);')
-        # else:
-        #     reg.add_line('parser.readFile("' + schema + '.schema", h);')
-        # self.java_class.add_schema_registrator(reg)
+            # Add method 'registerSchema' to root class
+            # reg = JavaMethod(return_type='void', name='registerSchema')
+            # reg.exceptions = ['JNCException']  # XXX: Don't use add method
+            # reg.add_dependency('com.tailf.jnc.JNCException')
+            # reg.modifiers = ['public', 'static']
+            # reg.add_javadoc('Register the schema for this namespace in the global')
+            # reg.add_javadoc('schema table (CsTree) making it possible to lookup')
+            # reg.add_javadoc('CsNode entries for all tagpaths')
+            # reg.add_line('SchemaParser parser = new SchemaParser();')
+            # reg.add_dependency('com.tailf.jnc.SchemaParser')
+            # reg.add_line('HashMap<Tagpath, SchemaNode> h = SchemaTree.create(NAMESPACE);')
+            # reg.add_dependency('java.util.HashMap')
+            # reg.add_dependency('com.tailf.jnc.Tagpath')
+            # reg.add_dependency('com.tailf.jnc.SchemaNode')
+            # reg.add_dependency('com.tailf.jnc.SchemaTree')
+            # schema = os.sep.join([self.ctx.opts.directory.replace('.', os.sep),
+            #                       self.n2, normalize(prefix.arg)])
+            # if self.ctx.opts.classpath_schema_loading:
+            #     reg.add_line('parser.findAndReadFile("' + normalize(prefix.arg) + '.schema", h, ' + normalize(prefix.arg) + '.class);')
+            # else:
+            #     reg.add_line('parser.readFile("' + schema + '.schema", h);')
+            # self.java_class.add_schema_registrator(reg)
 
-        self.write_to_file()
+            self.write_to_file()
 
     def generate_class(self):
         """Generates a Java class hierarchy providing an interface to a YANG
@@ -1478,7 +1482,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "        apiCtx =>")
         exact.append(body_indent + "          intercept(apiCtx, user) {")
         exact.append(body_indent + "            respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "              onComplete(OnCompleteFutureMagnet[Option[Seq["+self.n2+"]]] {")
+        exact.append(body_indent + "              onComplete(OnCompleteFutureMagnet[Option[Seq["+normalize(self.n2)+"]]] {")
         exact.append(body_indent + "                "+self.n2+"ApiImpl.get"+normalize(self.n2)+"list(apiCtx)")
         exact.append(body_indent + "              }) {")
         exact.append(body_indent + "                case Success(result) => complete (JsonUtil.toJson(result.get))")
@@ -1489,6 +1493,26 @@ class ClassGenerator(object):
         exact.append(body_indent + "      }")
         exact.append(body_indent + "    }")
         exact.append(body_indent + "  }")
+        exact.append(body_indent + "} ~")
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "petstore:'+self.n2+'" / "' + self.n2 + '=" ~ Rest) {')
+        exact.append(body_indent + '  (' + key_arg+ ') =>')
+        exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { user =>')
+        exact.append(body_indent + '      authorize(rbac("ViewOrders", "XXOrders")) {')
+        exact.append(body_indent + '        processCtx() {')
+        exact.append(body_indent + "          apiCtx =>")
+        exact.append(body_indent + "            intercept(apiCtx, user) {")
+        exact.append(body_indent + "              respondWithMediaType(YangMediaType.YangDataMediaType) {")
+        exact.append(body_indent + "                onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
+        exact.append(body_indent + "                  "+self.n2+"ApiImpl.get"+normalize(self.n2)+ "By" + value +"(new " + value + "("+ key_arg + "), apiCtx)")
+        exact.append(body_indent + "                }) {")
+        exact.append(body_indent + '                  case Success(result) => complete (JsonUtil.toJson(result.get))')
+        exact.append(body_indent + "                  case Failure(ex) => throw ex")
+        exact.append(body_indent + "                }")
+        exact.append(body_indent + "              }")
+        exact.append(body_indent + "            }")
+        exact.append(body_indent + "        }")
+        exact.append(body_indent + "      }")
+        exact.append(body_indent + "    }")
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
         exact.append(indent + "post {")
@@ -1500,7 +1524,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "          intercept(apiCtx, user) {")
         exact.append(body_indent + "            respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "              entity(as["+normalize(self.n2)+"]) {" + self.n2 +" =>")
-        exact.append(body_indent + "                onComplete(OnCompleteFutureMagnet[Option["+self.n2+"]] {")
+        exact.append(body_indent + "                onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "                  "+self.n2+"ApiImpl.create"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "                }) {")
         exact.append(body_indent + "                  case Success(result) => complete (JsonUtil.toJson(result.get))")
