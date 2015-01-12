@@ -1226,9 +1226,13 @@ class ClassGenerator(object):
 
         # Set tagpath field in class
         root_fields = [JavaValue()]
-        root_fields[0].set_name('tagpath')
+        root_fields[0].set_name('TAG_PATH')
         package = self.package.replace('.', '/')
-        tagpath = (package.partition(self.ctx.rootpkg)[2][1:] + '/' + stmt.arg)
+        package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name))[2]
+        if package_name:
+            tagpath = package_name[1:] + '/' + stmt.arg
+        else:
+            tagpath = stmt.arg
         root_fields[0].value = 'new Tagpath("' + tagpath + '")'
         for root_field in root_fields:
             for modifier in ('public', 'static', 'final', 'Tagpath'):
@@ -2846,7 +2850,9 @@ class ListMethodGenerator(MethodGenerator):
                 key_arg = camelize(key.arg)
                 key_type = search_one(key, 'type')
                 jnc, primitive = get_types(key_type, self.ctx)
-                jnc = constructor.add_dependency(jnc)
+		#This seems a bug in original code, the return is only class name not include package name 
+		#jnc = constructor.add_dependency(jnc)
+		constructor.add_dependency(jnc)
                 javadoc = ['@param ', key_arg, 'Value Key argument of child.']
                 constructor.add_javadoc(''.join(javadoc))
                 newLeaf = ['Leaf ', key_arg, ' = new Leaf']
