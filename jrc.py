@@ -243,7 +243,8 @@ class JNCPlugin(plugin.PyangPlugin):
         self.done.add(module)
         subpkg = camelize(module.arg)
         if self.ctx.rootpkg:
-            fullpkg = '.'.join([self.ctx.rootpkg, subpkg]).replace('/', '.')
+            fullpkg = '.'.join([self.ctx.rootpkg, 'api', subpkg]).replace('/', '.')
+            mopkg = '.'.join([self.ctx.rootpkg, 'mo', subpkg]).replace('/', '.')
         else:
             fullpkg = subpkg
         d = os.sep.join([self.d , subpkg])
@@ -252,8 +253,8 @@ class JNCPlugin(plugin.PyangPlugin):
             src = ('module "' + module.arg + '", revision: "' +
                 util.get_latest_revision(module) + '".')
             generator = ClassGenerator(module,
-                path=os.sep.join([self.ctx.opts.directory, subpkg]),
-                package=fullpkg, src=src, ctx=self.ctx)
+                path=os.sep.join([self.ctx.opts.directory, 'api', subpkg]),
+                package=fullpkg, mopackage=mopkg, src=src, ctx=self.ctx)
             generator.generate()
 
         # if not self.ctx.opts.no_schema:
@@ -354,7 +355,7 @@ com_tailf_jnc = {'Attribute', 'Capabilities', 'ConfDSession',
                  'YangIdentityref', 'YangInt16', 'YangInt32', 'YangInt64',
                  'YangInt8', 'YangLeafref', 'YangString', 'YangType',
                  'YangUInt16', 'YangUInt32', 'YangUInt64', 'YangUInt8',
-                 'YangUnion', 'YangXMLParser'}
+                 'YangUnion', 'YangXMLParser', 'YangJsonParser'}
 
 
 java_reserved_words = {'abstract', 'assert', 'boolean', 'break', 'byte',
@@ -548,7 +549,7 @@ def get_package(stmt, ctx):
     while parent is not None:
         stmt = parent
         parent = get_parent(stmt)
-        sub_packages.appendleft(camelize(stmt.arg))
+        sub_packages.appendleft('mo.'+camelize(stmt.arg))
     full_package = ctx.rootpkg.split(os.sep)
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -959,7 +960,7 @@ class YangType(object):
 class ClassGenerator(object):
     """Used to generate java classes from a yang module"""
 
-    def __init__(self, stmt, path=None, package=None, src=None, ctx=None,
+    def __init__(self, stmt, path=None, package=None, mopackage=None, src=None, ctx=None,
                  ns='', prefix_name='', yang_types=None, parent=None):
         """Constructor.
 
@@ -979,6 +980,7 @@ class ClassGenerator(object):
         self.stmt = stmt
         self.path = path
         self.package = None if package is None else package.replace(os.sep, '.')
+        self.mopackage = None if mopackage is None else mopackage.replace(os.sep, '.')
         self.src = src
         self.ctx = ctx
         self.ns = ns
@@ -1121,7 +1123,7 @@ class ClassGenerator(object):
 
         # Generate classes for children and keep track of augmented modules
         for stmt in search(self.stmt, list(yangelement_stmts | {'augment'})):
-            child_generator = ClassGenerator(stmt, package=self.package,
+            child_generator = ClassGenerator(stmt, package=self.package, mopackage=self.mopackage,
                 ns=ns_arg, prefix_name=self.n, parent=self)
             child_generator.generate()
             routing.extend(child_generator.generate_routes(self))
@@ -1335,7 +1337,7 @@ class ClassGenerator(object):
         self.java_class.add_field(delete_field)
 
         self.java_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
-        self.java_class.imports.add(self.package + '.' + normalize(self.n2))
+        self.java_class.imports.add(self.mopackage +  '.' + normalize(self.n2))
         self.java_class.imports.add(jnc)
         self.java_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
 
@@ -1448,8 +1450,10 @@ class ClassGenerator(object):
         field = None
         add = parent.java_class.append_access_method  # XXX: add is a function
 
-        marshell = [' ' * 4 + 'implicit object '+self.n2+'Marshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
-        marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), null))')
+        marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
+        marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2) +
+                       '] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), null).asInstanceOf[' +
+                        normalize(self.n2) + '])')
         marshell.append(' ' * 4 + '}')
         marsheller = JavaValue(marshell)
 
@@ -1519,7 +1523,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "          intercept(apiCtx, user) {")
         exact.append(body_indent + "            respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "              entity(as["+normalize(self.n2)+"]) {" + self.n2 +" =>")
-        exact.append(body_indent + "                onComplete(OnCompleteFutureMagnet[Option["+self.n2+"]] {")
+        exact.append(body_indent + "                onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "                  "+self.n2+"ApiImpl.update"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "                }) {")
         exact.append(body_indent + "                  case Success(result) => complete (JsonUtil.toJson(result.get))")
@@ -1535,29 +1539,30 @@ class ClassGenerator(object):
         exact.append(indent + "} ~")
         exact.append(indent + "delete {")
         exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "petstore:'+self.n2+'" / "'+self.n2+'=" ~ Rest) {')
-        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { user =>')
-        exact.append(body_indent + '    authorize(rbac("ViewOrders", "XXOrders")) {')
-        exact.append(body_indent + '      processCtx() {')
-        exact.append(body_indent + "        apiCtx =>")
-        exact.append(body_indent + "          intercept(apiCtx, user) {")
-        exact.append(body_indent + "            respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "              onComplete(OnCompleteFutureMagnet[Option[Unit]] {")
-        exact.append(body_indent + "                "+self.n2+"ApiImpl.delete"+normalize(self.n2)+"(new " + value + "("+ key_arg + "), apiCtx)")
-        exact.append(body_indent + "              }) {")
-        exact.append(body_indent + '                case Success(_) => complete("")')
-        exact.append(body_indent + "                case Failure(ex) => throw ex")
+        exact.append(body_indent + '  (' + key_arg+ ') =>')
+        exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { user =>')
+        exact.append(body_indent + '      authorize(rbac("ViewOrders", "XXOrders")) {')
+        exact.append(body_indent + '        processCtx() {')
+        exact.append(body_indent + "          apiCtx =>")
+        exact.append(body_indent + "            intercept(apiCtx, user) {")
+        exact.append(body_indent + "              respondWithMediaType(YangMediaType.YangDataMediaType) {")
+        exact.append(body_indent + "                onComplete(OnCompleteFutureMagnet[Option[Unit]] {")
+        exact.append(body_indent + "                  "+self.n2+"ApiImpl.delete"+normalize(self.n2)+"(new " + value + "("+ key_arg + "), apiCtx)")
+        exact.append(body_indent + "                }) {")
+        exact.append(body_indent + '                  case Success(_) => complete("")')
+        exact.append(body_indent + "                  case Failure(ex) => throw ex")
+        exact.append(body_indent + "                }")
         exact.append(body_indent + "              }")
         exact.append(body_indent + "            }")
-        exact.append(body_indent + "          }")
+        exact.append(body_indent + "        }")
         exact.append(body_indent + "      }")
         exact.append(body_indent + "    }")
-        exact.append(body_indent + "  }")
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
 
         add('marsheller', marsheller)
         add('apiimpl', apiimpl)
-        parent.java_class.imports.add("com.tailf.jnc.{Element, YangJsonParser}")
+        parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
         parent.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
         parent.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
         parent.java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
@@ -1565,7 +1570,7 @@ class ClassGenerator(object):
         parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
         parent.java_class.imports.add("net.juniper.easyrest.yang.mapping.helper.JsonUtil")
 
-        parent.java_class.imports.add("net.juniper.yang.mo.petStore."+normalize(self.n2))
+        parent.java_class.imports.add(self.mopackage + '.' + normalize(self.n2))
         parent.java_class.imports.add("spray.http.{HttpCharsets, HttpRequest}")
         parent.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
         parent.java_class.imports.add("spray.routing.HttpService")
