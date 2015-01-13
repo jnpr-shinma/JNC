@@ -1324,25 +1324,25 @@ class ClassGenerator(object):
 
         indent =  ' ' * 4
         get_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "By" + normalize(key_arg) + "(",
-                                     ' ' * 6 + key.arg + ":" + normalize(value) + ",",
+                                     ' ' * 6 + key.arg + ": " + value + ",",
                                      ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[" +
                                      normalize(self.n2) + "]]"])
         self.java_class.add_field(get_field)
 
         create_field = JavaValue(exact=[indent + "def create" + normalize(self.n2) + "(",
-                                     ' ' * 6 + self.n2 + ":" + normalize(self.n2) + ",",
+                                     ' ' * 6 + self.n2 + ": " + normalize(self.n2) + ",",
                                      ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[" +
                                      normalize(self.n2) + "]]"])
         self.java_class.add_field(create_field)
 
         update_field = JavaValue(exact=[indent + "def update" + normalize(self.n2) + "(",
-                                     ' ' * 6 + self.n2 + ":" + normalize(self.n2) + ",",
+                                     ' ' * 6 + self.n2 + ": " + normalize(self.n2) + ",",
                                      ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[" +
                                      normalize(self.n2) + "]]"])
         self.java_class.add_field(update_field)
 
         delete_field = JavaValue(exact=[indent + "def delete" + normalize(self.n2) + "(",
-                                     ' ' * 6 + key.arg + ":" + normalize(key_arg) + ",",
+                                     ' ' * 6 + key.arg + ": " + value + ",",
                                      ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[Unit]]"])
         self.java_class.add_field(delete_field)
 
