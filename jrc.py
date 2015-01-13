@@ -1315,6 +1315,8 @@ class ClassGenerator(object):
                 jnc, primitive = get_types(key_type, self.ctx)
 
         indent =  ' ' * 4
+        value = jnc[jnc.rfind('.') + 1:]
+
         getall_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "list(",
                                         ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[Seq[" +
                                         normalize(self.n2) + "]]]"])
@@ -1322,7 +1324,7 @@ class ClassGenerator(object):
 
         indent =  ' ' * 4
         get_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "By" + normalize(key_arg) + "(",
-                                     ' ' * 6 + key.arg + ":" + normalize(key_arg) + ",",
+                                     ' ' * 6 + key.arg + ":" + normalize(value) + ",",
                                      ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[" +
                                      normalize(self.n2) + "]]"])
         self.java_class.add_field(get_field)
@@ -1507,7 +1509,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            intercept(apiCtx, user) {")
         exact.append(body_indent + "              respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "                onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
-        exact.append(body_indent + "                  "+self.n2+"ApiImpl.get"+normalize(self.n2)+ "By" + value +"(new " + value + "("+ key_arg + "), apiCtx)")
+        exact.append(body_indent + "                  "+self.n2+"ApiImpl.get"+normalize(self.n2)+ "By" + normalize(key_arg) +"(new " + value + "("+ key_arg + "), apiCtx)")
         exact.append(body_indent + "                }) {")
         exact.append(body_indent + '                  case Success(result) => complete (JsonUtil.elementToJson(result))')
         exact.append(body_indent + "                  case Failure(ex) => throw ex")
