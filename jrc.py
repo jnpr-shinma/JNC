@@ -1317,7 +1317,7 @@ class ClassGenerator(object):
         indent =  ' ' * 4
         value = jnc[jnc.rfind('.') + 1:]
 
-        getall_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "list(",
+        getall_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "List(",
                                         ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[Seq[" +
                                         normalize(self.n2) + "]]]"])
         self.java_class.add_field(getall_field)
