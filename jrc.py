@@ -1487,7 +1487,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Option[Seq["+normalize(self.n2)+"]]] {")
-        exact.append(body_indent + "            "+self.n2+"ApiImpl.get"+normalize(self.n2)+"list(apiCtx)")
+        exact.append(body_indent + "            "+self.n2+"ApiImpl.get"+normalize(self.n2)+"List(apiCtx)")
         exact.append(body_indent + "          }) {")
         exact.append(body_indent + "            case Success(result) => complete (JsonUtil.elementSeqToJson(result))")
         exact.append(body_indent + "            case Failure(ex) => throw ex")
