@@ -1460,6 +1460,8 @@ class ClassGenerator(object):
         field = None
         add = parent.java_class.append_access_method  # XXX: add is a function
 
+        module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
+
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2) +
                        '] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), null).asInstanceOf[' +
@@ -1481,7 +1483,7 @@ class ClassGenerator(object):
         body_indent = ' ' * 8
 
         exact = [indent + "get {"]
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "petstore:'+self.n2+'") {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module.lower()+":"+self.n2+'") {')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { user =>')
         exact.append(body_indent + '    authorize(rbac("ViewOrders", "XXOrders")) {')
         exact.append(body_indent + '      processCtx() {')
@@ -1500,7 +1502,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "    }")
         exact.append(body_indent + "  }")
         exact.append(body_indent + "} ~")
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "petstore:'+self.n2+'" / "' + self.n2 + '=" ~ Rest) {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module.lower() + ":"+self.n2+'" / "' + self.n2 + '=" ~ Rest) {')
         exact.append(body_indent + '  (' + key_arg+ ') =>')
         exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { user =>')
         exact.append(body_indent + '      authorize(rbac("ViewOrders", "XXOrders")) {')
@@ -1522,7 +1524,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
         exact.append(indent + "post {")
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "petstore:'+self.n2+'" / "'+self.n2+'") {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "' + module.lower() + ':'+self.n2+'" / "'+self.n2+'") {')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { user =>')
         exact.append(body_indent + '    authorize(rbac("ViewOrders", "XXOrders")) {')
         exact.append(body_indent + '      processCtx() {')
@@ -1545,7 +1547,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
         exact.append(indent + "put {")
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "petstore:'+self.n2+'" / "'+self.n2+'") {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+module.lower()+':'+self.n2+'" / "'+self.n2+'") {')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { user =>')
         exact.append(body_indent + '    authorize(rbac("ViewOrders", "XXOrders")) {')
         exact.append(body_indent + '      processCtx() {')
@@ -1568,7 +1570,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
         exact.append(indent + "delete {")
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "petstore:'+self.n2+'" / "'+self.n2+'=" ~ Rest) {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+module.lower()+':'+self.n2+'" / "'+self.n2+'=" ~ Rest) {')
         exact.append(body_indent + '  (' + key_arg+ ') =>')
         exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { user =>')
         exact.append(body_indent + '      authorize(rbac("ViewOrders", "XXOrders")) {')
