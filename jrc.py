@@ -1558,7 +1558,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
         exact.append(indent + "delete {")
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module.lower() + ":"+'" / "'+self.n2.lower()+'=" ~ Rest) {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module.lower() + ":"+self.n2.lower()+'" / "'+self.n2.lower()+'=" ~ Rest) {')
         exact.append(body_indent + '  (' + key_arg+ ') =>')
         exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
