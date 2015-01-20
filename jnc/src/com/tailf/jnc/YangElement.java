@@ -1,8 +1,13 @@
 package com.tailf.jnc;
 
+import org.apache.commons.lang.StringUtils;
+
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * The YangElement is a configuration sub-tree like the
@@ -42,6 +47,66 @@ public abstract class YangElement extends Element {
     public static final String COLON_UNEXPECTED_ELEMENT = ": Unexpected element";
     public static final String DUMMY = "DUMMY";
     public static final String DUMMY_LC = "dummy";
+
+    /**
+     * A temporary implementation.
+     * @param path
+     * @param value
+     * @throws JNCException
+     */
+    public void setMethodByPath(String path, Object value) throws JNCException {
+        if(value == null)
+            return;
+        try {
+            String[] paths = path.split("/");
+            Object currObj = this;
+            for (int i = 0; i < paths.length; i++) {
+                String fieldName = paths[i];
+                if (i != paths.length - 1) {
+                    Field f = currObj.getClass().getDeclaredField(fieldName);
+                    f.setAccessible(true);
+                    Object tmpObj = f.get(currObj);
+                    if(tmpObj == null) {
+                        String methodName = "add" + StringUtils.capitalize(fieldName);
+                        Method m = currObj.getClass().getDeclaredMethod(methodName, new Class<?>[]{});
+                        tmpObj = m.invoke(currObj, new Object[]{});
+                    }
+                    currObj = tmpObj;
+                }
+                else {
+                    String methodName = "set" + StringUtils.capitalize(fieldName) + "Value";
+                    Class<?> paramClass = value == null? null : value.getClass();
+                    Method m = getMethodByLowercaseNameAndParam(currObj.getClass(), methodName, paramClass);
+                    m.invoke(currObj, new Object[]{value});
+                }
+            }
+        }
+        catch(Exception e) {
+            //TODO need a logger
+            e.printStackTrace();
+            throw new YangException(YangException.ELEMENT_MISSING, "Error while setting value by path:" + path);
+        }
+    }
+
+    /**
+     * get setter method ignoring letter cases.
+     * @param c
+     * @param name
+     * @param paramClass
+     * @return
+     */
+    private Method getMethodByLowercaseNameAndParam(Class<?> c, String name, Class<?> paramClass) {
+        Method[] ms = c.getDeclaredMethods();
+        for(int i = 0; i < ms.length; i ++) {
+            Method m = ms[i];
+            if(m.getName().toLowerCase().equals(name.toLowerCase())) {
+                Class<?>[] paramTypes = m.getParameterTypes();
+                if(paramTypes.length == 1 && (paramClass == null || paramTypes[0] == paramClass))
+                    return m;
+            }
+        }
+        return null;
+    }
 
     /**
      * Structure information. An array of the children names.
@@ -1075,6 +1140,9 @@ public abstract class YangElement extends Element {
             }
         }
         return false;
+    }
+
+    public void setValueByPath(String path, Object value) {
     }
 
 }
