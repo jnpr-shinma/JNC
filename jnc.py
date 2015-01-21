@@ -260,7 +260,7 @@ class JNCPlugin(plugin.PyangPlugin):
             # Generate external schema
             schema_nodes = ['<schema>']
             stmts = search(module, node_stmts)
-            module_root = SchemaNode(module, '/')
+            module_root = SchemaNode(module, '/', self.ctx)
             schema_nodes.extend(module_root.as_list())
             if self.ctx.opts.verbose:
                 print('Generating schema node "/"...')
@@ -848,9 +848,10 @@ def get_typename(stmt):
 
 class SchemaNode(object):
 
-    def __init__(self, stmt, tagpath):
+    def __init__(self, stmt, tagpath, ctx):
         self.stmt = stmt
         self.tagpath = tagpath
+        self.ctx = ctx
 
     def as_list(self):
         """Returns a string list repr "node" element content for an XML schema"""
@@ -872,9 +873,11 @@ class SchemaNode(object):
         
         """Append "yang_node_type" and "yang_type" for schema node"""
         res.append('<yang_node_type>' + stmt.keyword + '</yang_node_type>')
-        typename = get_typename(stmt)
-        if typename != "":
-            res.append('<yang_type>' + typename + '</yang_type>')
+
+        if (stmt.keyword in leaf_stmts):
+            type = search_one(stmt, 'type')
+            jnc, primitive = get_types(type, self.ctx)
+            res.append('<yang_type>' + jnc + '</yang_type>')
 
         min_occurs = '0'
         max_occurs = '-1'
@@ -929,7 +932,7 @@ class SchemaGenerator(object):
             subpath = self.tagpath + stmt.arg + '/'
             if self.ctx.opts.verbose:
                 print('Generating schema node "' + subpath + '"...')
-            node = SchemaNode(stmt, subpath)
+            node = SchemaNode(stmt, subpath, self.ctx)
             res.extend(node.as_list())
             substmt_generator = SchemaGenerator(search(stmt, node_stmts),
                 subpath, self.ctx)
