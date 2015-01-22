@@ -260,7 +260,7 @@ class JNCPlugin(plugin.PyangPlugin):
             # Generate external schema
             schema_nodes = ['<schema>']
             stmts = search(module, node_stmts)
-            module_root = SchemaNode(module, '/')
+            module_root = SchemaNode(module, '/', self.ctx)
             schema_nodes.extend(module_root.as_list())
             if self.ctx.opts.verbose:
                 print('Generating schema node "/"...')
@@ -848,9 +848,10 @@ def get_typename(stmt):
 
 class SchemaNode(object):
 
-    def __init__(self, stmt, tagpath):
+    def __init__(self, stmt, tagpath, ctx):
         self.stmt = stmt
         self.tagpath = tagpath
+        self.ctx = ctx
 
     def as_list(self):
         """Returns a string list repr "node" element content for an XML schema"""
@@ -872,9 +873,13 @@ class SchemaNode(object):
         
         """Append "yang_node_type" and "yang_type" for schema node"""
         res.append('<yang_node_type>' + stmt.keyword + '</yang_node_type>')
-        typename = get_typename(stmt)
-        if typename != "":
+
+        if (stmt.keyword in leaf_stmts):
+            typename = get_typename(stmt)
+            type = search_one(stmt, 'type')
+            jnc, primitive = get_types(type, self.ctx)
             res.append('<yang_type>' + typename + '</yang_type>')
+            res.append('<yang_java_type>' + jnc + '</yang_java_type>')
 
         min_occurs = '0'
         max_occurs = '-1'
@@ -929,7 +934,7 @@ class SchemaGenerator(object):
             subpath = self.tagpath + stmt.arg + '/'
             if self.ctx.opts.verbose:
                 print('Generating schema node "' + subpath + '"...')
-            node = SchemaNode(stmt, subpath)
+            node = SchemaNode(stmt, subpath, self.ctx)
             res.extend(node.as_list())
             substmt_generator = SchemaGenerator(search(stmt, node_stmts),
                 subpath, self.ctx)
@@ -1143,11 +1148,12 @@ class ClassGenerator(object):
         # Add method 'enable' to root class
         enabler = JavaMethod(return_type='void', name='enable')
         #enabler.exceptions = ['JNCException']  # XXX: Don't use add method
-        enabler.add_dependency('com.tailf.jnc.JNCException')
-        enabler.add_dependency('com.tailf.jnc.YangElement')
-        enabler.add_dependency('java.net.MalformedURLException')
-        enabler.add_dependency('java.net.URISyntaxException')
-        enabler.add_dependency('java.net.URL')
+        enabler.add_dependency('com.tailf.jnc.*')
+        #enabler.add_dependency('com.tailf.jnc.JNCException')
+        #enabler.add_dependency('com.tailf.jnc.YangElement')
+        #enabler.add_dependency('java.net.MalformedURLException')
+        #enabler.add_dependency('java.net.URISyntaxException')
+        #enabler.add_dependency('java.net.URL')
 
         enabler.modifiers = ['public', 'static']
         enabler.add_javadoc('Enable the elements in this namespace to be aware')
@@ -1162,23 +1168,32 @@ class ClassGenerator(object):
         enabler.add_line('catch(Exception e) {')
         enabler.add_line(enabler.indent + 'e.printStackTrace();')
         enabler.add_line('}')
+        enabler.add_line('try {')
+        enabler.add_line(enabler.indent + 'String clazz = System.getProperty("jnc.yang.type.observer");')
+        enabler.add_line(enabler.indent + 'if (clazz != null) {')
+        enabler.add_line(enabler.indent * 2 + 'YangTypeObserver observer = (YangTypeObserver) Class.forName(clazz).newInstance();')
+        enabler.add_line(enabler.indent * 2  + 'observer.build(NAMESPACE);')
+        enabler.add_line(enabler.indent + '}')
+        enabler.add_line('} catch (Exception e) {')
+        enabler.add_line(enabler.indent + 'e.printStackTrace();')
+        enabler.add_line('}')
         self.java_class.add_enabler(enabler)
 
         # Add method 'registerSchema' to root class
         reg = JavaMethod(return_type='void', name='registerSchema')
-        reg.exceptions = ['JNCException']  # XXX: Don't use add method
-        reg.add_dependency('com.tailf.jnc.JNCException')
+        #reg.exceptions = ['JNCException']  # XXX: Don't use add method
+        #reg.add_dependency('com.tailf.jnc.JNCException')
         reg.modifiers = ['public', 'static']
         reg.add_javadoc('Register the schema for this namespace in the global')
         reg.add_javadoc('schema table (CsTree) making it possible to lookup')
         reg.add_javadoc('CsNode entries for all tagpaths')
         reg.add_line('SchemaParser parser = new SchemaParser();')
-        reg.add_dependency('com.tailf.jnc.SchemaParser')
+        #reg.add_dependency('com.tailf.jnc.SchemaParser')
         reg.add_line('HashMap<Tagpath, SchemaNode> h = SchemaTree.create(NAMESPACE);')
         reg.add_dependency('java.util.HashMap')
-        reg.add_dependency('com.tailf.jnc.Tagpath')
-        reg.add_dependency('com.tailf.jnc.SchemaNode')
-        reg.add_dependency('com.tailf.jnc.SchemaTree')
+        #reg.add_dependency('com.tailf.jnc.Tagpath')
+        #reg.add_dependency('com.tailf.jnc.SchemaNode')
+        #reg.add_dependency('com.tailf.jnc.SchemaTree')
         schema = os.sep.join([self.ctx.opts.directory.replace('.', os.sep),
                               self.n2, normalize(prefix.arg)])
         if self.ctx.opts.classpath_schema_loading:
@@ -1514,17 +1529,17 @@ class JavaClass(object):
 
     def add_enabler(self, enabler):
         """Adds an 'enable'-method as a string"""
-        self.imports.add('com.tailf.jnc.JNCException')
-        self.imports.add('com.tailf.jnc.YangElement')
+        #self.imports.add('com.tailf.jnc.JNCException')
+        #self.imports.add('com.tailf.jnc.YangElement')
         self.enablers.add(enabler)
 
     def add_schema_registrator(self, schema_registrator):
         """Adds a register schema method"""
-        self.imports.add('com.tailf.jnc.JNCException')
-        self.imports.add('com.tailf.jnc.SchemaParser')
-        self.imports.add('com.tailf.jnc.Tagpath')
-        self.imports.add('com.tailf.jnc.SchemaNode')
-        self.imports.add('com.tailf.jnc.SchemaTree')
+        #self.imports.add('com.tailf.jnc.JNCException')
+        #self.imports.add('com.tailf.jnc.SchemaParser')
+        #self.imports.add('com.tailf.jnc.Tagpath')
+        #self.imports.add('com.tailf.jnc.SchemaNode')
+        #self.imports.add('com.tailf.jnc.SchemaTree')
         self.imports.add('java.util.HashMap')
         self.schema_registrators.add(schema_registrator)
 
