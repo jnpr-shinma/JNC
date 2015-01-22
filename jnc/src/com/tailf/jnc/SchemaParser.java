@@ -140,7 +140,10 @@ public class SchemaParser {
                 node.yang_node_type = value;
             } else if (localName.equals("yang_type")) {
                 node.type = value;
+            } else if (localName.equals("yang_java_type")) {
+                node.yang_java_type = value;
             }
+
 
             value = null;
         }

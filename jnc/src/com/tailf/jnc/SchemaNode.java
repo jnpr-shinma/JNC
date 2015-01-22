@@ -14,7 +14,7 @@ public class SchemaNode {
     public String yang_node_type;
     //Field type
     public String type;
-
+    public String yang_java_type;
     public int primitive_type; // C_*
     public int min_occurs;
     public int max_occurs;
