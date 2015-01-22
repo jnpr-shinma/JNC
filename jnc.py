@@ -1181,7 +1181,7 @@ class ClassGenerator(object):
 
         # Add method 'registerSchema' to root class
         reg = JavaMethod(return_type='void', name='registerSchema')
-        #reg.exceptions = ['JNCException']  # XXX: Don't use add method
+        reg.exceptions = ['JNCException']  # XXX: Don't use add method
         #reg.add_dependency('com.tailf.jnc.JNCException')
         reg.modifiers = ['public', 'static']
         reg.add_javadoc('Register the schema for this namespace in the global')
