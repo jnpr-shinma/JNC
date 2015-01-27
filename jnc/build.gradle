@@ -2,13 +2,16 @@ description = "JNC Library"
 apply plugin: "java"
 apply plugin: "application"
 apply plugin: "maven-publish"
-version = "0.1.2"
+version = "0.1.3"
 defaultTasks "clean", "build"
 
 sourceSets {
     main {
         java {
             srcDir 'src'
+        }
+        resources {
+            srcDir 'resources'
         }
     }
 }
@@ -21,7 +24,13 @@ task distribution(dependsOn: ['build', 'sourceJar']) << {
     println "Building snapshot with version=$version"
 }
 
-task release(dependsOn: ['build', 'sourceJar']) << {
+task copyPythonFiles(type: Copy) {
+    from '../jnc.py'
+    from '../jrc.py'
+    into 'build/classes/main'
+}
+
+task release(dependsOn: ['build', 'jar', 'sourceJar']) << {
     println "Building release version: $version"
 }
 
@@ -48,6 +57,9 @@ dependencies {
 task sourceJar(type: Jar) {
     from sourceSets.main.allJava
 }
+
+jar.dependsOn copyPythonFiles
+
 
 publishing {
     publications {
