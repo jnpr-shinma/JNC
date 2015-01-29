@@ -1015,7 +1015,7 @@ class ClassGenerator(object):
         """Generates class(es) for self.stmt"""
         if self.stmt.keyword in ('module', 'submodule'):
             self.generate_classes()
-        else:
+        elif self.stmt.keyword not in ('notification'):
             self.generate_class()
 
     def generate_classes(self):
@@ -1132,7 +1132,11 @@ class ClassGenerator(object):
                 child_generator = ClassGenerator(stmt, package=self.package, mopackage=self.mopackage,
                     ns=ns_arg, prefix_name=self.n, parent=self)
                 child_generator.generate()
-                routing.extend(child_generator.generate_routes(self))
+                if stmt.keyword != 'notification':
+                    routing.extend(child_generator.generate_routes(self))
+                else:
+                    routing.extend(child_generator.generate_notification_routes(self))
+
 
             routing[len(routing)-1] = ' ' * 6 + '}'
             routing.append(' ' * 4 + '}')
@@ -1595,6 +1599,59 @@ class ClassGenerator(object):
 
         parent.java_class.imports.add("scala.util.{Failure, Success}")
         parent.java_class.imports.add(jnc)
+
+        return exact
+
+    def generate_notification_routes(self, parent):
+        field = None
+        add = parent.java_class.append_access_method  # XXX: add is a function
+
+        module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
+
+        streamregistry = [' ' * 4 + 'StreamRegistry.registerStream(']
+        streamregistry.append(' ' * 6 + 'new Stream()')
+        streamregistry.append(' ' * 8 + '.name("'+self.stmt.arg+'")')
+        for sub in self.stmt.substmts:
+            if sub.keyword == 'description':
+                streamregistry.append(' ' * 8 + '.description("'+sub.arg+'")')
+        streamregistry.append(' ' * 8 + '.replaySupport("false")')
+        streamregistry.append(' ' * 8 + '.events("")')
+        streamregistry.append(' ' * 4 + ')')
+        streamregistry_value = JavaValue(streamregistry)
+
+        indent = ' ' * 6
+        body_indent = ' ' * 8
+
+        exact = [indent + "get {"]
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_STREAMS_PREFIX / ROUTING_STREAM_PREFIX / "'+ self.stmt.arg +'" / ROUTING_EVENTS_PREFIX) {')
+        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
+        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
+        exact.append(body_indent + "      intercept(apiCtx) {")
+        exact.append(body_indent + "        compressResponse(Gzip) {")
+        exact.append(body_indent + "          sse { (channel, lastEventId, ctx) =>")
+        exact.append(body_indent + "            {")
+        exact.append(body_indent + '              NotificationSubscriptionManager.addSubscriber(channel, "'+ self.stmt.arg+'", ctx.request.uri.query.get("stream-filter"))')
+        exact.append(body_indent + "            }")
+        exact.append(body_indent + "          }")
+        exact.append(body_indent + "        }")
+        exact.append(body_indent + "      }")
+        exact.append(body_indent + "    }")
+        exact.append(body_indent + "  }")
+        exact.append(body_indent + "}")
+        exact.append(indent + "} ~")
+
+        add('streamregistry', streamregistry_value)
+
+        parent.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
+        parent.java_class.imports.add("net.juniper.easyrest.notification.NotificationSubscriptionManager")
+        parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
+        parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestServerSideEventDirective._")
+        parent.java_class.imports.add("net.juniper.easyrest.streams.spray.StreamRegistry")
+        parent.java_class.imports.add("net.juniper.easyrest.streams.yang.Stream")
+        parent.java_class.imports.add("spray.httpx.encoding.Gzip")
+        parent.java_class.imports.add("spray.routing.HttpService")
+        parent.java_class.imports.add("spray.routing.directives.RefFactoryMagnet")
+        parent.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
 
         return exact
 
