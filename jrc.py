@@ -1641,16 +1641,17 @@ class ClassGenerator(object):
         exact.append(indent + "} ~")
 
         add('streamregistry', streamregistry_value)
-        parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
-        parent.java_class.imports.add("import com.typesafe.scalalogging.LazyLogging")
-        parent.java_class.imports.add("import net.juniper.easyrest.notification.NotificationSubscriptionManager")
-        parent.java_class.imports.add("import net.juniper.easyrest.rest.EasyRestRoutingDSL")
-        parent.java_class.imports.add("import net.juniper.easyrest.rest.EasyRestServerSideEventDirective._")
-        parent.java_class.imports.add("import net.juniper.easyrest.streams.spray.StreamRegistry")
-        parent.java_class.imports.add("import net.juniper.easyrest.streams.yang.Stream")
-        parent.java_class.imports.add("import spray.httpx.encoding.Gzip")
-        parent.java_class.imports.add("import spray.routing.HttpService")
-        parent.java_class.imports.add("import spray.routing.directives.RefFactoryMagnet")
+
+        parent.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
+        parent.java_class.imports.add("net.juniper.easyrest.notification.NotificationSubscriptionManager")
+        parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
+        parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestServerSideEventDirective._")
+        parent.java_class.imports.add("net.juniper.easyrest.streams.spray.StreamRegistry")
+        parent.java_class.imports.add("net.juniper.easyrest.streams.yang.Stream")
+        parent.java_class.imports.add("spray.httpx.encoding.Gzip")
+        parent.java_class.imports.add("spray.routing.HttpService")
+        parent.java_class.imports.add("spray.routing.directives.RefFactoryMagnet")
+        parent.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
 
         return exact
 
