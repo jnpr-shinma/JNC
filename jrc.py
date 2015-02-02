@@ -1122,17 +1122,32 @@ class ClassGenerator(object):
         dispatcher_import = [' ' * 4 + "import net.juniper.easyrest.core.EasyRestActionSystem.system.dispatcher"]
         dispatcher = JavaValue(dispatcher_import)
         self.java_class.append_access_method("dispatcher", dispatcher)
-
+	
         routing = [' ' * 4 + "val " + camelize(prefix.arg) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
 
         res = search(self.stmt, list(yangelement_stmts | {'augment'}))
         if (len(res) > 0):
+            prefixGenerated = False
             # Generate classes for children and keep track of augmented modules
             for stmt in search(self.stmt, list(yangelement_stmts | {'augment'})):
                 child_generator = ClassGenerator(stmt, package=self.package, mopackage=self.mopackage,
                     ns=ns_arg, prefix_name=self.n, parent=self)
                 child_generator.generate()
                 if stmt.keyword != 'notification':
+                    if(prefixGenerated is False):
+                        prefixGenerated = True
+		        namespace_def = [' ' * 4 + "val modelNS = \"" + ns_arg + "\""]
+		        namespace = JavaValue(namespace_def)
+		        self.java_class.append_access_method("namespace", namespace)
+
+			model_def = [' ' * 4 + "val modelPrefix = \"" + prefix.arg + "\""]
+			model = JavaValue(model_def)
+			self.java_class.append_access_method("model", model)
+
+			prefixmap_def = [' ' * 4 + "val prefixs = new PrefixMap(Array(new Prefix(\"\", modelNS),new Prefix(modelPrefix, modelNS)))"]
+			prefixmap = JavaValue(prefixmap_def)
+		 	self.java_class.append_access_method("prefixmap", prefixmap)
+	
                     routing.extend(child_generator.generate_routes(self))
                 else:
                     routing.extend(child_generator.generate_notification_routes(self))
@@ -1347,7 +1362,8 @@ class ClassGenerator(object):
 
         delete_field = JavaValue(exact=[indent + "def delete" + normalize(self.n2) + "(",
                                      ' ' * 6 + key.arg + ": " + value + ",",
-                                     ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[Unit]]"])
+                                     ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[" +
+                                     normalize(self.n2) + "]]"])
         self.java_class.add_field(delete_field)
 
         self.java_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
@@ -1465,10 +1481,10 @@ class ClassGenerator(object):
         add = parent.java_class.append_access_method  # XXX: add is a function
 
         module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
-
+		
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2) +
-                       '] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), null).asInstanceOf[' +
+                       '] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
                         normalize(self.n2) + '])')
         marshell.append(' ' * 4 + '}')
         marsheller = JavaValue(marshell)
@@ -1568,7 +1584,7 @@ class ClassGenerator(object):
         exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "        intercept(apiCtx) {")
         exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option[Unit]] {")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "              "+self.n2+"ApiImpl.delete"+normalize(self.n2)+"(new " + value + "("+ key_arg + "), apiCtx)")
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + '              case Success(_) => complete("")')
@@ -1583,14 +1599,13 @@ class ClassGenerator(object):
 
         add('marsheller', marsheller)
         add('apiimpl', apiimpl)
-        parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
+
         parent.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
         parent.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
         parent.java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
         parent.java_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
         parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
         parent.java_class.imports.add("net.juniper.easyrest.util.JsonUtil")
-
         parent.java_class.imports.add(self.mopackage + '.' + normalize(self.n2))
         parent.java_class.imports.add("spray.http.{HttpCharsets, HttpRequest}")
         parent.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
@@ -1598,6 +1613,10 @@ class ClassGenerator(object):
         parent.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
 
         parent.java_class.imports.add("scala.util.{Failure, Success}")
+	parent.java_class.imports.add("com.tailf.jnc.PrefixMap")
+	parent.java_class.imports.add("com.tailf.jnc.Prefix")
+	parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
+
         parent.java_class.imports.add(jnc)
 
         return exact
