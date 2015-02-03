@@ -398,7 +398,7 @@ java_built_in = java_reserved_words | java_literals | java_lang
 """Identifiers that shouldn't be imported in Java"""
 
 
-yangelement_stmts = {'container', 'list', 'notification'}
+yangelement_stmts = {'container', 'list', 'notification', 'rpc', 'input', 'output'}
 """Keywords of statements that YangElement classes are generated from"""
 
 
@@ -994,6 +994,11 @@ class ClassGenerator(object):
         self.n2 = camelize(stmt.arg)
         if stmt.keyword in module_stmts:
             self.filename = normalize(search_one(stmt, 'prefix').arg) + '.java'
+        elif stmt.keyword == 'input' or stmt.keyword == 'output':
+             package_name = self.package[self.package.rfind('.')+1:]
+             filename = package_name.capitalize()+self.n
+             self.n2 = package_name.capitalize()+self.n
+             self.filename = filename + '.java'
         else:
             self.filename = self.n + '.java'
 
@@ -1950,10 +1955,14 @@ class MethodGenerator(object):
         """Sets the attributes of the method generator, depending on stmt"""
         self.stmt = stmt
         self.n = normalize(stmt.arg)
+        if(stmt.keyword == 'input' or stmt.keyword == 'output'):
+             self.n = stmt.parent.arg.capitalize()+'Rpc'+ normalize(stmt.arg)
+        else:
+             self.n = normalize(stmt.arg)
         self.n2 = camelize(stmt.arg)
+
         self.children = [normalize(s.arg) for s in
                          search(stmt, yangelement_stmts | leaf_stmts)]
-
         self.ctx = ctx
         self.module_stmt = get_module(stmt)
         prefix = search_one(self.module_stmt, 'prefix')
@@ -1966,15 +1975,15 @@ class MethodGenerator(object):
             self.rootpkg = self.rootpkg[1:]  # src not part of package
         self.rootpkg.append(camelize(self.module_stmt.arg))
 
-        self.is_container = stmt.keyword in ('container', 'notification')
+        self.is_container = stmt.keyword in ('container', 'notification', 'rpc', 'input', 'output')
         self.is_list = stmt.keyword == 'list'
         self.is_typedef = stmt.keyword == 'typedef'
         self.is_leaf = stmt.keyword == 'leaf'
         self.is_leaflist = stmt.keyword == 'leaf-list'
         self.is_top_level = get_parent(self.stmt) == self.module_stmt
         self.is_augmented = self.module_stmt != get_module(stmt.parent)
-        assert (self.is_container or self.is_list or self.is_typedef
-            or self.is_leaf or self.is_leaflist)
+        #assert (self.is_container or self.is_list or self.is_typedef
+        #    or self.is_leaf or self.is_leaflist)
         self.gen = self
         if type(self) is MethodGenerator:
             if self.is_typedef:
