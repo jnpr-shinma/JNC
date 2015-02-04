@@ -1481,9 +1481,9 @@ class ClassGenerator(object):
         parent.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
 
         parent.java_class.imports.add("scala.util.{Failure, Success}")
-	    parent.java_class.imports.add("com.tailf.jnc.PrefixMap")
-	    parent.java_class.imports.add("com.tailf.jnc.Prefix")
-	    parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
+        parent.java_class.imports.add("com.tailf.jnc.PrefixMap")
+        parent.java_class.imports.add("com.tailf.jnc.Prefix")
+        parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
         parent.java_class.imports.add("net.juniper.easyrest.ctx.Page")
         parent.java_class.imports.add(jnc)
 
