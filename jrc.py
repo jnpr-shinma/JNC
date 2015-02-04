@@ -1196,7 +1196,7 @@ class ClassGenerator(object):
         value = jnc[jnc.rfind('.') + 1:]
 
         getall_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "List(",
-                                        ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[Seq[" +
+                                        ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[Page[" +
                                         normalize(self.n2) + "]]]"])
         self.java_class.add_field(getall_field)
 
@@ -1226,6 +1226,7 @@ class ClassGenerator(object):
         self.java_class.add_field(delete_field)
 
         self.java_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
+        self.java_class.imports.add('net.juniper.easyrest.ctx.Page')
         self.java_class.imports.add(self.mopackage +  '.' + normalize(self.n2))
         self.java_class.imports.add(jnc)
         self.java_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
@@ -1375,10 +1376,10 @@ class ClassGenerator(object):
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Option[Seq["+normalize(self.n2)+"]]] {")
+        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Option[Page["+normalize(self.n2)+"]]] {")
         exact.append(body_indent + "            "+self.n2+"ApiImpl.get"+normalize(self.n2)+"List(apiCtx)")
         exact.append(body_indent + "          }) {")
-        exact.append(body_indent + "            case Success(result) => complete (JsonUtil.elementSeqToJson(result))")
+        exact.append(body_indent + "            case Success(result) => complete (result.get.toJson)")
         exact.append(body_indent + "            case Failure(ex) => throw ex")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1480,9 +1481,10 @@ class ClassGenerator(object):
         parent.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
 
         parent.java_class.imports.add("scala.util.{Failure, Success}")
-        parent.java_class.imports.add("com.tailf.jnc.PrefixMap")
-        parent.java_class.imports.add("com.tailf.jnc.Prefix")
-        parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
+	    parent.java_class.imports.add("com.tailf.jnc.PrefixMap")
+	    parent.java_class.imports.add("com.tailf.jnc.Prefix")
+	    parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
+        parent.java_class.imports.add("net.juniper.easyrest.ctx.Page")
         parent.java_class.imports.add(jnc)
 
         return exact
