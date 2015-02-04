@@ -399,7 +399,7 @@ java_built_in = java_reserved_words | java_literals | java_lang
 """Identifiers that shouldn't be imported in Java"""
 
 
-yangelement_stmts = {'container', 'list', 'notification'}
+yangelement_stmts = {'container', 'list', 'notification', 'rpc'}
 """Keywords of statements that YangElement classes are generated from"""
 
 
@@ -989,6 +989,7 @@ class ClassGenerator(object):
 
         self.n = normalize(stmt.arg)
         self.n2 = camelize(stmt.arg)
+        self.rpc_class = None
         if stmt.keyword in module_stmts:
             self.filename = normalize(search_one(stmt, 'prefix').arg) + 'Routes.scala'
         else:
@@ -1015,7 +1016,7 @@ class ClassGenerator(object):
         """Generates class(es) for self.stmt"""
         if self.stmt.keyword in ('module', 'submodule'):
             self.generate_classes()
-        elif self.stmt.keyword not in ('notification'):
+        elif self.stmt.keyword not in ('notification', 'rpc'):
             self.generate_class()
 
     def generate_classes(self):
@@ -1064,50 +1065,6 @@ class ClassGenerator(object):
                 except AttributeError:
                     pass
 
-        # Generate the typedef classes
-        # for stmt in typedef_stmts:
-        #     name = normalize(stmt.arg)
-        #     description = ''.join(['This class represents an element from ',
-        #                            '\n * the namespace ', self.ns,
-        #                            '\n * generated to "',
-        #                            self.path, os.sep, stmt.arg,
-        #                            '"\n * <p>\n * See line ',
-        #                            str(stmt.pos.line), ' in\n * ',
-        #                            stmt.pos.ref])
-        #     java_class = JavaClass(filename=name + '.java',
-        #                                 package=self.package,
-        #                                 description=description,
-        #                                 source=self.src,
-        #                                 superclass='YangElement')
-        #     if self.ctx.opts.verbose:
-        #         print('Generating Java class "' + name + '.java' + '"...')
-        #
-        #     gen = MethodGenerator(stmt, self.ctx)
-        #
-        #     for constructor in gen.constructors():
-        #         java_class.add_constructor(constructor)
-        #
-        #     for i, method in enumerate(gen.setters()):
-        #         java_class.append_access_method(str(i), method)
-        #
-        #     java_class.append_access_method('check', gen.checker())
-        #
-        #     type_stmt = search_one(stmt, 'type')
-        #     super_type = get_types(type_stmt, self.ctx)[0]
-        #     java_class.superclass = super_type.rpartition('.')[2]
-        #     java_class.imports.add(super_type)
-        #     if super_type == 'com.tailf.jnc.YangDecimal64':
-        #         java_class.imports.add('java.math.BigDecimal')
-        #     elif super_type in ('com.tailf.jnc.YangBits',
-        #                         'com.tailf.jnc.YangUInt64'):
-        #         java_class.imports.add('java.math.BigInteger')
-        #     elif super_type in ('com.tailf.jnc.YangLeafref',
-        #                         'com.tailf.jnc.YangIdentityref'):
-        #         java_class.imports.add('com.tailf.jnc.Element')
-        #
-        #     write_file(self.path, java_class.filename,
-        #                java_class.as_list(), self.ctx)
-
         # Generate root class
         if self.ctx.opts.verbose:
             print('Generating Java class "' + self.filename + '"...')
@@ -1126,6 +1083,7 @@ class ClassGenerator(object):
         routing = [' ' * 4 + "val " + camelize(prefix.arg) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
 
         res = search(self.stmt, list(yangelement_stmts | {'augment'}))
+        append_rpc_impl = False
         if (len(res) > 0):
             prefixGenerated = False
             # Generate classes for children and keep track of augmented modules
@@ -1133,96 +1091,49 @@ class ClassGenerator(object):
                 child_generator = ClassGenerator(stmt, package=self.package, mopackage=self.mopackage,
                     ns=ns_arg, prefix_name=self.n, parent=self)
                 child_generator.generate()
-                if stmt.keyword != 'notification':
+
+                if stmt.keyword == 'rpc':
+                    append_rpc_impl = True
+                    routing.extend(child_generator.generate_rpc_routes(self, stmt))
+                    self.generate_rpc_class(stmt)
+                elif stmt.keyword == 'notification':
+                    routing.extend(child_generator.generate_notification_routes(self))
+                else:
                     if(prefixGenerated is False):
                         prefixGenerated = True
-		        namespace_def = [' ' * 4 + "val modelNS = \"" + ns_arg + "\""]
-		        namespace = JavaValue(namespace_def)
-		        self.java_class.append_access_method("namespace", namespace)
+                        namespace_def = [' ' * 4 + "val modelNS = \"" + ns_arg + "\""]
+                        namespace = JavaValue(namespace_def)
+                        self.java_class.append_access_method("namespace", namespace)
+                        model_def = [' ' * 4 + "val modelPrefix = \"" + prefix.arg + "\""]
+                        model = JavaValue(model_def)
+                        self.java_class.append_access_method("model", model)
+                        prefixmap_def = [' ' * 4 + "val prefixs = new PrefixMap(Array(new Prefix(\"\", modelNS),new Prefix(modelPrefix, modelNS)))"]
+                        prefixmap = JavaValue(prefixmap_def)
+                        self.java_class.append_access_method("prefixmap", prefixmap)
 
-			model_def = [' ' * 4 + "val modelPrefix = \"" + prefix.arg + "\""]
-			model = JavaValue(model_def)
-			self.java_class.append_access_method("model", model)
-
-			prefixmap_def = [' ' * 4 + "val prefixs = new PrefixMap(Array(new Prefix(\"\", modelNS),new Prefix(modelPrefix, modelNS)))"]
-			prefixmap = JavaValue(prefixmap_def)
-		 	self.java_class.append_access_method("prefixmap", prefixmap)
-	
                     routing.extend(child_generator.generate_routes(self))
-                else:
-                    routing.extend(child_generator.generate_notification_routes(self))
 
 
             routing[len(routing)-1] = ' ' * 6 + '}'
             routing.append(' ' * 4 + '}')
             res = JavaValue(routing)
             self.java_class.append_access_method("routing", res)
-            # Set fields in root class
-            # root_fields = [JavaValue(), JavaValue()]
-            # root_fields[0].set_name('NAMESPACE')
-            # root_fields[1].set_name('PREFIX')
-            # root_fields[0].value = '"' + ns_arg + '"'
-            # root_fields[1].value = '"' + prefix.arg + '"'
-            # for root_field in root_fields:
-            #     for modifier in ('public', 'static', 'final', 'String'):
-            #         root_field.add_modifier(modifier)
-            #     self.java_class.add_field(root_field)
-            #
-            # enable_field = JavaValue()
-            # enable_field.set_name('enabled')
-            # enable_field.value = 'false'
-            # for modifier in ('private', 'static', 'boolean'):
-            #     enable_field.add_modifier(modifier)
-            # self.java_class.add_field(enable_field)
-            #
-            # # Add method 'enable' to root class
-            # enabler = JavaMethod(return_type='void', name='enable')
-            # #enabler.exceptions = ['JNCException']  # XXX: Don't use add method
-            # enabler.add_dependency('com.tailf.jnc.JNCException')
-            # enabler.add_dependency('com.tailf.jnc.YangElement')
-            # enabler.add_dependency('java.net.MalformedURLException')
-            # enabler.add_dependency('java.net.URISyntaxException')
-            # enabler.add_dependency('java.net.URL')
-            #
-            # enabler.modifiers = ['public', 'static']
-            # enabler.add_javadoc('Enable the elements in this namespace to be aware')
-            # enabler.add_javadoc('of the data model and use the generated classes.')
-            # enabler.add_line('if(enabled)')
-            # enabler.add_line(enabler.indent + 'return;')
-            # enabler.add_line('try {')
-            # enabler.add_line(enabler.indent + '"'.join(['YangElement.setPackage(NAMESPACE, ',
-            #                            self.java_class.package, ');']))
-            # enabler.add_line(enabler.indent + normalize(prefix.arg) + '.registerSchema();')
-            # enabler.add_line('}')
-            # enabler.add_line('catch(Exception e) {')
-            # enabler.add_line(enabler.indent + 'e.printStackTrace();')
-            # enabler.add_line('}')
-            # self.java_class.add_enabler(enabler)
 
-            # Add method 'registerSchema' to root class
-            # reg = JavaMethod(return_type='void', name='registerSchema')
-            # reg.exceptions = ['JNCException']  # XXX: Don't use add method
-            # reg.add_dependency('com.tailf.jnc.JNCException')
-            # reg.modifiers = ['public', 'static']
-            # reg.add_javadoc('Register the schema for this namespace in the global')
-            # reg.add_javadoc('schema table (CsTree) making it possible to lookup')
-            # reg.add_javadoc('CsNode entries for all tagpaths')
-            # reg.add_line('SchemaParser parser = new SchemaParser();')
-            # reg.add_dependency('com.tailf.jnc.SchemaParser')
-            # reg.add_line('HashMap<Tagpath, SchemaNode> h = SchemaTree.create(NAMESPACE);')
-            # reg.add_dependency('java.util.HashMap')
-            # reg.add_dependency('com.tailf.jnc.Tagpath')
-            # reg.add_dependency('com.tailf.jnc.SchemaNode')
-            # reg.add_dependency('com.tailf.jnc.SchemaTree')
-            # schema = os.sep.join([self.ctx.opts.directory.replace('.', os.sep),
-            #                       self.n2, normalize(prefix.arg)])
-            # if self.ctx.opts.classpath_schema_loading:
-            #     reg.add_line('parser.findAndReadFile("' + normalize(prefix.arg) + '.schema", h, ' + normalize(prefix.arg) + '.class);')
-            # else:
-            #     reg.add_line('parser.readFile("' + schema + '.schema", h);')
-            # self.java_class.add_schema_registrator(reg)
+            if append_rpc_impl:
+                rpcapi = [' ' * 4 + 'lazy val '+self.n2+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(self.n2)+'RpcApi])']
+                rpcapiimpl = JavaValue(rpcapi)
+                self.java_class.append_access_method("apiimpl", rpcapiimpl)
 
             self.write_to_file()
+
+            if self.rpc_class:
+                self.rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
+                self.rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
+
+                write_file(self.path,
+                   normalize(self.n2)+"RpcApi.scala",
+                   self.rpc_class.as_list(),
+                   self.ctx)
 
     def generate_class(self):
         """Generates a Java class hierarchy providing an interface to a YANG
@@ -1257,64 +1168,12 @@ class ClassGenerator(object):
                                      str(stmt.pos.line), ' in\n * ',
                                      stmt.pos.ref]),
                 source=self.src)
-                #superclass='YangElement')
-
-        # Set tagpath field in class
-        # root_fields = [JavaValue()]
-        # root_fields[0].set_name('TAG_PATH')
-        # package = self.package.replace('.', '/')
-        # package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name))[2]
-        # if package_name:
-        #     tagpath = package_name[1:] + '/' + stmt.arg
-        # else:
-        #     tagpath = stmt.arg
-        # root_fields[0].value = 'new Tagpath("' + tagpath + '")'
-        # for root_field in root_fields:
-        #     for modifier in ('public', 'static', 'final', 'Tagpath'):
-        #         root_field.add_modifier(modifier)
-        #     self.java_class.add_field(root_field)
-        #
-        # module_stmt = get_module(stmt)
-        # prefix = search_one(module_stmt, 'prefix')
-        # indent =  ' ' * 4
-        # test_field = JavaValue(exact=[indent + "static {", indent * 2 + normalize(prefix.arg)+".enable();", indent + "}"])
-        # self.java_class.add_field(test_field)
-        # self.java_class.imports.add('com.tailf.jnc.Tagpath')
-
-        # for ch in search(stmt, yangelement_stmts | leaf_stmts):
-        #     field = self.generate_child(ch)
-        #     ch_arg = normalize(ch.arg)
-        #     if field is not None:
-        #         package_generated = True
-        #         if ch_arg == self.n and not fully_qualified:
-        #             fully_qualified = True
-        #             s = ('\n * <p>\n * Children with the same name as this ' +
-        #                 'class are fully qualified.')
-        #             self.java_class.description += s
-        #         else:
-        #             all_fully_qualified = False
-        #         if field:
-        #             fields.add(field)  # Container child
-        #         if (not self.ctx.opts.import_on_demand
-        #                 or ch_arg in java_lang
-        #                 or ch_arg in java_util
-        #                 or ch_arg in com_tailf_jnc
-        #                 or ch_arg in class_hierarchy[self.rootpkg]
-        #                 or ch_arg in class_hierarchy[self.package]):
-        #             # Need to do explicit import
-        #             import_ = '.'.join([self.package, self.n2, ch_arg])
-        #             self.java_class.imports.add(import_)
 
         if self.ctx.opts.debug or self.ctx.opts.verbose:
             if package_generated:
                 print('pkg ' + '.'.join([self.package, self.n2]) + ' generated')
             if self.ctx.opts.verbose:
                 print('Generating "' + self.filename + '"...')
-
-        # def getLogicalInterfaces(
-        # deviceId: Int,
-        # interfaceName: String,
-        # apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[LogicalInterfaces]]
 
         self.is_config = is_config(stmt)
         self.keys = []
@@ -1372,44 +1231,52 @@ class ClassGenerator(object):
         self.java_class.imports.add(jnc)
         self.java_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
 
-        #gen = MethodGenerator(stmt, self.ctx)
-
-
-        #
-        # for constructor in gen.constructors():
-        #     self.java_class.add_constructor(constructor)
-        #
-        # for cloner in gen.cloners():
-        #     self.java_class.add_cloner(cloner)
-        #
-        # support_method = gen.support_method(fields)
-        # if support_method is not None:
-        #     self.java_class.add_support_method(support_method)
-        #
-        # self.java_class.add_name_getter(gen.key_names())
-        # self.java_class.add_name_getter(gen.children_names())
-        #
-        # if self.ctx.opts.import_on_demand:
-        #     self.java_class.imports.add('com.tailf.jnc.*')
-        #     self.java_class.imports.add('java.math.*')
-        #     self.java_class.imports.add('java.util.*')
-        #     if self.rootpkg != self.package:
-        #         self.java_class.imports.add(self.rootpkg + '.*')
-        #         top = get_module(self.stmt)
-        #         if top is None:
-        #             top = self.stmt
-        #         elif top.keyword == 'submodule':
-        #             top = search_one(top, 'belongs-to')
-        #         top_classname = normalize(search_one(top, 'prefix').arg)
-        #         if (top_classname in java_built_in
-        #                 or top_classname in java_util):
-        #             top_import = self.rootpkg + '.' + top_classname
-        #             self.java_class.imports.add(top_import)
-        #     if package_generated and not all_fully_qualified:
-        #         import_ = '.'.join([self.package, self.n2, '*'])
-        #         self.java_class.imports.add(import_)
-
         self.write_to_file()
+
+    def generate_rpc_class(self, stmt):
+        fields = OrderedSet()
+        package_generated = False
+        all_fully_qualified = True
+        fully_qualified = False
+
+        if (self.rpc_class is None):
+            self.rpc_class = JavaClass(filename=normalize(self.n2)+"RpcApi",
+                    package=self.package,
+                    description=''.join(['This class represents rpc api']),
+                    source=self.src)
+
+        if self.ctx.opts.debug or self.ctx.opts.verbose:
+            if package_generated:
+                print('pkg ' + '.'.join([self.package, self.n2]) + ' generated')
+            if self.ctx.opts.verbose:
+                print('Generating "' + self.filename + '"...')
+
+        indent =  ' ' * 4
+
+        rpc_name = camelize(stmt.arg) + "Rpc"
+
+        input_para = False
+        output_para = False
+        for sub in stmt.substmts:
+            if sub.keyword == "input":
+                input_para = True
+            elif sub.keyword == "output":
+                output_para = True
+
+        if input_para:
+            rpc_input = "(input: " + normalize(stmt.arg) + "Input, apiCtx: ApiContext)"
+            self.rpc_class.imports.add('net.juniper.yang.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Input")
+        else:
+            rpc_input = "(apiCtx: ApiContext)"
+
+        if output_para:
+            rpc_output = "Future[Option[" + normalize(stmt.arg) + "Output"+"]]"
+            self.rpc_class.imports.add('net.juniper.yang.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Output")
+        else:
+            rpc_output = "Future[Option[Unit]]"
+
+        rpc_method = JavaValue(exact=[indent + "def " + rpc_name + rpc_input + "(implicit ec: ExecutionContext): " + rpc_output])
+        self.rpc_class.add_field(rpc_method)
 
     def generate_child(self, sub):
         """Appends access methods to class for children in the YANG module.
@@ -1614,12 +1481,80 @@ class ClassGenerator(object):
         parent.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
 
         parent.java_class.imports.add("scala.util.{Failure, Success}")
-	parent.java_class.imports.add("com.tailf.jnc.PrefixMap")
-	parent.java_class.imports.add("com.tailf.jnc.Prefix")
-	parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
+        parent.java_class.imports.add("com.tailf.jnc.PrefixMap")
+        parent.java_class.imports.add("com.tailf.jnc.Prefix")
+        parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
         parent.java_class.imports.add("net.juniper.easyrest.ctx.Page")
-
         parent.java_class.imports.add(jnc)
+
+        return exact
+
+    def generate_rpc_routes(self, parent, stmt):
+        field = None
+        add = parent.java_class.append_access_method  # XXX: add is a function
+
+        module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
+
+        marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'Input] {']
+        marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'Input' +
+                       '] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
+                        normalize(self.n2)+'Input])')
+        marshell.append(' ' * 4 + '}')
+        marsheller = JavaValue(marshell)
+
+        add('marsheller', marsheller)
+
+        input_para = False
+        output_para = False
+        for sub in stmt.substmts:
+            if sub.keyword == "input":
+                input_para = True
+                parent.java_class.imports.add('net.juniper.yang.mo.'+parent.n2+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
+            elif sub.keyword == "output":
+                output_para = True
+                parent.java_class.imports.add('net.juniper.yang.mo.'+parent.n2+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
+
+        indent = ' ' * 6
+        body_indent = ' ' * 8
+
+        exact = [indent + "post {"]
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+module.lower()+':rpc" / "'+self.n2.lower()+'") {')
+        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
+        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
+        exact.append(body_indent + "      intercept(apiCtx) {")
+        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
+
+        if input_para:
+            exact.append(body_indent + "          entity(as["+normalize(self.n2)+"Input]) {input =>")
+
+        if output_para:
+            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"Output]] {")
+        else:
+            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option[Unit]] {")
+
+        if input_para:
+            exact.append(body_indent + "              "+camelize(module)+"RpcApiImpl."+camelize(self.n2)+"Rpc(input, apiCtx)")
+        else:
+            exact.append(body_indent + "              "+camelize(module)+"RpcApiImpl."+camelize(self.n2)+"Rpc(apiCtx)")
+            
+        exact.append(body_indent + "            }) {")
+
+        if output_para:
+            exact.append(body_indent + "              case Success(result) => complete (JsonUtil.elementToJson(result))")
+        else:
+            exact.append(body_indent + '              case Success(result) => complete ("")')
+
+        exact.append(body_indent + "              case Failure(ex) => throw ex")
+        exact.append(body_indent + "            }")
+
+        if input_para:
+            exact.append(body_indent + "          }")
+        exact.append(body_indent + "        }")
+        exact.append(body_indent + "      }")
+        exact.append(body_indent + "    }")
+        exact.append(body_indent + "  }")
+        exact.append(body_indent + "}")
+        exact.append(indent + "} ~")
 
         return exact
 
@@ -1884,8 +1819,8 @@ class JavaClass(object):
         header = [' '.join(['/* \n * @(#)' + self.filename, '      ',
                             self.version, date.today().strftime('%d/%m/%y')])]
         header.append(' *')
-        header.append(' * This file has been auto-generated by JNC, the')
-        header.append(' * Java output format plug-in of pyang.')
+        header.append(' * This file has been auto-generated by JRC, the')
+        header.append(' * Restconf output format plug-in of pyang.')
         header.append(' * Origin: ' + self.source)
         header.append(' */')
 
