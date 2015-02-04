@@ -1126,10 +1126,11 @@ class ClassGenerator(object):
 
             self.write_to_file()
 
-            self.rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
-            self.rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
+            if self.rpc_class:
+                self.rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
+                self.rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
 
-            write_file(self.path,
+                write_file(self.path,
                    normalize(self.n2)+"RpcApi.scala",
                    self.rpc_class.as_list(),
                    self.ctx)
@@ -1263,13 +1264,13 @@ class ClassGenerator(object):
 
         if input_para:
             rpc_input = "(input: " + normalize(stmt.arg) + "Input, apiCtx: ApiContext)"
-            self.rpc_class.imports.add('net.juniper.yang.mo.'+self.n2+"."+normalize(stmt.arg)+"."+normalize(stmt.arg)+"Input")
+            self.rpc_class.imports.add('net.juniper.yang.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Input")
         else:
             rpc_input = "(apiCtx: ApiContext)"
 
         if output_para:
             rpc_output = "Future[Option[" + normalize(stmt.arg) + "Output"+"]]"
-            self.rpc_class.imports.add('net.juniper.yang.mo.'+self.n2+"."+normalize(stmt.arg)+"."+normalize(stmt.arg)+"Output")
+            self.rpc_class.imports.add('net.juniper.yang.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Output")
         else:
             rpc_output = "Future[Option[Unit]]"
 
@@ -1506,8 +1507,10 @@ class ClassGenerator(object):
         for sub in stmt.substmts:
             if sub.keyword == "input":
                 input_para = True
+                parent.java_class.imports.add('net.juniper.yang.mo.'+parent.n2+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
             elif sub.keyword == "output":
                 output_para = True
+                parent.java_class.imports.add('net.juniper.yang.mo.'+parent.n2+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
 
         indent = ' ' * 6
         body_indent = ' ' * 8
@@ -1531,6 +1534,7 @@ class ClassGenerator(object):
             exact.append(body_indent + "              "+camelize(module)+"RpcApiImpl."+camelize(self.n2)+"Rpc(input, apiCtx)")
         else:
             exact.append(body_indent + "              "+camelize(module)+"RpcApiImpl."+camelize(self.n2)+"Rpc(apiCtx)")
+            
         exact.append(body_indent + "            }) {")
 
         if output_para:
