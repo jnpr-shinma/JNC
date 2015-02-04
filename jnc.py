@@ -996,8 +996,8 @@ class ClassGenerator(object):
             self.filename = normalize(search_one(stmt, 'prefix').arg) + '.java'
         elif stmt.keyword == 'input' or stmt.keyword == 'output':
              package_name = self.package[self.package.rfind('.')+1:]
-             filename = package_name.capitalize()+self.n
-             self.n2 = package_name.capitalize()+self.n
+             filename = normalize(package_name)+self.n
+             self.n2 = normalize(package_name)+self.n
              self.filename = filename + '.java'
         else:
             self.filename = self.n + '.java'
@@ -1331,7 +1331,8 @@ class ClassGenerator(object):
                 import_ = '.'.join([self.package, self.n2, '*'])
                 self.java_class.imports.add(import_)
 
-        self.write_to_file()
+        if self.stmt.keyword not in ('rpc'):
+            self.write_to_file()
 
     def generate_child(self, sub):
         """Appends access methods to class for children in the YANG module.
@@ -1956,7 +1957,7 @@ class MethodGenerator(object):
         self.stmt = stmt
         self.n = normalize(stmt.arg)
         if(stmt.keyword == 'input' or stmt.keyword == 'output'):
-             self.n = stmt.parent.arg.capitalize()+'Rpc'+ normalize(stmt.arg)
+             self.n = normalize(stmt.parent.arg)+normalize(stmt.arg)
         else:
              self.n = normalize(stmt.arg)
         self.n2 = camelize(stmt.arg)
