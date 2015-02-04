@@ -1101,13 +1101,13 @@ class ClassGenerator(object):
                 else:
                     if(prefixGenerated is False):
                         prefixGenerated = True
-                        namespace_def = [' ' * 4 + "val modelNS = \"" + ns_arg + "\""]
+                        namespace_def = [' ' * 4 + "private val modelNS = \"" + ns_arg + "\""]
                         namespace = JavaValue(namespace_def)
                         self.java_class.append_access_method("namespace", namespace)
-                        model_def = [' ' * 4 + "val modelPrefix = \"" + prefix.arg + "\""]
+                        model_def = [' ' * 4 + "private val modelPrefix = \"" + prefix.arg + "\""]
                         model = JavaValue(model_def)
                         self.java_class.append_access_method("model", model)
-                        prefixmap_def = [' ' * 4 + "val prefixs = new PrefixMap(Array(new Prefix(\"\", modelNS),new Prefix(modelPrefix, modelNS)))"]
+                        prefixmap_def = [' ' * 4 + "private val prefixs = new PrefixMap(Array(new Prefix(\"\", modelNS),new Prefix(modelPrefix, modelNS)))"]
                         prefixmap = JavaValue(prefixmap_def)
                         self.java_class.append_access_method("prefixmap", prefixmap)
 
