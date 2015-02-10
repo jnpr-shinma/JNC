@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: latin-1 -*-
-"""JNC: Java NETCONF Client plug-in
+"""JRC: Java NETCONF Client plug-in
 
    Copyright 2012 Tail-f Systems AB
 
@@ -19,15 +19,15 @@
 For complete functionality, invoke with:
 > pyang \
     --path <yang search path> \
-    --format jnc \
-    --jnc-output <package.name> \
-    --jnc-verbose \
-    --jnc-ignore-errors \
-    --jnc-import-on-demand \
+    --format jrc \
+    --jrc-output <package.name> \
+    --jrc-verbose \
+    --jrc-ignore-errors \
+    --jrc-import-on-demand \
     <file.yang>
 
 Or, if you like to keep things simple:
-> pyang -f jnc -d <package.name> <file.yang>
+> pyang -f jrc -d <package.name> <file.yang>
 
 """
 
@@ -44,11 +44,11 @@ from pyang import plugin, util, error
 
 def pyang_plugin_init():
     """Registers an instance of the jnc plugin"""
-    plugin.register_plugin(JNCPlugin())
+    plugin.register_plugin(JRCPlugin())
 
 
-class JNCPlugin(plugin.PyangPlugin):
-    """The plug-in class of JNC.
+class JRCPlugin(plugin.PyangPlugin):
+    """The plug-in class of JRC.
 
     The methods of this class are invoked by pyang during initialization. The
     emit method is of particular interest if you are new to writing plugins to
@@ -847,95 +847,95 @@ def get_typename(stmt):
        return ''
 
 
-class SchemaNode(object):
+# class SchemaNode(object):
+#
+#     def __init__(self, stmt, tagpath):
+#         self.stmt = stmt
+#         self.tagpath = tagpath
+#
+#     def as_list(self):
+#         """Returns a string list repr "node" element content for an XML schema"""
+#         res = ['<node>']
+#         stmt = self.stmt
+#         res.append('<tagpath>' + self.tagpath + '</tagpath>')
+#         top_stmt = get_module(stmt)
+#         if top_stmt.keyword == 'module':
+#             module = top_stmt
+#         else:  #submodule
+#             modulename = search_one(top_stmt, 'belongs-to').arg
+#             for (name, rev) in top_stmt.i_ctx.modules:
+#                 if name == modulename:
+#                     module = top_stmt.i_ctx.modules[(name, rev)]
+#                     break
+#         ns = search_one(module, 'namespace').arg
+#         res.append('<namespace>' + ns + '</namespace>')
+#         res.append('<primitive_type>0</primitive_type>')
+#
+#         """Append "yang_node_type" and "yang_type" for schema node"""
+#         res.append('<yang_node_type>' + stmt.keyword + '</yang_node_type>')
+#         typename = get_typename(stmt)
+#         if typename != "":
+#             res.append('<yang_type>' + typename + '</yang_type>')
+#
+#         min_occurs = '0'
+#         max_occurs = '-1'
+#
+#         mandatory = search_one(stmt, 'mandatory')
+#         isMandatory = mandatory is not None and mandatory.arg == 'true'
+#         unique = search_one(stmt, 'unique')
+#         isUnique = unique is not None and unique.arg == 'true'
+#         key = None
+#         parent = get_parent(stmt)
+#         if parent:
+#             key = search_one(parent, 'key')
+#         isKey = key is not None and key.arg == stmt.arg
+#         childOfContainerOrList = (parent
+#                 and parent.keyword in yangelement_stmts)
+#         if (isKey or stmt.keyword in ('module', 'submodule')
+#                 or (childOfContainerOrList
+#                     and stmt.keyword in ('container', 'notification'))):
+#             min_occurs = '1'
+#             max_occurs = '1'
+#         if isMandatory:
+#             min_occurs = '1'
+#         if (isUnique or childOfContainerOrList
+#                 or stmt.keyword in ('container', 'notification')):
+#             max_occurs = '1'
+#         res.append('<min_occurs>' + min_occurs + '</min_occurs>')
+#         res.append('<max_occurs>' + max_occurs + '</max_occurs>')
+#
+#         children = ''
+#         for ch in search(stmt, yangelement_stmts | leaf_stmts):
+#             children += camelize(ch.arg) + ' '
+#         res.append('<children>' + children[:-1] + '</children>')
+#
+#         res.append('<flags>0</flags>')
+#         res.append('<desc></desc>')
+#         res.append('</node>')
+#         return res
 
-    def __init__(self, stmt, tagpath):
-        self.stmt = stmt
-        self.tagpath = tagpath
 
-    def as_list(self):
-        """Returns a string list repr "node" element content for an XML schema"""
-        res = ['<node>']
-        stmt = self.stmt
-        res.append('<tagpath>' + self.tagpath + '</tagpath>')
-        top_stmt = get_module(stmt)
-        if top_stmt.keyword == 'module':
-            module = top_stmt
-        else:  #submodule
-            modulename = search_one(top_stmt, 'belongs-to').arg
-            for (name, rev) in top_stmt.i_ctx.modules:
-                if name == modulename:
-                    module = top_stmt.i_ctx.modules[(name, rev)]
-                    break
-        ns = search_one(module, 'namespace').arg
-        res.append('<namespace>' + ns + '</namespace>')
-        res.append('<primitive_type>0</primitive_type>')
-        
-        """Append "yang_node_type" and "yang_type" for schema node"""
-        res.append('<yang_node_type>' + stmt.keyword + '</yang_node_type>')
-        typename = get_typename(stmt)
-        if typename != "":
-            res.append('<yang_type>' + typename + '</yang_type>')
-
-        min_occurs = '0'
-        max_occurs = '-1'
-
-        mandatory = search_one(stmt, 'mandatory')
-        isMandatory = mandatory is not None and mandatory.arg == 'true'
-        unique = search_one(stmt, 'unique')
-        isUnique = unique is not None and unique.arg == 'true'
-        key = None
-        parent = get_parent(stmt)
-        if parent:
-            key = search_one(parent, 'key')
-        isKey = key is not None and key.arg == stmt.arg
-        childOfContainerOrList = (parent
-                and parent.keyword in yangelement_stmts)
-        if (isKey or stmt.keyword in ('module', 'submodule')
-                or (childOfContainerOrList
-                    and stmt.keyword in ('container', 'notification'))):
-            min_occurs = '1'
-            max_occurs = '1'
-        if isMandatory:
-            min_occurs = '1'
-        if (isUnique or childOfContainerOrList
-                or stmt.keyword in ('container', 'notification')):
-            max_occurs = '1'
-        res.append('<min_occurs>' + min_occurs + '</min_occurs>')
-        res.append('<max_occurs>' + max_occurs + '</max_occurs>')
-
-        children = ''
-        for ch in search(stmt, yangelement_stmts | leaf_stmts):
-            children += camelize(ch.arg) + ' '
-        res.append('<children>' + children[:-1] + '</children>')
-
-        res.append('<flags>0</flags>')
-        res.append('<desc></desc>')
-        res.append('</node>')
-        return res
-
-
-class SchemaGenerator(object):
-    """Used to generate an external XML schema from a yang module"""
-
-    def __init__(self, stmts, tagpath, ctx):
-        self.stmts = stmts
-        self.tagpath = tagpath
-        self.ctx = ctx
-
-    def schema_nodes(self):
-        """Generate XML schema as a list of "node" elements"""
-        res = []
-        for stmt in self.stmts:
-            subpath = self.tagpath + stmt.arg + '/'
-            if self.ctx.opts.verbose:
-                print('Generating schema node "' + subpath + '"...')
-            node = SchemaNode(stmt, subpath)
-            res.extend(node.as_list())
-            substmt_generator = SchemaGenerator(search(stmt, node_stmts),
-                subpath, self.ctx)
-            res.extend(substmt_generator.schema_nodes())
-        return res
+# class SchemaGenerator(object):
+#     """Used to generate an external XML schema from a yang module"""
+#
+#     def __init__(self, stmts, tagpath, ctx):
+#         self.stmts = stmts
+#         self.tagpath = tagpath
+#         self.ctx = ctx
+#
+#     def schema_nodes(self):
+#         """Generate XML schema as a list of "node" elements"""
+#         res = []
+#         for stmt in self.stmts:
+#             subpath = self.tagpath + stmt.arg + '/'
+#             if self.ctx.opts.verbose:
+#                 print('Generating schema node "' + subpath + '"...')
+#             node = SchemaNode(stmt, subpath)
+#             res.extend(node.as_list())
+#             substmt_generator = SchemaGenerator(search(stmt, node_stmts),
+#                 subpath, self.ctx)
+#             res.extend(substmt_generator.schema_nodes())
+#         return res
 
 
 class YangType(object):
@@ -1079,7 +1079,7 @@ class ClassGenerator(object):
         dispatcher_import = [' ' * 4 + "import net.juniper.easyrest.core.EasyRestActionSystem.system.dispatcher"]
         dispatcher = JavaValue(dispatcher_import)
         self.java_class.append_access_method("dispatcher", dispatcher)
-	
+
         routing = [' ' * 4 + "val " + camelize(prefix.arg) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
 
         res = search(self.stmt, list(yangelement_stmts | {'augment'}))
@@ -1278,78 +1278,80 @@ class ClassGenerator(object):
         rpc_method = JavaValue(exact=[indent + "def " + rpc_name + rpc_input + "(implicit ec: ExecutionContext): " + rpc_output])
         self.rpc_class.add_field(rpc_method)
 
-    def generate_child(self, sub):
-        """Appends access methods to class for children in the YANG module.
-        Returns the name of sub if it is a container or notification, an empty
-        string if sub is a list, None otherwise.
-
-        Uses mutual recursion with generate_class. For this function to work,
-        self.java_class must be defined.
-
-        sub -- A data model subtree statement, child of self.stmt.
-
-        """
-        field = None
-        add = self.java_class.append_access_method  # XXX: add is a function
-        if sub.keyword in yangelement_stmts:
-            pkg = self.package + '.' + self.n2
-            child_generator = ClassGenerator(stmt=sub, package=pkg,
-                path=self.path + os.sep + self.n2,
-                ns=None, prefix_name=None, parent=self)
-            child_generator.generate()
-            child_gen = MethodGenerator(sub, self.ctx)
-            if sub.keyword in ('container', 'notification'):
-                field = sub.arg
-                self.java_class.add_field(child_gen.child_field())
-            else:
-                field = ''
-            for access_method in child_gen.parent_access_methods():
-                name = normalize(sub.arg)
-                def f(s):
-                    f_name = '.'.join([pkg, name])
-                    res = s.replace(name, f_name)
-                    res = res.replace('add' + f_name, 'add' + name)
-                    return res
-                if (name == self.n and isinstance(access_method, JavaMethod)):
-                    access_method.return_type = f(access_method.return_type)
-                    access_method.parameters = [f(x) for x in access_method.parameters]
-                    access_method.body = [f(x) for x in access_method.body]
-                elif name == self.n:
-                    access_method.modifiers = [f(x) for x in access_method.modifiers]
-                add(sub.arg, access_method)
-        elif sub.keyword in leaf_stmts:
-            child_gen = MethodGenerator(sub, self.ctx)
-            add(sub.arg, child_gen.access_methods_comment())
-            if sub.keyword == 'leaf':
-                key = search_one(self.stmt, 'key')
-                optional = key is None or sub.arg not in key.arg.split(' ')
-                # FIXME: The leaf might be mandatory even if it is not a key
-                add(sub.arg, child_gen.getters())
-                for setter in child_gen.setters():
-                    add(sub.arg, setter)
-                if optional:
-                    add(sub.arg, child_gen.unsetter())
-                add(sub.arg, child_gen.adders())
-            else:  # sub.keyword == 'leaf-list':
-                add(sub.arg, child_gen.child_iterator())
-                for setter in child_gen.setters():
-                    add(sub.arg, setter)
-                for deleter in child_gen.deleters():
-                    add(sub.arg, deleter)
-                add(sub.arg, child_gen.adders())
-                optional = True
-            if optional:
-                child_gen = MethodGenerator(sub, self.ctx)
-                for mark_method in child_gen.markers():
-                    add(sub.arg, mark_method)
-        return field
+    # def generate_child(self, sub):
+    #     """Appends access methods to class for children in the YANG module.
+    #     Returns the name of sub if it is a container or notification, an empty
+    #     string if sub is a list, None otherwise.
+    #
+    #     Uses mutual recursion with generate_class. For this function to work,
+    #     self.java_class must be defined.
+    #
+    #     sub -- A data model subtree statement, child of self.stmt.
+    #
+    #     """
+    #     field = None
+    #     add = self.java_class.append_access_method  # XXX: add is a function
+    #     if sub.keyword in yangelement_stmts:
+    #         pkg = self.package + '.' + self.n2
+    #         child_generator = ClassGenerator(stmt=sub, package=pkg,
+    #             path=self.path + os.sep + self.n2,
+    #             ns=None, prefix_name=None, parent=self)
+    #         child_generator.generate()
+    #         child_gen = MethodGenerator(sub, self.ctx)
+    #         if sub.keyword in ('container', 'notification'):
+    #             field = sub.arg
+    #             self.java_class.add_field(child_gen.child_field())
+    #         else:
+    #             field = ''
+    #         for access_method in child_gen.parent_access_methods():
+    #             name = normalize(sub.arg)
+    #             def f(s):
+    #                 f_name = '.'.join([pkg, name])
+    #                 res = s.replace(name, f_name)
+    #                 res = res.replace('add' + f_name, 'add' + name)
+    #                 return res
+    #             if (name == self.n and isinstance(access_method, JavaMethod)):
+    #                 access_method.return_type = f(access_method.return_type)
+    #                 access_method.parameters = [f(x) for x in access_method.parameters]
+    #                 access_method.body = [f(x) for x in access_method.body]
+    #             elif name == self.n:
+    #                 access_method.modifiers = [f(x) for x in access_method.modifiers]
+    #             add(sub.arg, access_method)
+    #     elif sub.keyword in leaf_stmts:
+    #         child_gen = MethodGenerator(sub, self.ctx)
+    #         add(sub.arg, child_gen.access_methods_comment())
+    #         if sub.keyword == 'leaf':
+    #             key = search_one(self.stmt, 'key')
+    #             optional = key is None or sub.arg not in key.arg.split(' ')
+    #             # FIXME: The leaf might be mandatory even if it is not a key
+    #             add(sub.arg, child_gen.getters())
+    #             for setter in child_gen.setters():
+    #                 add(sub.arg, setter)
+    #             if optional:
+    #                 add(sub.arg, child_gen.unsetter())
+    #             add(sub.arg, child_gen.adders())
+    #         else:  # sub.keyword == 'leaf-list':
+    #             add(sub.arg, child_gen.child_iterator())
+    #             for setter in child_gen.setters():
+    #                 add(sub.arg, setter)
+    #             for deleter in child_gen.deleters():
+    #                 add(sub.arg, deleter)
+    #             add(sub.arg, child_gen.adders())
+    #             optional = True
+    #         if optional:
+    #             child_gen = MethodGenerator(sub, self.ctx)
+    #             for mark_method in child_gen.markers():
+    #                 add(sub.arg, mark_method)
+    #     return field
 
     def generate_routes(self, parent):
-        field = None
         add = parent.java_class.append_access_method  # XXX: add is a function
 
-        module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
-		
+        if self.stmt.i_orig_module.keyword == "submodule":
+            module_name = self.stmt.i_orig_module.arg
+        else:
+            module_name = module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
+
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2) +
                        '] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
@@ -1371,7 +1373,7 @@ class ClassGenerator(object):
         body_indent = ' ' * 8
 
         exact = [indent + "get {"]
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module.lower()+":"+self.n2.lower()+'") {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+self.n2.lower()+'") {')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
@@ -1387,7 +1389,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "    }")
         exact.append(body_indent + "  }")
         exact.append(body_indent + "} ~")
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module.lower() + ":"+self.n2.lower()+'" / "' + self.n2.lower() + '=" ~ Rest) {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower() + ":"+self.n2.lower()+'" / "' + self.n2.lower() + '=" ~ Rest) {')
         exact.append(body_indent + '  (' + key_arg+ ') =>')
         exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
@@ -1406,7 +1408,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
         exact.append(indent + "post {")
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module.lower() + ":"+self.n2.lower()+'" / "'+self.n2.lower()+'") {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower() + ":"+self.n2.lower()+'" / "'+self.n2.lower()+'") {')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
@@ -1426,7 +1428,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
         exact.append(indent + "put {")
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module.lower() + ":"+self.n2.lower()+'" / "'+self.n2.lower()+'") {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower() + ":"+self.n2.lower()+'" / "'+self.n2.lower()+'") {')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
@@ -1446,7 +1448,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
         exact.append(indent + "delete {")
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module.lower() + ":"+self.n2.lower()+'" / "'+self.n2.lower()+'=" ~ Rest) {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower() + ":"+self.n2.lower()+'" / "'+self.n2.lower()+'=" ~ Rest) {')
         exact.append(body_indent + '  (' + key_arg+ ') =>')
         exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
@@ -1490,10 +1492,12 @@ class ClassGenerator(object):
         return exact
 
     def generate_rpc_routes(self, parent, stmt):
-        field = None
         add = parent.java_class.append_access_method  # XXX: add is a function
 
-        module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
+        if self.stmt.i_orig_module.keyword == "submodule":
+            module_name = self.stmt.i_orig_module.arg
+        else:
+            module_name = module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'Input] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'Input' +
@@ -1518,7 +1522,7 @@ class ClassGenerator(object):
         body_indent = ' ' * 8
 
         exact = [indent + "post {"]
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+module.lower()+':rpc" / "'+self.n2.lower()+'") {')
+        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+module_name.lower()+':rpc" / "'+self.n2.lower()+'") {')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
@@ -1559,10 +1563,7 @@ class ClassGenerator(object):
         return exact
 
     def generate_notification_routes(self, parent):
-        field = None
         add = parent.java_class.append_access_method  # XXX: add is a function
-
-        module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
 
         streamregistry = [' ' * 4 + 'StreamRegistry.registerStream(']
         streamregistry.append(' ' * 6 + 'new Stream()')
@@ -1618,56 +1619,56 @@ class ClassGenerator(object):
                    self.ctx)
 
 
-class PackageInfoGenerator(object):
-    """Used to generate package-info.java files, with meaningful content"""
-
-    def __init__(self, directory, stmt, ctx):
-        """Initializes a generator with package directory path, top level
-        statement and context for options.
-
-        stmt      -- Statement representing any YANG module subtree
-        directory -- The package directory as a string
-        ctx       -- Context for options
-
-        """
-        self.d = directory
-        self.pkg = directory.rpartition('src')[2][1:]
-        self.pkg = self.pkg.replace(os.sep, '.')
-        self.stmt = stmt
-        self.ctx = ctx
-
-    def generate_package_info(self):
-        """Main generator method: generates package-info files for self.stmt
-        and all of its substatements.
-
-        """
-        write_file(self.d, 'package-info.java',
-                   self.gen_package_info(), self.ctx)
-        dirs = filter(lambda s: not s.endswith('.java'), os.listdir(self.d))
-        stmts = search(self.stmt, node_stmts)
-        for directory in dirs:
-            for sub in stmts:
-                if normalize(sub.arg) == normalize(directory):
-                    old_d = self.d
-                    self.d += os.sep + directory
-                    old_pkg = self.pkg
-                    self.pkg += '.' + directory
-                    old_stmt = self.stmt
-                    self.stmt = sub
-
-                    self.generate_package_info()
-
-                    self.d = old_d
-                    self.pkg = old_pkg
-                    self.stmt = old_stmt
-
-    def gen_package_info(self):
-        """Writes a package-info.java file to the package directory with a high
-        level description of the package functionality and requirements.
-
-        """
-        module = get_module(self.stmt).arg
-        return ''.join([package_info.format(' ' + module, ''), self.pkg, ';'])
+# class PackageInfoGenerator(object):
+#     """Used to generate package-info.java files, with meaningful content"""
+#
+#     def __init__(self, directory, stmt, ctx):
+#         """Initializes a generator with package directory path, top level
+#         statement and context for options.
+#
+#         stmt      -- Statement representing any YANG module subtree
+#         directory -- The package directory as a string
+#         ctx       -- Context for options
+#
+#         """
+#         self.d = directory
+#         self.pkg = directory.rpartition('src')[2][1:]
+#         self.pkg = self.pkg.replace(os.sep, '.')
+#         self.stmt = stmt
+#         self.ctx = ctx
+#
+#     def generate_package_info(self):
+#         """Main generator method: generates package-info files for self.stmt
+#         and all of its substatements.
+#
+#         """
+#         write_file(self.d, 'package-info.java',
+#                    self.gen_package_info(), self.ctx)
+#         dirs = filter(lambda s: not s.endswith('.java'), os.listdir(self.d))
+#         stmts = search(self.stmt, node_stmts)
+#         for directory in dirs:
+#             for sub in stmts:
+#                 if normalize(sub.arg) == normalize(directory):
+#                     old_d = self.d
+#                     self.d += os.sep + directory
+#                     old_pkg = self.pkg
+#                     self.pkg += '.' + directory
+#                     old_stmt = self.stmt
+#                     self.stmt = sub
+#
+#                     self.generate_package_info()
+#
+#                     self.d = old_d
+#                     self.pkg = old_pkg
+#                     self.stmt = old_stmt
+#
+#     def gen_package_info(self):
+#         """Writes a package-info.java file to the package directory with a high
+#         level description of the package functionality and requirements.
+#
+#         """
+#         module = get_module(self.stmt).arg
+#         return ''.join([package_info.format(' ' + module, ''), self.pkg, ';'])
 
 
 class JavaClass(object):
@@ -2162,1083 +2163,1083 @@ class JavaMethod(JavaValue):
         return self.exact
 
 
-class MethodGenerator(object):
-    """A generator for JavaMethod objects"""
-
-    def __init__(self, stmt, ctx):
-        """Sets the attributes of the method generator, depending on stmt"""
-        self.stmt = stmt
-        self.n = normalize(stmt.arg)
-        self.n2 = camelize(stmt.arg)
-        self.children = [normalize(s.arg) for s in
-                         search(stmt, yangelement_stmts | leaf_stmts)]
-
-        self.ctx = ctx
-        self.module_stmt = get_module(stmt)
-        prefix = search_one(self.module_stmt, 'prefix')
-        self.root = normalize(prefix.arg)
-
-        self.pkg = get_package(stmt, ctx)
-        self.basepkg = self.pkg.partition('.')[0]
-        self.rootpkg = ctx.rootpkg.split(os.sep)
-        if self.rootpkg[:1] == ['src']:
-            self.rootpkg = self.rootpkg[1:]  # src not part of package
-        self.rootpkg.append(camelize(self.module_stmt.arg))
-
-        self.is_container = stmt.keyword in ('container', 'notification')
-        self.is_list = stmt.keyword == 'list'
-        self.is_typedef = stmt.keyword == 'typedef'
-        self.is_leaf = stmt.keyword == 'leaf'
-        self.is_leaflist = stmt.keyword == 'leaf-list'
-        self.is_top_level = get_parent(self.stmt) == self.module_stmt
-        self.is_augmented = self.module_stmt != get_module(stmt.parent)
-        assert (self.is_container or self.is_list or self.is_typedef
-            or self.is_leaf or self.is_leaflist)
-        self.gen = self
-        if type(self) is MethodGenerator:
-            if self.is_typedef:
-                self.gen = TypedefMethodGenerator(stmt, ctx)
-            elif self.is_container:
-                self.gen = ContainerMethodGenerator(stmt, ctx)
-            elif self.is_list:
-                self.gen = ListMethodGenerator(stmt, ctx)
-            elif self.is_leaf or self.is_leaflist:
-                self.gen = LeafMethodGenerator(stmt, ctx)
-
-    def canonical_import(self, import_, child=False):
-        """Returns a string representing a class that can be imported in Java.
-
-        Does not handle Generics or Array types.
-
-        """
-        if import_ == self.root:
-            return '.'.join(self.rootpkg + [import_])
-        elif import_ in self.children:
-            type_child = search_one(self.stmt, 'type')
-            if type_child is not None and normalize(type_child.arg) == import_:
-                try:
-                    typedef_pkg = get_package(type_child.i_typedef, self.ctx)
-                except AttributeError:
-                    typedef_pkg = get_package(type_child, self.ctx)
-                return '.'.join([typedef_pkg, import_])
-            return '.'.join([self.pkg, self.n2, import_])
-        elif child and import_ == self.n:
-            return '.'.join([self.pkg, import_])
-        else:
-            return get_import(import_)
-
-    def fix_imports(self, method, child=False):
-        res = set([])
-        imports = method.imports
-        if self.ctx.opts.import_on_demand:
-            imports = set([])
-            pkg = self.pkg
-            if child:
-                pkg = pkg.rpartition('.')[0]
-            pkg_classes = class_hierarchy.get(pkg, [])
-            for import_ in method.imports:
-                if import_.rpartition('.')[2] in pkg_classes:
-                    if (child and not import_.rpartition('.')[1]
-                            and import_ != self.root):
-                        imports.add('.'.join([self.pkg, import_]))
-                    else:
-                        imports.add(import_)
-                        
-
-        for dependency in imports:
-            if dependency.startswith(('java.math', 'java.util',
-                                      'com.tailf.jnc', self.basepkg)):
-                res.add(dependency)
-                continue
-            elif dependency.endswith('>'):
-                for token in [_f for _f in re.findall(r'\w+', dependency) if _f]:
-                    res.add(self.canonical_import(token, child))
-            elif dependency.endswith(']'):
-                assert dependency[:-2] and dependency[-2:] == '[]'
-                res.add(self.canonical_import(dependency[:-2], child))
-            else:
-                res.add(self.canonical_import(dependency, child))
-
-        method.imports = res
-        return method
-
-    def _root_namespace(self, stmt_arg):
-        """Returns '([Root].NAMESPACE, "[stmt.arg]");'"""
-        return ['(', self.root, '.NAMESPACE, "', stmt_arg, '");']
-
-    def _constructor_template(self):
-        """Returns a constructor invoking parent constructor, without
-        parameters and javadoc."""
-        constructor = JavaMethod(modifiers=['public'], name=self.n)
-        constructor.set_return_type(None)
-        if self.is_container or self.is_list:
-            call = ['super']
-            call.extend(self._root_namespace(self.stmt.arg))
-            constructor.add_dependency(self.root)
-            constructor.add_line(''.join(call))
-            if self.is_top_level or self.is_augmented:
-                constructor.add_line('setDefaultPrefix();')
-                setPrefix = ['setPrefix(', self.root, '.PREFIX);']
-                constructor.add_line(''.join(setPrefix))
-        elif self.is_typedef:
-            constructor.add_line('super(value);')
-        else:
-            return None
-        return self.fix_imports(constructor)
-
-    def access_methods_comment(self):
-        """Returns a JavaValue representing a code structuring Java comment"""
-        res = ['    /* Access methods for']
-        if hasattr(self.gen, 'is_optional') and self.gen.is_optional:
-            res.append('optional')
-        res.extend([self.stmt.keyword, 'child: "' + self.stmt.arg + '". */'])
-        return JavaValue(exact=[' '.join(res)])
-
-    def empty_constructor(self):
-        """Returns parameter-free constructor as a JavaMethod object"""
-        assert not self.is_typedef, "Typedefs don't have empty constructors"
-        assert not self.is_leaf and not self.is_leaflist
-        constructor = self._constructor_template()
-        javadoc = ['Constructor for an empty ']
-        javadoc.append(self.n)
-        javadoc.append(' object.')
-        constructor.add_javadoc(''.join(javadoc))
-        return self.fix_imports(constructor)
-
-    def constructors(self):
-        """Returns a list of JavaMethods representing constructors to include
-        in generated class of self.stmt
-
-        """
-        assert self.gen is not self, 'Avoid infinite recursion'
-        if self.is_leaf or self.is_leaflist:
-            return None
-        else:
-            return self.gen.constructors()
-
-    def cloners(self):
-        if self.is_typedef or self.is_leaf or self.is_leaflist:
-            return []  # Typedefs, leafs and leaflists don't have clone methods
-        cloners = [JavaMethod(), JavaMethod()]
-        a = (' an exact ', ' a shallow ')
-        b = ('', ' Children are not included.')
-        c = ('', 'Shallow')
-        keys = ''
-        if self.is_list:
-            getter_calls = []
-            for key_stmt in self.gen.key_stmts:
-                getter_calls.append(''.join(['get', normalize(key_stmt.arg),
-                                             'Value().toString()']))
-            keys = ', '.join(getter_calls)
-        for i, cloner in enumerate(cloners):
-            cloner.add_javadoc('Clones this object, returning' + a[i] + 'copy.')
-            cloner.add_javadoc('@return A clone of the object.' + b[i])
-            cloner.return_type = self.n
-            cloner.set_name('clone' + c[i])
-            copy = ''.join(['new ', self.n, '(', keys, ')'])
-            if self.is_list and self.gen.is_config:
-                cloner.add_line(self.n + ' copy;')
-                cloner.add_line('try {')
-                cloner.add_line('    copy = ' + copy + ';')
-                cloner.add_line('} catch (JNCException e) {')
-                cloner.add_line('    copy = null;')
-                cloner.add_line('}')
-                copy = 'copy'
-            cloner.add_line(''.join(['return (', self.n, ')clone', c[i],
-                                     'Content(', copy, ');']))
-            cloner = self.fix_imports(cloner)
-        return cloners
-
-    def key_names(self):
-        """Returns a method that can be used to get the keys of a statement.
-
-        The keys are returned by the generated method as a String array
-        with the identifiers of the keys in the statement of this generator,
-        which should be a list, container or notification, otherwise None is
-        returned. If the statement does not have any keys, the generated method
-        returns null.
-
-        """
-        if not (self.is_list or self.is_container):
-            return None
-        method = JavaMethod(modifiers=['public'], name='keyNames')
-        method.set_return_type('String[]')
-        method.add_javadoc('@return An array with the identifiers of any key children')
-        if self.is_container or not self.gen.is_config:
-            method.add_line('return null;')
-        else:
-            method.add_line('return new String[] {')
-            for key_stmt in self.gen.key_stmts:
-                method.add_line('"'.join([' ' * 4,
-                                          key_stmt.arg,
-                                          ',']))
-            method.add_line('};')
-        return self.fix_imports(method)
-
-    def children_names(self):
-        """Returns a method that can be used to get the identifiers of the
-        children of the statement of this generator, excluding any keys.
-
-        """
-        if not (self.is_list or self.is_container):
-            return None
-        method = JavaMethod(modifiers=['public'], name='childrenNames')
-        method.set_return_type('String[]')
-        method.add_javadoc('@return An array with the identifiers of any children, in order.')
-        children = search(self.stmt, yangelement_stmts | leaf_stmts)
-        method.add_line('return new String[] {')
-        for child in children:
-            method.add_line('"'.join([' ' * 4, child.arg, ',']))
-        method.add_line('};')
-        return self.fix_imports(method)
-
-    def support_method(self, fields=None):
-
-        if self.is_typedef or self.is_leaf or self.is_leaflist:
-            return None
-        add_child = JavaMethod(modifiers=['public'],
-                               return_type='void',
-                               name='addChild',
-                               params=[('Element', 'child')])
-        add_child.add_javadoc('Support method for addChild.')
-        add_child.add_javadoc('Adds a child to this object.')
-        add_child.add_javadoc('')
-        add_child.add_javadoc('@param child The child to add')
-        add_child.add_line('super.addChild(child);')
-        if fields is None:
-            fields = OrderedSet()
-        cond = ''
-        for field in fields:  # could do reversed(fields) to preserve order
-            add_child.add_line(''.join([cond, 'if (child instanceof ',
-                    normalize(field), ') ', camelize(field), ' = (',
-                    normalize(field), ')child;']))
-            add_child.add_dependency(normalize(field))
-            cond = 'else '
-        return self.fix_imports(add_child)
-
-    def setters(self):
-        """Returns a list of JavaMethods representing setters to include
-        in generated class of self.stmt
-
-        """
-        assert self.gen is not self, 'Avoid infinite recursion'
-        return self.gen.setters()
-
-    def unsetter(self):
-        """Returns an 'unset<Identifier>Value' JavaMethod for self.stmt"""
-        assert self.gen is not self, 'Avoid infinite recursion'
-        return self.gen.unsetter() if self.is_leaf else None
-
-    def checker(self):
-        """Returns a 'check' JavaMethod for generated class for self.stmt"""
-        assert self.gen is not self, 'Avoid infinite recursion'
-        return self.gen.checker() if self.is_typedef else None
-
-    def markers(self):
-        """Generates methods that enqueues operations to be performed."""
-        assert self.gen is not self, 'Avoid infinite recursion'
-        return None if self.is_typedef else self.gen.markers()
-
-    def child_field(self):
-        """Returns a string representing java code for a field"""
-        assert self.gen is not self, 'Avoid infinite recursion'
-        return self.gen.child_field() if self.is_container else None
-
-    def _parent_template(self, method_type):
-        """Returns an access method for the statement of this method generator.
-
-        method_type -- prefix of method name
-
-        """
-        method = JavaMethod()
-        if self.is_container or self.is_list:
-            method.set_return_type(self.n)
-        method.set_name(method_type + self.n)
-        method.add_exception('JNCException')
-        return self.fix_imports(method, child=True)
-
-    def adders(self):
-        """Returns a list of methods that adds an instance of the class to be
-        generated from the statement of this method generator to its parent
-        class.
-
-        """
-        if self.is_leaf or self.is_leaflist:
-            assert self.gen != self
-            return self.gen.adders()
-        elif not (self.is_container or self.is_list):
-            return None
-        number_of_adders = 2
-        if self.is_list and self.gen.is_config:
-            number_of_adders = 4
-        res = [self._parent_template('add') for _ in range(number_of_adders)]
-
-        for i, method in enumerate(res):
-            javadoc1 = ['Adds ', self.stmt.keyword, ' entry "', self.n2, '"']
-            javadoc2 = []
-            if i == 0:  # Add existing object
-                javadoc1.append(', using an existing object.')
-                javadoc2.append(' '.join(['@param', self.n2, 'The object to add.']))
-                method.add_parameter(self.n, self.n2)
-            elif self.is_list and i in {1, 2} and len(res) == 4:
-                # Add child with String or JNC type keys
-                javadoc1.append(', with specified keys.')
-                if i == 2:
-                    javadoc2.append('The keys are specified as strings.')
-                for key_stmt in self.gen.key_stmts:
-                    key_arg = camelize(key_stmt.arg) + 'Value'
-                    javadoc2.append(''.join(['@param ', key_arg,
-                                             ' Key argument of child.']))
-                    param_type, _ = get_types(key_stmt, self.ctx)
-                    if i == 2:
-                        param_type = 'String'
-                    method.add_parameter(param_type, key_arg)
-                new_child = [self.n, ' ', self.n2, ' = new ', self.n, '(']
-                keys = [camelize(s.arg) + 'Value' for s in self.gen.key_stmts]
-                new_child.append(', '.join(keys))
-                new_child.append(');')
-                method.add_line(''.join(new_child))
-            else:  # Create new, for subtree filter usage
-                javadoc1.append('.')
-                javadoc2.append('This method is used for creating subtree filters.')
-                method.add_line(' '.join([self.n, self.n2, '= new', self.n + '();']))
-            method.add_javadoc(''.join(javadoc1))
-            for javadoc in javadoc2:
-                method.add_javadoc(javadoc)
-            method.add_javadoc('@return The added child.')
-            if self.is_container:
-                method.add_line('this.' + self.n2 + ' = ' + self.n2 + ';')
-            if self.is_list and i in {1, 2} and len(res) == 4:
-                method.add_line('return ' + method.name + '(' + self.n2 + ');')
-            else:
-                method.add_line('insertChild(' + self.n2 + ', childrenNames());')
-                method.add_line('return ' + self.n2 + ';')
-            self.fix_imports(method, child=True)
-        return res
-
-    def getters(self):
-        """Returns a list of JavaMethods representing getters to include
-        in generated class of parent
-
-        """
-        assert self.gen is not self, 'Avoid infinite recursion'
-        return self.gen.getters() if self.is_list or self.is_leaf else None
-
-    def deleters(self):
-        """Returns a list of JavaMethods representing deleters to include
-        in generated class of parent
-
-        """
-        assert self.gen is not self, 'Avoid infinite recursion'
-        if not (self.is_list or self.is_container or self.is_leaflist):
-            return None
-        else:
-            return self.gen.deleters()
-
-    def child_iterator(self):
-        """Returns a java iterator method"""
-        if not(self.is_leaflist or self.is_list):
-            return None
-        res = JavaMethod(name=(self.n2 + 'Iterator'))
-        res.add_javadoc(''.join(['Iterator method for the ', self.stmt.keyword,
-                                 ' "', self.stmt.arg, '".']))
-        res.add_javadoc(''.join(['@return An iterator for the ',
-                                 self.stmt.keyword, '.']))
-        return_stmt = ['return new Element']
-        if self.is_leaflist:
-            res.set_return_type('ElementLeafListValueIterator')
-            return_stmt.append('LeafListValue')
-        else:  # List
-            res.set_return_type('ElementChildrenIterator')
-            return_stmt.append('Children')
-        return_stmt.extend(['Iterator(children, "', self.stmt.arg, '");'])
-        res.add_line(''.join(return_stmt))
-        return self.fix_imports(res)
-
-    def parent_access_methods(self):
-        assert self.gen is not self, 'Avoid infinite recursion'
-        if self.is_container or self.is_list:
-            return self.gen.parent_access_methods()
-        else:
-            return None
-
-
-class LeafMethodGenerator(MethodGenerator):
-    """Method generator for YANG leaf and leaf-list associated methods"""
-
-    def __init__(self, stmt, ctx):
-        super(LeafMethodGenerator, self).__init__(stmt, ctx)
-        assert self.is_leaf or self.is_leaflist
-        self.stmt_type = search_one(stmt, 'type')
-        self.base_type = get_base_type(self.stmt_type)
-        self.default = search_one(stmt, 'default')
-        self.default_value = None if not self.default else self.default.arg
-        self.type_str = get_types(self.stmt_type, ctx)
-        self.is_string = self.type_str[1] == 'String'
-        self.is_typedef = (hasattr(self.stmt_type, 'i_typedef')
-                           and self.stmt_type.i_typedef is not None)
-        key = search_one(get_parent(stmt), 'key')
-        self.is_optional = key is None or stmt.arg not in key.arg.split(' ')
-
-    def getters(self):
-        """get<Identifier>Value method generator."""
-        assert self.is_leaf
-        method = JavaMethod()
-        method.set_return_type(self.type_str[0])
-        method.set_name('get' + self.n + 'Value')
-        method.add_exception('JNCException')
-
-        # YangEmpty type needs to be special treated
-        if self.type_str[0] == 'com.tailf.jnc.YangEmpty':
-            method.add_javadoc('Searches for ' + self.stmt.keyword + ' "' +
-                               self.stmt.arg + '".')
-            method.add_javadoc('@return A YangEmpty object if ' +
-                               self.stmt.keyword +
-                               ' exists; <code>null</code> otherwise.')
-        else:
-            method.add_javadoc('Gets the value for child ' + self.stmt.keyword +
-                               ' "' + self.stmt.arg + '".')
-            method.add_javadoc('@return The value of the ' + self.stmt.keyword + '.')
-
-        # Leaves with a default value returns it instead of null
-        if self.default:
-            method.add_line(''.join([method.return_type, ' ', self.n2, ' = (',
-                                     method.return_type, ')getValue("',
-                                     self.stmt.arg, '");']))
-            method.add_line('if (' + self.n2 + ' == null) {')
-            newValue = ['    ', self.n2, ' = new ', method.return_type, '("',
-                        self.default_value]
-            if self.type_str[0] == 'com.tailf.jnc.YangUnion':
-                newValue.append('", new String[] {  // default\n')
-                for type_stmt in search(self.base_type, 'type'):
-                    member_type, _ = get_types(type_stmt, self.ctx)
-                    newValue.append(' ' * 16 + '"' + member_type + '",\n')
-                newValue.append(' ' * 12 + '});')
-            elif self.type_str[0] == 'com.tailf.jnc.YangEnumeration':
-                newValue.append('", new String[] {  // default\n')
-                for enum in search(self.base_type, 'enum'):
-                    newValue.append(' ' * 16 + '"' + enum.arg + '",\n')
-                newValue.append(' ' * 12 + '});')
-            elif self.type_str[0] == 'com.tailf.jnc.YangBits':
-                newValue.append('",  // default')
-                method.add_line(''.join(newValue))
-                mask = 0
-                smap = ['        new String[] {']
-                imap = ['        new int[] {']
-                position = 0
-                for bit in search(self.base_type, 'bit'):
-                    smap.extend(['"', bit.arg, '", '])
-                    pos_stmt = search_one(bit, 'position')
-                    if pos_stmt:
-                        position = int(pos_stmt.arg)
-                    imap.extend([str(position), ', '])
-                    mask += 1 << position
-                    position += 1
-                smap.append('},')
-                imap.append('}')
-                line = [' ' * 8, 'new BigInteger("', str(mask), '"),']
-                method.add_line(''.join(line))
-                method.add_line(''.join(smap))
-                method.add_line(''.join(imap))
-                newValue = ['    );']
-            elif self.type_str[0] == 'com.tailf.jnc.YangDecimal64':
-                fraction_digits = search_one(self.base_type, 'fraction-digits')
-                newValue.extend(['", ', fraction_digits.arg, ');  // default'])
-            else:
-                newValue.append('");  // default')
-            method.add_line(''.join(newValue))
-            method.add_line('}')
-            method.add_line('return ' + self.n2 + ';')
-        else:
-            method.add_line(''.join(['return (', method.return_type,
-                                     ')getValue("', self.stmt.arg, '");']))
-        return [self.fix_imports(method, child=True)]
-
-    def setters(self):
-        name = 'set' + self.n + 'Value'
-        num_methods = 2 + (not self.is_string)
-        value_type = self.type_str[0]  # JNC type
-        res = [JavaMethod(name=name) for _ in range(num_methods)]
-
-        for i, method in enumerate(res):
-            param_names = [self.n2 + 'Value']
-            method.add_exception('JNCException')
-            method.add_javadoc('Sets the value for child ' + self.stmt.keyword +
-                               ' "' + self.stmt.arg + '",')
-            if i == 0:
-                param_types = [value_type]
-                if not self.is_typedef:
-                    method.add_javadoc('using instance of generated typedef class.')
-                else:
-                    method.add_javadoc('using a JNC type value.')
-                method.add_javadoc(' '.join(['@param', param_names[0],
-                                             'The value to set.']))
-                method.add_line(''.join(['set', normalize(self.stmt.keyword),
-                                         'Value(', self.root, '.NAMESPACE,']))
-                method.add_dependency(self.root)
-                method.add_line('    "' + self.stmt.arg + '",')
-                method.add_line('    ' + param_names[0] + ',')
-                method.add_line('    childrenNames());')
-            elif self.type_str[0] == 'com.tailf.jnc.YangEmpty':
-                method.add_javadoc('by instantiating it (value n/a).')
-                param_types = []  # Add parameter here to get correct javadoc
-                method.add_parameter('String', param_names[0])
-                method.add_javadoc(' '.join(['@param', param_names[0], 'ignored.']))
-                l = [name, '(new ', method.add_dependency(value_type), '());']
-                method.add_line(''.join(l))
-            else:
-                line = [name, '(new ', method.add_dependency(value_type),
-                        '(', param_names[0]]
-                if not self.is_string and i == 1:
-                    param_types = [self.type_str[1]]
-                    method.add_javadoc('using Java primitive values.')
-                    # FIXME: Some types are incorrectly classified as string
-                else:
-                    param_types = ['String']
-                    method.add_javadoc('using a String value.')
-
-                if self.type_str[0] == 'com.tailf.jnc.YangUnion':
-                    line.append(', new String[] {')
-                    method.add_line(''.join(line))
-                    for type_stmt in search(self.base_type, 'type'):
-                        member_type, _ = get_types(type_stmt, self.ctx)
-                        method.add_line('     "' + member_type + '",')
-                    line = ['}']
-                elif self.type_str[0] == 'com.tailf.jnc.YangEnumeration':
-                    line.append(', new String[] {')
-                    method.add_line(''.join(line))
-                    for enum in search(self.base_type, 'enum'):
-                        method.add_line('     "' + enum.arg + '",')
-                    line = ['}']
-                elif self.type_str[0] == 'com.tailf.jnc.YangBits':
-                    line.append(',')
-                    method.add_line(''.join(line))
-                    mask = 0
-                    smap = ['    new String[] {']
-                    imap = ['    new int[] {']
-                    position = 0
-                    for bit in search(self.base_type, 'bit'):
-                        smap.extend(['"', bit.arg, '", '])
-                        pos_stmt = search_one(bit, 'position')
-                        if pos_stmt:
-                            position = int(pos_stmt.arg)
-                        imap.extend([str(position), ', '])
-                        mask += 1 << position
-                        position += 1
-                    smap.append('},')
-                    imap.append('}')
-                    method.add_line(''.join(['    new BigInteger("',
-                                                  str(mask), '"),']))
-                    method.add_line(''.join(smap))
-                    method.add_line(''.join(imap))
-                    line = []
-                elif self.type_str[0] == 'com.tailf.jnc.YangDecimal64':
-                    frac_digits = search_one(self.base_type, 'fraction-digits')
-                    line.extend([', ', frac_digits.arg])
-
-                line.append('));')
-                method.add_line(''.join(line))
-
-            for param_type, param_name in zip(param_types, param_names):
-                method.add_parameter(param_type, param_name)
-                method.add_javadoc(' '.join(['@param', param_name,
-                                             'used during instantiation.']))
-            self.fix_imports(method, child=True)
-        return res
-
-    def unsetter(self):
-        """unset<Identifier>Value method generator"""
-        method = JavaMethod()
-        method.add_javadoc(' '.join(['Unsets the value for child',
-                                     self.stmt.keyword,
-                                     '"' + self.stmt.arg + '".']))
-        method.set_name('unset' + self.n + 'Value')
-        method.add_exception('JNCException')
-        method.add_line('delete("' + self.stmt.arg + '");')
-        return self.fix_imports(method, child=True)
-
-    def _parent_method(self, method_type):
-        """Returns a list of methods that either creates a value in the
-        leaf-list of the parent YangElement instance, or deletes it, depending
-        on the method_type parameter.
-
-        method_type -- either 'create' or 'delete'
-
-        """
-        assert self.is_leaflist
-        res = [self._parent_template(method_type) for _ in range(2)]
-
-        for i, method in enumerate(res):
-            method.add_javadoc(''.join([method_type.capitalize(), 's ',
-                                        self.stmt.keyword, ' entry "',
-                                        self.n2, '".']))
-            if i == 1:
-                method.add_javadoc('The value is specified as a string.')
-            method.add_javadoc(''.join(['@param ', self.n2, 'Value Value to ',
-                                     method_type, '.']))
-            param_type = 'String'
-            if i == 0:
-                param_type = self.type_str[0]
-            method.add_parameter(param_type, self.n2 + 'Value')
-            path = ['String path = "', self.n2, '[', self.n2, 'Value]";']
-            method.add_line(''.join(path))
-            if method_type == 'delete':
-                method.add_line('delete(path);')
-            else:  # get
-                method.add_line('insertChild(path);')
-            self.fix_imports(method, child=True)
-        return res
-
-    def deleters(self):
-        """Returns a list of methods that deletes the Leaf child, corresponding
-        to the statement of this method generator, from its parent YangElement
-        instance.
-
-        """
-        return self._parent_method('delete')
-
-    def adders(self):
-        method = JavaMethod(name=('add' + self.n))
-        method.add_exception('JNCException')
-        method.add_javadoc('This method is used for creating a subtree filter.')
-        method.add_javadoc(''.join(['The added "', self.stmt.arg, '" ',
-                                    self.stmt.keyword,
-                                    ' will not have a value.']))
-        method.add_line('set' + normalize(self.stmt.keyword) + 'Value(' +
-                        self.root + '.NAMESPACE,')
-        method.add_line('    "' + self.stmt.arg + '",')
-        method.add_line('    null,')
-        method.add_line('    childrenNames());')
-        return self.fix_imports(method, child=True)
-
-    def markers(self):
-        res = []
-        for op in ('replace', 'merge', 'create', 'delete'):
-            res.append(self.mark(op))
-        return res
-
-    def mark(self, op):
-        assert op in ('replace', 'merge', 'create', 'delete')
-        mark_methods = [JavaMethod()]
-        if not self.is_string and self.is_leaflist:
-            mark_methods.append(JavaMethod())
-        for i, mark_method in enumerate(mark_methods):
-            mark_method.set_name('mark' + self.n + normalize(op))
-            mark_method.add_exception('JNCException')
-            path = self.n2
-            mark_method.add_javadoc(''.join(['Marks the ', self.stmt.keyword,
-                                             ' "', self.stmt.arg,
-                                             '" with operation "', op, '".']))
-            if self.is_leaflist:
-                path += '[name=\'" + ' + self.n2 + 'Value + "\']'
-                javadoc = '@param ' + self.n2 + 'Value The value to mark'
-                param_type = self.type_str[0]
-                if i == 1:
-                    javadoc += ', given as a String'
-                    param_type = 'String'
-                mark_method.add_parameter(param_type, self.n2 + 'Value')
-                mark_method.add_javadoc(javadoc)
-            mark_method.add_line('markLeaf' + normalize(op) + '("' + path + '");')
-            self.fix_imports(mark_method, child=True)
-        return mark_methods
-
-
-class TypedefMethodGenerator(MethodGenerator):
-    """Method generator specific to typedef classes"""
-
-    def __init__(self, stmt, ctx=None):
-        super(TypedefMethodGenerator, self).__init__(stmt, ctx)
-        assert self.gen is self
-        assert self.is_typedef, 'This class is only valid for typedef stmts'
-        self.type = search_one(stmt, 'type')
-        self.jnc_type, self.primitive = get_types(stmt, ctx)
-        self.base_type = get_base_type(stmt) if self.type else None
-        self.base_primitive = None
-        if self.base_type:
-            self.base_primitive = get_types(self.base_type, ctx)[1]
-        self.is_string = False
-        self.needs_check = True  # Set to False to avoid redundant checks
-        if self.base_type is not None:
-            self.is_string = self.base_primitive == 'String'
-            for s in ('length', 'path', 'range', 'require_instance'):
-                setattr(self, s, search_one(self.base_type, s))
-            for s in ('bit', 'enum', 'pattern'):
-                setattr(self, s, search(self.base_type, s))
-            # self.needs_check = self.enum or self.pattern
-
-    def constructors(self):
-        """Returns a list containing a single or a pair of constructors"""
-        constructors = []
-        javadoc = ['@param value Value to construct the ', self.n, ' from.']
-
-        # Iterate once if string, twice otherwise
-        for i in range(1 + (not self.is_string)):
-            constructor = self._constructor_template()
-            javadoc2 = ['Constructor for ', self.n]
-            if i == 0:
-                # String constructor
-                javadoc2.append(' object from a string.')
-                constructor.add_parameter('String', 'value')
-            else:
-                # i == 1, Primitive constructor
-                javadoc2.extend([' object from a ', self.base_primitive, '.'])
-                tmp_primitive = constructor.add_dependency(self.base_primitive)
-                constructor.add_parameter(tmp_primitive, 'value')
-
-            # Add javadoc
-            constructor.add_javadoc(''.join(javadoc2))
-            constructor.add_javadoc(''.join(javadoc))
-
-            # Now add second argument to super call if the supertype has one
-            if self.jnc_type == 'com.tailf.jnc.YangUnion':
-                constructor.body = []
-                constructor.add_line('super(value,')
-                constructor.add_line('    new String[] {')
-                for member in search(self.type, 'type'):
-                    line = ''.join(['        "',
-                                    get_types(member, self.ctx)[0],
-                                    '",'])
-                    constructor.add_line(line)
-                constructor.add_line('    }')
-                constructor.add_line(');')
-            elif self.jnc_type == 'com.tailf.jnc.YangEnumeration':
-                constructor.body = []
-                constructor.add_line('super(value,')
-                constructor.add_line('    new String[] {')
-                for member in search(self.type, 'enum'):
-                    constructor.add_line(''.join(['        "',
-                                                  member.arg,
-                                                  '",']))
-                constructor.add_line('    }')
-                constructor.add_line(');')
-            elif self.jnc_type == 'com.tailf.jnc.YangDecimal64':
-                constructor.body = []
-                frac_digits = search_one(self.type, 'fraction-digits')
-                line = ['super(value, ', frac_digits.arg, ');']
-                constructor.add_line(''.join(line))
-            elif self.jnc_type == 'com.tailf.jnc.YangBits':
-                constructor.body = []
-                constructor.add_line('super(value,')
-                mask = 0
-                smap = ['    new String[] {']
-                imap = ['    new int[] {']
-                position = 0
-                for bit in search(self.type, 'bit'):
-                    smap.extend(['"', bit.arg, '", '])
-                    pos_stmt = search_one(bit, 'position')
-                    if pos_stmt:
-                        position = int(pos_stmt.arg)
-                    imap.extend([str(position), ', '])
-                    mask += 1 << position
-                    position += 1
-                smap.append('},')
-                imap.append('}')
-                constructor.add_line(''.join(['    new BigInteger("',
-                                              str(mask), '"),']))
-                constructor.add_line(''.join(smap))
-                constructor.add_line(''.join(imap))
-                constructor.add_line(');')
-            
-            # Add call to check method if type has constraints
-            if self.needs_check:
-                constructor.add_line('check();')
-                constructor.add_exception('YangException')
-            constructors.append(self.fix_imports(constructor))
-        return constructors
-
-    def setters(self):
-        """Returns a list of set_value JavaMethods"""
-        setters = []
-        javadoc = '@param value The value to set.'
-
-        # Iterate once if string, twice otherwise
-        for i in range(1 + (not self.is_string)):
-            setter = JavaMethod(name='setValue')
-            javadoc2 = ['Sets the value using a ']
-            if i == 0:
-                # String setter
-                javadoc2.append('string value.')
-                setter.add_parameter('String', 'value')
-            else:
-                # i == 1, Primitive setter
-                javadoc2.extend(['value of type ', self.base_primitive, '.'])
-                tmp_primitive = setter.add_dependency(self.base_primitive)
-                setter.add_parameter(tmp_primitive, 'value')
-            setter.add_javadoc(''.join(javadoc2))
-            setter.add_javadoc(javadoc)
-            setter.add_line('super.setValue(value);')
-            if self.needs_check:
-                setter.add_line('check();')
-                setter.add_exception('YangException')
-            setters.append(self.fix_imports(setter, child=True))
-        return setters
-
-    def checker(self):
-        """Returns a 'check' JavaMethod, which checks constraints on values"""
-        if self.needs_check:
-            checker = JavaMethod(name='check')
-            checker.add_javadoc('Checks all restrictions (if any).')
-            checker.add_exception('YangException')
-            if self.bit:
-                checker.add_line('super.check();')
-            elif self.enum:
-                checker.add_line('super.check();')
-            return [self.fix_imports(checker)]
-        return []
-
-
-class ContainerMethodGenerator(MethodGenerator):
-    """Method generator specific to classes generated from container stmts"""
-
-    def __init__(self, stmt, ctx=None):
-        super(ContainerMethodGenerator, self).__init__(stmt, ctx)
-        assert self.gen is self
-        assert self.is_container, 'Only valid for containers and notifications'
-
-    def constructors(self):
-        return [self.empty_constructor()]
-
-    def setters(self):
-        return NotImplemented
-
-    def markers(self):
-        return NotImplemented
-
-    def child_field(self):
-        """Returns a string representing java code for a field"""
-        res = JavaValue(name=self.n2, value='null')
-        res.add_javadoc(' '.join(['Field for child', self.stmt.keyword,
-                                  '"' + self.stmt.arg + '".']))
-        res.add_modifier('public')
-        res.add_modifier(self.n)
-        res.add_dependency(self.n)
-        return self.fix_imports(res, child=True)
-
-    def deleters(self):
-        """Returns a list with a single method that deletes an instance of the
-        class to be generated from the statement of this method generator to
-        its parent class.
-
-        """
-        method = self._parent_template('delete')
-        method.add_javadoc(''.join(['Deletes ', self.stmt.keyword,
-                                    ' entry "', self.n2, '".']))
-        method.add_javadoc('@return An array of the deleted element nodes.')
-        method.add_line(''.join(['this.', self.n2, ' = null;']))
-        method.add_line(''.join(['String path = "', self.stmt.arg, '";']))
-        method.set_return_type('NodeSet')
-        method.add_line('return delete(path);')
-        return [self.fix_imports(method, child=True)]
-
-    def parent_access_methods(self):
-        res = []
-        res.append(self.access_methods_comment())
-        res.extend(self.adders())
-        res.append(self.deleters())
-        return res
-
-
-class ListMethodGenerator(MethodGenerator):
-    """Method generator specific to classes generated from list stmts"""
-
-    def __init__(self, stmt, ctx):
-        super(ListMethodGenerator, self).__init__(stmt, ctx)
-        assert self.gen is self
-        assert self.is_list, 'Only valid for list stmts'
-
-        self.is_config = is_config(stmt)
-        self.keys = []
-        if self.is_config:
-            key = search_one(self.stmt, 'key')
-            try:
-                self.keys = key.arg.split(' ')
-            except AttributeError:
-                self.is_config = False  # is_config produced wrong value
-
-        findkey = lambda k: search_one(self.stmt, 'leaf', arg=k)
-        self.key_stmts = [findkey(k) for k in self.keys]
-
-        notstring = lambda k: get_types(k, ctx)[1] != 'String'
-        self.is_string = not all(notstring(k) for k in  self.key_stmts)
-
-    def value_constructors(self):
-        """Returns a list of constructors for configuration data lists"""
-        assert self.is_config, 'Only called with configuration data stmts'
-
-        constructors = []
-
-        # Determine number of constructors
-        number_of_value_constructors = 2 + (not self.is_string)
-        javadoc1 = ['Constructor for an initialized ', self.n, ' object,']
-        javadoc2 = ['', 'with String keys.']
-        if not self.is_string:
-            javadoc2.append('with keys of built in Java types.')
-
-        # Create constructors in a loop
-        for i in range(number_of_value_constructors):
-            constructor = self._constructor_template()
-            constructor.add_javadoc(''.join(javadoc1))
-            constructor.add_javadoc(javadoc2[i])
-            constructor.add_exception('JNCException')
-            for key in self.key_stmts:
-                key_arg = camelize(key.arg)
-                key_type = search_one(key, 'type')
-                jnc, primitive = get_types(key_type, self.ctx)
-                #This seems a bug in original code, the return is only class name not include package name
-                #jnc = constructor.add_dependency(jnc)
-                constructor.add_dependency(jnc)
-                javadoc = ['@param ', key_arg, 'Value Key argument of child.']
-                constructor.add_javadoc(''.join(javadoc))
-                newLeaf = ['Leaf ', key_arg, ' = new Leaf']
-                constructor.add_dependency('Leaf')
-                newLeaf.extend(self._root_namespace(key.arg))
-                constructor.add_line(''.join(newLeaf))
-                setValue = [key_arg, '.setValue(']
-                if i == 0:
-                    # Default constructor
-                    param_type = jnc
-                    setValue.extend([key_arg, 'Value);'])
-                    constructor.add_line(''.join(setValue))
-                else:
-                    # String or primitive constructor
-                    setValue.extend(['new ', jnc, '(', key_arg, 'Value'])
-                    if jnc == 'YangUnion':
-                        setValue.append(', new String [] {')
-                        for type_stmt in search(key_type, 'type'):
-                            member_type, _ = get_types(type_stmt, self.ctx)
-                            setValue.append('"' + member_type + '", ')
-                        setValue.append('}));')
-                        constructor.add_line(''.join(setValue))
-                    elif jnc == 'YangEnumeration':
-                        setValue.append(', new String [] {')
-                        for enum in search(key_type, 'enum'):
-                            setValue.append('"' + enum.arg + '", ')
-                        setValue.append('}));')
-                        constructor.add_line(''.join(setValue))
-                    elif jnc == 'YangBits':
-                        setValue.append(',')
-                        constructor.add_line(''.join(setValue))
-                        mask = 0
-                        smap = ['    new String[] {']
-                        imap = ['    new int[] {']
-                        position = 0
-                        for bit in search(key_type, 'bit'):
-                            smap.extend(['"', bit.arg, '", '])
-                            pos_stmt = search_one(bit, 'position')
-                            if pos_stmt:
-                                position = int(pos_stmt.arg)
-                            imap.extend([str(position), ', '])
-                            mask += 1 << position
-                            position += 1
-                        smap.append('},')
-                        imap.append('}')
-                        constructor.add_line(''.join(['    new BigInteger("',
-                                                      str(mask), '"),']))
-                        constructor.add_dependency('BigInteger')
-                        constructor.add_line(''.join(smap))
-                        constructor.add_line(''.join(imap))
-                        constructor.add_line('));')
-                    elif jnc == 'YangDecimal64':
-                        frac_digits = search_one(key_type, 'fraction-digits')
-                        setValue.extend([', ', frac_digits.arg])
-                        setValue.append('));')
-                        constructor.add_line(''.join(setValue))
-                    else:
-                        setValue.append('));')
-                        constructor.add_line(''.join(setValue))
-
-                    if i == 1:
-                        param_type = 'String'
-                    else:
-                        param_type = primitive
-
-                constructor.add_parameter(param_type, key_arg + 'Value')
-
-                insertChild = ['insertChild(', key_arg, ', childrenNames());']
-                constructor.add_line(''.join(insertChild))
-            constructors.append(self.fix_imports(constructor))
-
-        return constructors
-
-    def constructors(self):
-        # Number of constructors depends on the type of the key
-        constructors = [self.empty_constructor()]
-        if self.is_config or self.keys:
-            constructors.extend(self.value_constructors())
-        return constructors
-
-    def setters(self):
-        return NotImplemented
-
-    def markers(self):
-        return NotImplemented
-
-    def _parent_method(self, method_type):
-        """Returns a list of methods that either gets an instance of the class
-        to be generated from the statement of this method generator to its
-        parent class, or deletes it, depending on the method_type parameter.
-
-        method_type -- either 'get' or 'delete'
-
-        """
-        num_methods = 2 if self.is_config else 1
-        res = [self._parent_template(method_type) for _ in range(num_methods)]
-
-        for i, method in enumerate(res):
-            javadoc1 = [method_type.capitalize(), 's ', self.stmt.keyword,
-                        ' entry "', self.n2, '", with specified keys.']
-            javadoc2 = []
-            path = ['String path = "', self.stmt.arg]
-            if i == 1:
-                javadoc2.append('The keys are specified as strings.')
-
-            for key in self.gen.key_stmts:
-                key_arg = camelize(key.arg)
-                javadoc2.append(''.join(['@param ', key_arg,
-                    'Value Key argument of child.']))
-                param_type = 'String'
-                if i == 0:
-                    param_type, _ = get_types(key, self.ctx)
-                method.add_parameter(param_type, key_arg + 'Value')
-                path.extend(['[', key_arg, '=\'" + ',key_arg, 'Value + "\']'])
-            path.append('";')
-
-            method.add_javadoc(''.join(javadoc1))
-            for javadoc in javadoc2:
-                method.add_javadoc(javadoc)
-            method.add_line(''.join(path))
-            if method_type == 'delete':
-                method.set_return_type('void')
-                method.add_line('delete(path);')
-            else:  # get
-                method.add_line('return (' + self.n + ')searchOne(path);')
-            self.fix_imports(method, child=True)
-        return res
-
-    def deleters(self):
-        """Returns a list of methods that deletes an instance of the class to
-        be generated from the statement of this method generator to its parent
-        class.
-
-        """
-        return self._parent_method('delete')
-
-    def getters(self):
-        """Returns a list of methods that gets an instance of the class to be
-        generated from the statement of this method generator to its parent
-        class.
-
-        """
-        return self._parent_method('get')
-
-    def parent_access_methods(self):
-        res = []
-        res.append(self.access_methods_comment())
-        res.extend(self.getters())
-        res.append(self.child_iterator())
-        res.extend(self.adders())
-        res.extend(self.deleters())
-        return res
+# class MethodGenerator(object):
+#     """A generator for JavaMethod objects"""
+#
+#     def __init__(self, stmt, ctx):
+#         """Sets the attributes of the method generator, depending on stmt"""
+#         self.stmt = stmt
+#         self.n = normalize(stmt.arg)
+#         self.n2 = camelize(stmt.arg)
+#         self.children = [normalize(s.arg) for s in
+#                          search(stmt, yangelement_stmts | leaf_stmts)]
+#
+#         self.ctx = ctx
+#         self.module_stmt = get_module(stmt)
+#         prefix = search_one(self.module_stmt, 'prefix')
+#         self.root = normalize(prefix.arg)
+#
+#         self.pkg = get_package(stmt, ctx)
+#         self.basepkg = self.pkg.partition('.')[0]
+#         self.rootpkg = ctx.rootpkg.split(os.sep)
+#         if self.rootpkg[:1] == ['src']:
+#             self.rootpkg = self.rootpkg[1:]  # src not part of package
+#         self.rootpkg.append(camelize(self.module_stmt.arg))
+#
+#         self.is_container = stmt.keyword in ('container', 'notification')
+#         self.is_list = stmt.keyword == 'list'
+#         self.is_typedef = stmt.keyword == 'typedef'
+#         self.is_leaf = stmt.keyword == 'leaf'
+#         self.is_leaflist = stmt.keyword == 'leaf-list'
+#         self.is_top_level = get_parent(self.stmt) == self.module_stmt
+#         self.is_augmented = self.module_stmt != get_module(stmt.parent)
+#         assert (self.is_container or self.is_list or self.is_typedef
+#             or self.is_leaf or self.is_leaflist)
+#         self.gen = self
+#         if type(self) is MethodGenerator:
+#             if self.is_typedef:
+#                 self.gen = TypedefMethodGenerator(stmt, ctx)
+#             elif self.is_container:
+#                 self.gen = ContainerMethodGenerator(stmt, ctx)
+#             elif self.is_list:
+#                 self.gen = ListMethodGenerator(stmt, ctx)
+#             elif self.is_leaf or self.is_leaflist:
+#                 self.gen = LeafMethodGenerator(stmt, ctx)
+#
+#     def canonical_import(self, import_, child=False):
+#         """Returns a string representing a class that can be imported in Java.
+#
+#         Does not handle Generics or Array types.
+#
+#         """
+#         if import_ == self.root:
+#             return '.'.join(self.rootpkg + [import_])
+#         elif import_ in self.children:
+#             type_child = search_one(self.stmt, 'type')
+#             if type_child is not None and normalize(type_child.arg) == import_:
+#                 try:
+#                     typedef_pkg = get_package(type_child.i_typedef, self.ctx)
+#                 except AttributeError:
+#                     typedef_pkg = get_package(type_child, self.ctx)
+#                 return '.'.join([typedef_pkg, import_])
+#             return '.'.join([self.pkg, self.n2, import_])
+#         elif child and import_ == self.n:
+#             return '.'.join([self.pkg, import_])
+#         else:
+#             return get_import(import_)
+#
+#     def fix_imports(self, method, child=False):
+#         res = set([])
+#         imports = method.imports
+#         if self.ctx.opts.import_on_demand:
+#             imports = set([])
+#             pkg = self.pkg
+#             if child:
+#                 pkg = pkg.rpartition('.')[0]
+#             pkg_classes = class_hierarchy.get(pkg, [])
+#             for import_ in method.imports:
+#                 if import_.rpartition('.')[2] in pkg_classes:
+#                     if (child and not import_.rpartition('.')[1]
+#                             and import_ != self.root):
+#                         imports.add('.'.join([self.pkg, import_]))
+#                     else:
+#                         imports.add(import_)
+#
+#
+#         for dependency in imports:
+#             if dependency.startswith(('java.math', 'java.util',
+#                                       'com.tailf.jnc', self.basepkg)):
+#                 res.add(dependency)
+#                 continue
+#             elif dependency.endswith('>'):
+#                 for token in [_f for _f in re.findall(r'\w+', dependency) if _f]:
+#                     res.add(self.canonical_import(token, child))
+#             elif dependency.endswith(']'):
+#                 assert dependency[:-2] and dependency[-2:] == '[]'
+#                 res.add(self.canonical_import(dependency[:-2], child))
+#             else:
+#                 res.add(self.canonical_import(dependency, child))
+#
+#         method.imports = res
+#         return method
+#
+#     def _root_namespace(self, stmt_arg):
+#         """Returns '([Root].NAMESPACE, "[stmt.arg]");'"""
+#         return ['(', self.root, '.NAMESPACE, "', stmt_arg, '");']
+#
+#     def _constructor_template(self):
+#         """Returns a constructor invoking parent constructor, without
+#         parameters and javadoc."""
+#         constructor = JavaMethod(modifiers=['public'], name=self.n)
+#         constructor.set_return_type(None)
+#         if self.is_container or self.is_list:
+#             call = ['super']
+#             call.extend(self._root_namespace(self.stmt.arg))
+#             constructor.add_dependency(self.root)
+#             constructor.add_line(''.join(call))
+#             if self.is_top_level or self.is_augmented:
+#                 constructor.add_line('setDefaultPrefix();')
+#                 setPrefix = ['setPrefix(', self.root, '.PREFIX);']
+#                 constructor.add_line(''.join(setPrefix))
+#         elif self.is_typedef:
+#             constructor.add_line('super(value);')
+#         else:
+#             return None
+#         return self.fix_imports(constructor)
+#
+#     def access_methods_comment(self):
+#         """Returns a JavaValue representing a code structuring Java comment"""
+#         res = ['    /* Access methods for']
+#         if hasattr(self.gen, 'is_optional') and self.gen.is_optional:
+#             res.append('optional')
+#         res.extend([self.stmt.keyword, 'child: "' + self.stmt.arg + '". */'])
+#         return JavaValue(exact=[' '.join(res)])
+#
+#     def empty_constructor(self):
+#         """Returns parameter-free constructor as a JavaMethod object"""
+#         assert not self.is_typedef, "Typedefs don't have empty constructors"
+#         assert not self.is_leaf and not self.is_leaflist
+#         constructor = self._constructor_template()
+#         javadoc = ['Constructor for an empty ']
+#         javadoc.append(self.n)
+#         javadoc.append(' object.')
+#         constructor.add_javadoc(''.join(javadoc))
+#         return self.fix_imports(constructor)
+#
+#     def constructors(self):
+#         """Returns a list of JavaMethods representing constructors to include
+#         in generated class of self.stmt
+#
+#         """
+#         assert self.gen is not self, 'Avoid infinite recursion'
+#         if self.is_leaf or self.is_leaflist:
+#             return None
+#         else:
+#             return self.gen.constructors()
+#
+#     def cloners(self):
+#         if self.is_typedef or self.is_leaf or self.is_leaflist:
+#             return []  # Typedefs, leafs and leaflists don't have clone methods
+#         cloners = [JavaMethod(), JavaMethod()]
+#         a = (' an exact ', ' a shallow ')
+#         b = ('', ' Children are not included.')
+#         c = ('', 'Shallow')
+#         keys = ''
+#         if self.is_list:
+#             getter_calls = []
+#             for key_stmt in self.gen.key_stmts:
+#                 getter_calls.append(''.join(['get', normalize(key_stmt.arg),
+#                                              'Value().toString()']))
+#             keys = ', '.join(getter_calls)
+#         for i, cloner in enumerate(cloners):
+#             cloner.add_javadoc('Clones this object, returning' + a[i] + 'copy.')
+#             cloner.add_javadoc('@return A clone of the object.' + b[i])
+#             cloner.return_type = self.n
+#             cloner.set_name('clone' + c[i])
+#             copy = ''.join(['new ', self.n, '(', keys, ')'])
+#             if self.is_list and self.gen.is_config:
+#                 cloner.add_line(self.n + ' copy;')
+#                 cloner.add_line('try {')
+#                 cloner.add_line('    copy = ' + copy + ';')
+#                 cloner.add_line('} catch (JNCException e) {')
+#                 cloner.add_line('    copy = null;')
+#                 cloner.add_line('}')
+#                 copy = 'copy'
+#             cloner.add_line(''.join(['return (', self.n, ')clone', c[i],
+#                                      'Content(', copy, ');']))
+#             cloner = self.fix_imports(cloner)
+#         return cloners
+#
+#     def key_names(self):
+#         """Returns a method that can be used to get the keys of a statement.
+#
+#         The keys are returned by the generated method as a String array
+#         with the identifiers of the keys in the statement of this generator,
+#         which should be a list, container or notification, otherwise None is
+#         returned. If the statement does not have any keys, the generated method
+#         returns null.
+#
+#         """
+#         if not (self.is_list or self.is_container):
+#             return None
+#         method = JavaMethod(modifiers=['public'], name='keyNames')
+#         method.set_return_type('String[]')
+#         method.add_javadoc('@return An array with the identifiers of any key children')
+#         if self.is_container or not self.gen.is_config:
+#             method.add_line('return null;')
+#         else:
+#             method.add_line('return new String[] {')
+#             for key_stmt in self.gen.key_stmts:
+#                 method.add_line('"'.join([' ' * 4,
+#                                           key_stmt.arg,
+#                                           ',']))
+#             method.add_line('};')
+#         return self.fix_imports(method)
+#
+#     def children_names(self):
+#         """Returns a method that can be used to get the identifiers of the
+#         children of the statement of this generator, excluding any keys.
+#
+#         """
+#         if not (self.is_list or self.is_container):
+#             return None
+#         method = JavaMethod(modifiers=['public'], name='childrenNames')
+#         method.set_return_type('String[]')
+#         method.add_javadoc('@return An array with the identifiers of any children, in order.')
+#         children = search(self.stmt, yangelement_stmts | leaf_stmts)
+#         method.add_line('return new String[] {')
+#         for child in children:
+#             method.add_line('"'.join([' ' * 4, child.arg, ',']))
+#         method.add_line('};')
+#         return self.fix_imports(method)
+#
+#     def support_method(self, fields=None):
+#
+#         if self.is_typedef or self.is_leaf or self.is_leaflist:
+#             return None
+#         add_child = JavaMethod(modifiers=['public'],
+#                                return_type='void',
+#                                name='addChild',
+#                                params=[('Element', 'child')])
+#         add_child.add_javadoc('Support method for addChild.')
+#         add_child.add_javadoc('Adds a child to this object.')
+#         add_child.add_javadoc('')
+#         add_child.add_javadoc('@param child The child to add')
+#         add_child.add_line('super.addChild(child);')
+#         if fields is None:
+#             fields = OrderedSet()
+#         cond = ''
+#         for field in fields:  # could do reversed(fields) to preserve order
+#             add_child.add_line(''.join([cond, 'if (child instanceof ',
+#                     normalize(field), ') ', camelize(field), ' = (',
+#                     normalize(field), ')child;']))
+#             add_child.add_dependency(normalize(field))
+#             cond = 'else '
+#         return self.fix_imports(add_child)
+#
+#     def setters(self):
+#         """Returns a list of JavaMethods representing setters to include
+#         in generated class of self.stmt
+#
+#         """
+#         assert self.gen is not self, 'Avoid infinite recursion'
+#         return self.gen.setters()
+#
+#     def unsetter(self):
+#         """Returns an 'unset<Identifier>Value' JavaMethod for self.stmt"""
+#         assert self.gen is not self, 'Avoid infinite recursion'
+#         return self.gen.unsetter() if self.is_leaf else None
+#
+#     def checker(self):
+#         """Returns a 'check' JavaMethod for generated class for self.stmt"""
+#         assert self.gen is not self, 'Avoid infinite recursion'
+#         return self.gen.checker() if self.is_typedef else None
+#
+#     def markers(self):
+#         """Generates methods that enqueues operations to be performed."""
+#         assert self.gen is not self, 'Avoid infinite recursion'
+#         return None if self.is_typedef else self.gen.markers()
+#
+#     def child_field(self):
+#         """Returns a string representing java code for a field"""
+#         assert self.gen is not self, 'Avoid infinite recursion'
+#         return self.gen.child_field() if self.is_container else None
+#
+#     def _parent_template(self, method_type):
+#         """Returns an access method for the statement of this method generator.
+#
+#         method_type -- prefix of method name
+#
+#         """
+#         method = JavaMethod()
+#         if self.is_container or self.is_list:
+#             method.set_return_type(self.n)
+#         method.set_name(method_type + self.n)
+#         method.add_exception('JNCException')
+#         return self.fix_imports(method, child=True)
+#
+#     def adders(self):
+#         """Returns a list of methods that adds an instance of the class to be
+#         generated from the statement of this method generator to its parent
+#         class.
+#
+#         """
+#         if self.is_leaf or self.is_leaflist:
+#             assert self.gen != self
+#             return self.gen.adders()
+#         elif not (self.is_container or self.is_list):
+#             return None
+#         number_of_adders = 2
+#         if self.is_list and self.gen.is_config:
+#             number_of_adders = 4
+#         res = [self._parent_template('add') for _ in range(number_of_adders)]
+#
+#         for i, method in enumerate(res):
+#             javadoc1 = ['Adds ', self.stmt.keyword, ' entry "', self.n2, '"']
+#             javadoc2 = []
+#             if i == 0:  # Add existing object
+#                 javadoc1.append(', using an existing object.')
+#                 javadoc2.append(' '.join(['@param', self.n2, 'The object to add.']))
+#                 method.add_parameter(self.n, self.n2)
+#             elif self.is_list and i in {1, 2} and len(res) == 4:
+#                 # Add child with String or JNC type keys
+#                 javadoc1.append(', with specified keys.')
+#                 if i == 2:
+#                     javadoc2.append('The keys are specified as strings.')
+#                 for key_stmt in self.gen.key_stmts:
+#                     key_arg = camelize(key_stmt.arg) + 'Value'
+#                     javadoc2.append(''.join(['@param ', key_arg,
+#                                              ' Key argument of child.']))
+#                     param_type, _ = get_types(key_stmt, self.ctx)
+#                     if i == 2:
+#                         param_type = 'String'
+#                     method.add_parameter(param_type, key_arg)
+#                 new_child = [self.n, ' ', self.n2, ' = new ', self.n, '(']
+#                 keys = [camelize(s.arg) + 'Value' for s in self.gen.key_stmts]
+#                 new_child.append(', '.join(keys))
+#                 new_child.append(');')
+#                 method.add_line(''.join(new_child))
+#             else:  # Create new, for subtree filter usage
+#                 javadoc1.append('.')
+#                 javadoc2.append('This method is used for creating subtree filters.')
+#                 method.add_line(' '.join([self.n, self.n2, '= new', self.n + '();']))
+#             method.add_javadoc(''.join(javadoc1))
+#             for javadoc in javadoc2:
+#                 method.add_javadoc(javadoc)
+#             method.add_javadoc('@return The added child.')
+#             if self.is_container:
+#                 method.add_line('this.' + self.n2 + ' = ' + self.n2 + ';')
+#             if self.is_list and i in {1, 2} and len(res) == 4:
+#                 method.add_line('return ' + method.name + '(' + self.n2 + ');')
+#             else:
+#                 method.add_line('insertChild(' + self.n2 + ', childrenNames());')
+#                 method.add_line('return ' + self.n2 + ';')
+#             self.fix_imports(method, child=True)
+#         return res
+#
+#     def getters(self):
+#         """Returns a list of JavaMethods representing getters to include
+#         in generated class of parent
+#
+#         """
+#         assert self.gen is not self, 'Avoid infinite recursion'
+#         return self.gen.getters() if self.is_list or self.is_leaf else None
+#
+#     def deleters(self):
+#         """Returns a list of JavaMethods representing deleters to include
+#         in generated class of parent
+#
+#         """
+#         assert self.gen is not self, 'Avoid infinite recursion'
+#         if not (self.is_list or self.is_container or self.is_leaflist):
+#             return None
+#         else:
+#             return self.gen.deleters()
+#
+#     def child_iterator(self):
+#         """Returns a java iterator method"""
+#         if not(self.is_leaflist or self.is_list):
+#             return None
+#         res = JavaMethod(name=(self.n2 + 'Iterator'))
+#         res.add_javadoc(''.join(['Iterator method for the ', self.stmt.keyword,
+#                                  ' "', self.stmt.arg, '".']))
+#         res.add_javadoc(''.join(['@return An iterator for the ',
+#                                  self.stmt.keyword, '.']))
+#         return_stmt = ['return new Element']
+#         if self.is_leaflist:
+#             res.set_return_type('ElementLeafListValueIterator')
+#             return_stmt.append('LeafListValue')
+#         else:  # List
+#             res.set_return_type('ElementChildrenIterator')
+#             return_stmt.append('Children')
+#         return_stmt.extend(['Iterator(children, "', self.stmt.arg, '");'])
+#         res.add_line(''.join(return_stmt))
+#         return self.fix_imports(res)
+#
+#     def parent_access_methods(self):
+#         assert self.gen is not self, 'Avoid infinite recursion'
+#         if self.is_container or self.is_list:
+#             return self.gen.parent_access_methods()
+#         else:
+#             return None
+#
+#
+# class LeafMethodGenerator(MethodGenerator):
+#     """Method generator for YANG leaf and leaf-list associated methods"""
+#
+#     def __init__(self, stmt, ctx):
+#         super(LeafMethodGenerator, self).__init__(stmt, ctx)
+#         assert self.is_leaf or self.is_leaflist
+#         self.stmt_type = search_one(stmt, 'type')
+#         self.base_type = get_base_type(self.stmt_type)
+#         self.default = search_one(stmt, 'default')
+#         self.default_value = None if not self.default else self.default.arg
+#         self.type_str = get_types(self.stmt_type, ctx)
+#         self.is_string = self.type_str[1] == 'String'
+#         self.is_typedef = (hasattr(self.stmt_type, 'i_typedef')
+#                            and self.stmt_type.i_typedef is not None)
+#         key = search_one(get_parent(stmt), 'key')
+#         self.is_optional = key is None or stmt.arg not in key.arg.split(' ')
+#
+#     def getters(self):
+#         """get<Identifier>Value method generator."""
+#         assert self.is_leaf
+#         method = JavaMethod()
+#         method.set_return_type(self.type_str[0])
+#         method.set_name('get' + self.n + 'Value')
+#         method.add_exception('JNCException')
+#
+#         # YangEmpty type needs to be special treated
+#         if self.type_str[0] == 'com.tailf.jnc.YangEmpty':
+#             method.add_javadoc('Searches for ' + self.stmt.keyword + ' "' +
+#                                self.stmt.arg + '".')
+#             method.add_javadoc('@return A YangEmpty object if ' +
+#                                self.stmt.keyword +
+#                                ' exists; <code>null</code> otherwise.')
+#         else:
+#             method.add_javadoc('Gets the value for child ' + self.stmt.keyword +
+#                                ' "' + self.stmt.arg + '".')
+#             method.add_javadoc('@return The value of the ' + self.stmt.keyword + '.')
+#
+#         # Leaves with a default value returns it instead of null
+#         if self.default:
+#             method.add_line(''.join([method.return_type, ' ', self.n2, ' = (',
+#                                      method.return_type, ')getValue("',
+#                                      self.stmt.arg, '");']))
+#             method.add_line('if (' + self.n2 + ' == null) {')
+#             newValue = ['    ', self.n2, ' = new ', method.return_type, '("',
+#                         self.default_value]
+#             if self.type_str[0] == 'com.tailf.jnc.YangUnion':
+#                 newValue.append('", new String[] {  // default\n')
+#                 for type_stmt in search(self.base_type, 'type'):
+#                     member_type, _ = get_types(type_stmt, self.ctx)
+#                     newValue.append(' ' * 16 + '"' + member_type + '",\n')
+#                 newValue.append(' ' * 12 + '});')
+#             elif self.type_str[0] == 'com.tailf.jnc.YangEnumeration':
+#                 newValue.append('", new String[] {  // default\n')
+#                 for enum in search(self.base_type, 'enum'):
+#                     newValue.append(' ' * 16 + '"' + enum.arg + '",\n')
+#                 newValue.append(' ' * 12 + '});')
+#             elif self.type_str[0] == 'com.tailf.jnc.YangBits':
+#                 newValue.append('",  // default')
+#                 method.add_line(''.join(newValue))
+#                 mask = 0
+#                 smap = ['        new String[] {']
+#                 imap = ['        new int[] {']
+#                 position = 0
+#                 for bit in search(self.base_type, 'bit'):
+#                     smap.extend(['"', bit.arg, '", '])
+#                     pos_stmt = search_one(bit, 'position')
+#                     if pos_stmt:
+#                         position = int(pos_stmt.arg)
+#                     imap.extend([str(position), ', '])
+#                     mask += 1 << position
+#                     position += 1
+#                 smap.append('},')
+#                 imap.append('}')
+#                 line = [' ' * 8, 'new BigInteger("', str(mask), '"),']
+#                 method.add_line(''.join(line))
+#                 method.add_line(''.join(smap))
+#                 method.add_line(''.join(imap))
+#                 newValue = ['    );']
+#             elif self.type_str[0] == 'com.tailf.jnc.YangDecimal64':
+#                 fraction_digits = search_one(self.base_type, 'fraction-digits')
+#                 newValue.extend(['", ', fraction_digits.arg, ');  // default'])
+#             else:
+#                 newValue.append('");  // default')
+#             method.add_line(''.join(newValue))
+#             method.add_line('}')
+#             method.add_line('return ' + self.n2 + ';')
+#         else:
+#             method.add_line(''.join(['return (', method.return_type,
+#                                      ')getValue("', self.stmt.arg, '");']))
+#         return [self.fix_imports(method, child=True)]
+#
+#     def setters(self):
+#         name = 'set' + self.n + 'Value'
+#         num_methods = 2 + (not self.is_string)
+#         value_type = self.type_str[0]  # JNC type
+#         res = [JavaMethod(name=name) for _ in range(num_methods)]
+#
+#         for i, method in enumerate(res):
+#             param_names = [self.n2 + 'Value']
+#             method.add_exception('JNCException')
+#             method.add_javadoc('Sets the value for child ' + self.stmt.keyword +
+#                                ' "' + self.stmt.arg + '",')
+#             if i == 0:
+#                 param_types = [value_type]
+#                 if not self.is_typedef:
+#                     method.add_javadoc('using instance of generated typedef class.')
+#                 else:
+#                     method.add_javadoc('using a JNC type value.')
+#                 method.add_javadoc(' '.join(['@param', param_names[0],
+#                                              'The value to set.']))
+#                 method.add_line(''.join(['set', normalize(self.stmt.keyword),
+#                                          'Value(', self.root, '.NAMESPACE,']))
+#                 method.add_dependency(self.root)
+#                 method.add_line('    "' + self.stmt.arg + '",')
+#                 method.add_line('    ' + param_names[0] + ',')
+#                 method.add_line('    childrenNames());')
+#             elif self.type_str[0] == 'com.tailf.jnc.YangEmpty':
+#                 method.add_javadoc('by instantiating it (value n/a).')
+#                 param_types = []  # Add parameter here to get correct javadoc
+#                 method.add_parameter('String', param_names[0])
+#                 method.add_javadoc(' '.join(['@param', param_names[0], 'ignored.']))
+#                 l = [name, '(new ', method.add_dependency(value_type), '());']
+#                 method.add_line(''.join(l))
+#             else:
+#                 line = [name, '(new ', method.add_dependency(value_type),
+#                         '(', param_names[0]]
+#                 if not self.is_string and i == 1:
+#                     param_types = [self.type_str[1]]
+#                     method.add_javadoc('using Java primitive values.')
+#                     # FIXME: Some types are incorrectly classified as string
+#                 else:
+#                     param_types = ['String']
+#                     method.add_javadoc('using a String value.')
+#
+#                 if self.type_str[0] == 'com.tailf.jnc.YangUnion':
+#                     line.append(', new String[] {')
+#                     method.add_line(''.join(line))
+#                     for type_stmt in search(self.base_type, 'type'):
+#                         member_type, _ = get_types(type_stmt, self.ctx)
+#                         method.add_line('     "' + member_type + '",')
+#                     line = ['}']
+#                 elif self.type_str[0] == 'com.tailf.jnc.YangEnumeration':
+#                     line.append(', new String[] {')
+#                     method.add_line(''.join(line))
+#                     for enum in search(self.base_type, 'enum'):
+#                         method.add_line('     "' + enum.arg + '",')
+#                     line = ['}']
+#                 elif self.type_str[0] == 'com.tailf.jnc.YangBits':
+#                     line.append(',')
+#                     method.add_line(''.join(line))
+#                     mask = 0
+#                     smap = ['    new String[] {']
+#                     imap = ['    new int[] {']
+#                     position = 0
+#                     for bit in search(self.base_type, 'bit'):
+#                         smap.extend(['"', bit.arg, '", '])
+#                         pos_stmt = search_one(bit, 'position')
+#                         if pos_stmt:
+#                             position = int(pos_stmt.arg)
+#                         imap.extend([str(position), ', '])
+#                         mask += 1 << position
+#                         position += 1
+#                     smap.append('},')
+#                     imap.append('}')
+#                     method.add_line(''.join(['    new BigInteger("',
+#                                                   str(mask), '"),']))
+#                     method.add_line(''.join(smap))
+#                     method.add_line(''.join(imap))
+#                     line = []
+#                 elif self.type_str[0] == 'com.tailf.jnc.YangDecimal64':
+#                     frac_digits = search_one(self.base_type, 'fraction-digits')
+#                     line.extend([', ', frac_digits.arg])
+#
+#                 line.append('));')
+#                 method.add_line(''.join(line))
+#
+#             for param_type, param_name in zip(param_types, param_names):
+#                 method.add_parameter(param_type, param_name)
+#                 method.add_javadoc(' '.join(['@param', param_name,
+#                                              'used during instantiation.']))
+#             self.fix_imports(method, child=True)
+#         return res
+#
+#     def unsetter(self):
+#         """unset<Identifier>Value method generator"""
+#         method = JavaMethod()
+#         method.add_javadoc(' '.join(['Unsets the value for child',
+#                                      self.stmt.keyword,
+#                                      '"' + self.stmt.arg + '".']))
+#         method.set_name('unset' + self.n + 'Value')
+#         method.add_exception('JNCException')
+#         method.add_line('delete("' + self.stmt.arg + '");')
+#         return self.fix_imports(method, child=True)
+#
+#     def _parent_method(self, method_type):
+#         """Returns a list of methods that either creates a value in the
+#         leaf-list of the parent YangElement instance, or deletes it, depending
+#         on the method_type parameter.
+#
+#         method_type -- either 'create' or 'delete'
+#
+#         """
+#         assert self.is_leaflist
+#         res = [self._parent_template(method_type) for _ in range(2)]
+#
+#         for i, method in enumerate(res):
+#             method.add_javadoc(''.join([method_type.capitalize(), 's ',
+#                                         self.stmt.keyword, ' entry "',
+#                                         self.n2, '".']))
+#             if i == 1:
+#                 method.add_javadoc('The value is specified as a string.')
+#             method.add_javadoc(''.join(['@param ', self.n2, 'Value Value to ',
+#                                      method_type, '.']))
+#             param_type = 'String'
+#             if i == 0:
+#                 param_type = self.type_str[0]
+#             method.add_parameter(param_type, self.n2 + 'Value')
+#             path = ['String path = "', self.n2, '[', self.n2, 'Value]";']
+#             method.add_line(''.join(path))
+#             if method_type == 'delete':
+#                 method.add_line('delete(path);')
+#             else:  # get
+#                 method.add_line('insertChild(path);')
+#             self.fix_imports(method, child=True)
+#         return res
+#
+#     def deleters(self):
+#         """Returns a list of methods that deletes the Leaf child, corresponding
+#         to the statement of this method generator, from its parent YangElement
+#         instance.
+#
+#         """
+#         return self._parent_method('delete')
+#
+#     def adders(self):
+#         method = JavaMethod(name=('add' + self.n))
+#         method.add_exception('JNCException')
+#         method.add_javadoc('This method is used for creating a subtree filter.')
+#         method.add_javadoc(''.join(['The added "', self.stmt.arg, '" ',
+#                                     self.stmt.keyword,
+#                                     ' will not have a value.']))
+#         method.add_line('set' + normalize(self.stmt.keyword) + 'Value(' +
+#                         self.root + '.NAMESPACE,')
+#         method.add_line('    "' + self.stmt.arg + '",')
+#         method.add_line('    null,')
+#         method.add_line('    childrenNames());')
+#         return self.fix_imports(method, child=True)
+#
+#     def markers(self):
+#         res = []
+#         for op in ('replace', 'merge', 'create', 'delete'):
+#             res.append(self.mark(op))
+#         return res
+#
+#     def mark(self, op):
+#         assert op in ('replace', 'merge', 'create', 'delete')
+#         mark_methods = [JavaMethod()]
+#         if not self.is_string and self.is_leaflist:
+#             mark_methods.append(JavaMethod())
+#         for i, mark_method in enumerate(mark_methods):
+#             mark_method.set_name('mark' + self.n + normalize(op))
+#             mark_method.add_exception('JNCException')
+#             path = self.n2
+#             mark_method.add_javadoc(''.join(['Marks the ', self.stmt.keyword,
+#                                              ' "', self.stmt.arg,
+#                                              '" with operation "', op, '".']))
+#             if self.is_leaflist:
+#                 path += '[name=\'" + ' + self.n2 + 'Value + "\']'
+#                 javadoc = '@param ' + self.n2 + 'Value The value to mark'
+#                 param_type = self.type_str[0]
+#                 if i == 1:
+#                     javadoc += ', given as a String'
+#                     param_type = 'String'
+#                 mark_method.add_parameter(param_type, self.n2 + 'Value')
+#                 mark_method.add_javadoc(javadoc)
+#             mark_method.add_line('markLeaf' + normalize(op) + '("' + path + '");')
+#             self.fix_imports(mark_method, child=True)
+#         return mark_methods
+#
+#
+# class TypedefMethodGenerator(MethodGenerator):
+#     """Method generator specific to typedef classes"""
+#
+#     def __init__(self, stmt, ctx=None):
+#         super(TypedefMethodGenerator, self).__init__(stmt, ctx)
+#         assert self.gen is self
+#         assert self.is_typedef, 'This class is only valid for typedef stmts'
+#         self.type = search_one(stmt, 'type')
+#         self.jnc_type, self.primitive = get_types(stmt, ctx)
+#         self.base_type = get_base_type(stmt) if self.type else None
+#         self.base_primitive = None
+#         if self.base_type:
+#             self.base_primitive = get_types(self.base_type, ctx)[1]
+#         self.is_string = False
+#         self.needs_check = True  # Set to False to avoid redundant checks
+#         if self.base_type is not None:
+#             self.is_string = self.base_primitive == 'String'
+#             for s in ('length', 'path', 'range', 'require_instance'):
+#                 setattr(self, s, search_one(self.base_type, s))
+#             for s in ('bit', 'enum', 'pattern'):
+#                 setattr(self, s, search(self.base_type, s))
+#             # self.needs_check = self.enum or self.pattern
+#
+#     def constructors(self):
+#         """Returns a list containing a single or a pair of constructors"""
+#         constructors = []
+#         javadoc = ['@param value Value to construct the ', self.n, ' from.']
+#
+#         # Iterate once if string, twice otherwise
+#         for i in range(1 + (not self.is_string)):
+#             constructor = self._constructor_template()
+#             javadoc2 = ['Constructor for ', self.n]
+#             if i == 0:
+#                 # String constructor
+#                 javadoc2.append(' object from a string.')
+#                 constructor.add_parameter('String', 'value')
+#             else:
+#                 # i == 1, Primitive constructor
+#                 javadoc2.extend([' object from a ', self.base_primitive, '.'])
+#                 tmp_primitive = constructor.add_dependency(self.base_primitive)
+#                 constructor.add_parameter(tmp_primitive, 'value')
+#
+#             # Add javadoc
+#             constructor.add_javadoc(''.join(javadoc2))
+#             constructor.add_javadoc(''.join(javadoc))
+#
+#             # Now add second argument to super call if the supertype has one
+#             if self.jnc_type == 'com.tailf.jnc.YangUnion':
+#                 constructor.body = []
+#                 constructor.add_line('super(value,')
+#                 constructor.add_line('    new String[] {')
+#                 for member in search(self.type, 'type'):
+#                     line = ''.join(['        "',
+#                                     get_types(member, self.ctx)[0],
+#                                     '",'])
+#                     constructor.add_line(line)
+#                 constructor.add_line('    }')
+#                 constructor.add_line(');')
+#             elif self.jnc_type == 'com.tailf.jnc.YangEnumeration':
+#                 constructor.body = []
+#                 constructor.add_line('super(value,')
+#                 constructor.add_line('    new String[] {')
+#                 for member in search(self.type, 'enum'):
+#                     constructor.add_line(''.join(['        "',
+#                                                   member.arg,
+#                                                   '",']))
+#                 constructor.add_line('    }')
+#                 constructor.add_line(');')
+#             elif self.jnc_type == 'com.tailf.jnc.YangDecimal64':
+#                 constructor.body = []
+#                 frac_digits = search_one(self.type, 'fraction-digits')
+#                 line = ['super(value, ', frac_digits.arg, ');']
+#                 constructor.add_line(''.join(line))
+#             elif self.jnc_type == 'com.tailf.jnc.YangBits':
+#                 constructor.body = []
+#                 constructor.add_line('super(value,')
+#                 mask = 0
+#                 smap = ['    new String[] {']
+#                 imap = ['    new int[] {']
+#                 position = 0
+#                 for bit in search(self.type, 'bit'):
+#                     smap.extend(['"', bit.arg, '", '])
+#                     pos_stmt = search_one(bit, 'position')
+#                     if pos_stmt:
+#                         position = int(pos_stmt.arg)
+#                     imap.extend([str(position), ', '])
+#                     mask += 1 << position
+#                     position += 1
+#                 smap.append('},')
+#                 imap.append('}')
+#                 constructor.add_line(''.join(['    new BigInteger("',
+#                                               str(mask), '"),']))
+#                 constructor.add_line(''.join(smap))
+#                 constructor.add_line(''.join(imap))
+#                 constructor.add_line(');')
+#
+#             # Add call to check method if type has constraints
+#             if self.needs_check:
+#                 constructor.add_line('check();')
+#                 constructor.add_exception('YangException')
+#             constructors.append(self.fix_imports(constructor))
+#         return constructors
+#
+#     def setters(self):
+#         """Returns a list of set_value JavaMethods"""
+#         setters = []
+#         javadoc = '@param value The value to set.'
+#
+#         # Iterate once if string, twice otherwise
+#         for i in range(1 + (not self.is_string)):
+#             setter = JavaMethod(name='setValue')
+#             javadoc2 = ['Sets the value using a ']
+#             if i == 0:
+#                 # String setter
+#                 javadoc2.append('string value.')
+#                 setter.add_parameter('String', 'value')
+#             else:
+#                 # i == 1, Primitive setter
+#                 javadoc2.extend(['value of type ', self.base_primitive, '.'])
+#                 tmp_primitive = setter.add_dependency(self.base_primitive)
+#                 setter.add_parameter(tmp_primitive, 'value')
+#             setter.add_javadoc(''.join(javadoc2))
+#             setter.add_javadoc(javadoc)
+#             setter.add_line('super.setValue(value);')
+#             if self.needs_check:
+#                 setter.add_line('check();')
+#                 setter.add_exception('YangException')
+#             setters.append(self.fix_imports(setter, child=True))
+#         return setters
+#
+#     def checker(self):
+#         """Returns a 'check' JavaMethod, which checks constraints on values"""
+#         if self.needs_check:
+#             checker = JavaMethod(name='check')
+#             checker.add_javadoc('Checks all restrictions (if any).')
+#             checker.add_exception('YangException')
+#             if self.bit:
+#                 checker.add_line('super.check();')
+#             elif self.enum:
+#                 checker.add_line('super.check();')
+#             return [self.fix_imports(checker)]
+#         return []
+#
+#
+# class ContainerMethodGenerator(MethodGenerator):
+#     """Method generator specific to classes generated from container stmts"""
+#
+#     def __init__(self, stmt, ctx=None):
+#         super(ContainerMethodGenerator, self).__init__(stmt, ctx)
+#         assert self.gen is self
+#         assert self.is_container, 'Only valid for containers and notifications'
+#
+#     def constructors(self):
+#         return [self.empty_constructor()]
+#
+#     def setters(self):
+#         return NotImplemented
+#
+#     def markers(self):
+#         return NotImplemented
+#
+#     def child_field(self):
+#         """Returns a string representing java code for a field"""
+#         res = JavaValue(name=self.n2, value='null')
+#         res.add_javadoc(' '.join(['Field for child', self.stmt.keyword,
+#                                   '"' + self.stmt.arg + '".']))
+#         res.add_modifier('public')
+#         res.add_modifier(self.n)
+#         res.add_dependency(self.n)
+#         return self.fix_imports(res, child=True)
+#
+#     def deleters(self):
+#         """Returns a list with a single method that deletes an instance of the
+#         class to be generated from the statement of this method generator to
+#         its parent class.
+#
+#         """
+#         method = self._parent_template('delete')
+#         method.add_javadoc(''.join(['Deletes ', self.stmt.keyword,
+#                                     ' entry "', self.n2, '".']))
+#         method.add_javadoc('@return An array of the deleted element nodes.')
+#         method.add_line(''.join(['this.', self.n2, ' = null;']))
+#         method.add_line(''.join(['String path = "', self.stmt.arg, '";']))
+#         method.set_return_type('NodeSet')
+#         method.add_line('return delete(path);')
+#         return [self.fix_imports(method, child=True)]
+#
+#     def parent_access_methods(self):
+#         res = []
+#         res.append(self.access_methods_comment())
+#         res.extend(self.adders())
+#         res.append(self.deleters())
+#         return res
+#
+#
+# class ListMethodGenerator(MethodGenerator):
+#     """Method generator specific to classes generated from list stmts"""
+#
+#     def __init__(self, stmt, ctx):
+#         super(ListMethodGenerator, self).__init__(stmt, ctx)
+#         assert self.gen is self
+#         assert self.is_list, 'Only valid for list stmts'
+#
+#         self.is_config = is_config(stmt)
+#         self.keys = []
+#         if self.is_config:
+#             key = search_one(self.stmt, 'key')
+#             try:
+#                 self.keys = key.arg.split(' ')
+#             except AttributeError:
+#                 self.is_config = False  # is_config produced wrong value
+#
+#         findkey = lambda k: search_one(self.stmt, 'leaf', arg=k)
+#         self.key_stmts = [findkey(k) for k in self.keys]
+#
+#         notstring = lambda k: get_types(k, ctx)[1] != 'String'
+#         self.is_string = not all(notstring(k) for k in  self.key_stmts)
+#
+#     def value_constructors(self):
+#         """Returns a list of constructors for configuration data lists"""
+#         assert self.is_config, 'Only called with configuration data stmts'
+#
+#         constructors = []
+#
+#         # Determine number of constructors
+#         number_of_value_constructors = 2 + (not self.is_string)
+#         javadoc1 = ['Constructor for an initialized ', self.n, ' object,']
+#         javadoc2 = ['', 'with String keys.']
+#         if not self.is_string:
+#             javadoc2.append('with keys of built in Java types.')
+#
+#         # Create constructors in a loop
+#         for i in range(number_of_value_constructors):
+#             constructor = self._constructor_template()
+#             constructor.add_javadoc(''.join(javadoc1))
+#             constructor.add_javadoc(javadoc2[i])
+#             constructor.add_exception('JNCException')
+#             for key in self.key_stmts:
+#                 key_arg = camelize(key.arg)
+#                 key_type = search_one(key, 'type')
+#                 jnc, primitive = get_types(key_type, self.ctx)
+#                 #This seems a bug in original code, the return is only class name not include package name
+#                 #jnc = constructor.add_dependency(jnc)
+#                 constructor.add_dependency(jnc)
+#                 javadoc = ['@param ', key_arg, 'Value Key argument of child.']
+#                 constructor.add_javadoc(''.join(javadoc))
+#                 newLeaf = ['Leaf ', key_arg, ' = new Leaf']
+#                 constructor.add_dependency('Leaf')
+#                 newLeaf.extend(self._root_namespace(key.arg))
+#                 constructor.add_line(''.join(newLeaf))
+#                 setValue = [key_arg, '.setValue(']
+#                 if i == 0:
+#                     # Default constructor
+#                     param_type = jnc
+#                     setValue.extend([key_arg, 'Value);'])
+#                     constructor.add_line(''.join(setValue))
+#                 else:
+#                     # String or primitive constructor
+#                     setValue.extend(['new ', jnc, '(', key_arg, 'Value'])
+#                     if jnc == 'YangUnion':
+#                         setValue.append(', new String [] {')
+#                         for type_stmt in search(key_type, 'type'):
+#                             member_type, _ = get_types(type_stmt, self.ctx)
+#                             setValue.append('"' + member_type + '", ')
+#                         setValue.append('}));')
+#                         constructor.add_line(''.join(setValue))
+#                     elif jnc == 'YangEnumeration':
+#                         setValue.append(', new String [] {')
+#                         for enum in search(key_type, 'enum'):
+#                             setValue.append('"' + enum.arg + '", ')
+#                         setValue.append('}));')
+#                         constructor.add_line(''.join(setValue))
+#                     elif jnc == 'YangBits':
+#                         setValue.append(',')
+#                         constructor.add_line(''.join(setValue))
+#                         mask = 0
+#                         smap = ['    new String[] {']
+#                         imap = ['    new int[] {']
+#                         position = 0
+#                         for bit in search(key_type, 'bit'):
+#                             smap.extend(['"', bit.arg, '", '])
+#                             pos_stmt = search_one(bit, 'position')
+#                             if pos_stmt:
+#                                 position = int(pos_stmt.arg)
+#                             imap.extend([str(position), ', '])
+#                             mask += 1 << position
+#                             position += 1
+#                         smap.append('},')
+#                         imap.append('}')
+#                         constructor.add_line(''.join(['    new BigInteger("',
+#                                                       str(mask), '"),']))
+#                         constructor.add_dependency('BigInteger')
+#                         constructor.add_line(''.join(smap))
+#                         constructor.add_line(''.join(imap))
+#                         constructor.add_line('));')
+#                     elif jnc == 'YangDecimal64':
+#                         frac_digits = search_one(key_type, 'fraction-digits')
+#                         setValue.extend([', ', frac_digits.arg])
+#                         setValue.append('));')
+#                         constructor.add_line(''.join(setValue))
+#                     else:
+#                         setValue.append('));')
+#                         constructor.add_line(''.join(setValue))
+#
+#                     if i == 1:
+#                         param_type = 'String'
+#                     else:
+#                         param_type = primitive
+#
+#                 constructor.add_parameter(param_type, key_arg + 'Value')
+#
+#                 insertChild = ['insertChild(', key_arg, ', childrenNames());']
+#                 constructor.add_line(''.join(insertChild))
+#             constructors.append(self.fix_imports(constructor))
+#
+#         return constructors
+#
+#     def constructors(self):
+#         # Number of constructors depends on the type of the key
+#         constructors = [self.empty_constructor()]
+#         if self.is_config or self.keys:
+#             constructors.extend(self.value_constructors())
+#         return constructors
+#
+#     def setters(self):
+#         return NotImplemented
+#
+#     def markers(self):
+#         return NotImplemented
+#
+#     def _parent_method(self, method_type):
+#         """Returns a list of methods that either gets an instance of the class
+#         to be generated from the statement of this method generator to its
+#         parent class, or deletes it, depending on the method_type parameter.
+#
+#         method_type -- either 'get' or 'delete'
+#
+#         """
+#         num_methods = 2 if self.is_config else 1
+#         res = [self._parent_template(method_type) for _ in range(num_methods)]
+#
+#         for i, method in enumerate(res):
+#             javadoc1 = [method_type.capitalize(), 's ', self.stmt.keyword,
+#                         ' entry "', self.n2, '", with specified keys.']
+#             javadoc2 = []
+#             path = ['String path = "', self.stmt.arg]
+#             if i == 1:
+#                 javadoc2.append('The keys are specified as strings.')
+#
+#             for key in self.gen.key_stmts:
+#                 key_arg = camelize(key.arg)
+#                 javadoc2.append(''.join(['@param ', key_arg,
+#                     'Value Key argument of child.']))
+#                 param_type = 'String'
+#                 if i == 0:
+#                     param_type, _ = get_types(key, self.ctx)
+#                 method.add_parameter(param_type, key_arg + 'Value')
+#                 path.extend(['[', key_arg, '=\'" + ',key_arg, 'Value + "\']'])
+#             path.append('";')
+#
+#             method.add_javadoc(''.join(javadoc1))
+#             for javadoc in javadoc2:
+#                 method.add_javadoc(javadoc)
+#             method.add_line(''.join(path))
+#             if method_type == 'delete':
+#                 method.set_return_type('void')
+#                 method.add_line('delete(path);')
+#             else:  # get
+#                 method.add_line('return (' + self.n + ')searchOne(path);')
+#             self.fix_imports(method, child=True)
+#         return res
+#
+#     def deleters(self):
+#         """Returns a list of methods that deletes an instance of the class to
+#         be generated from the statement of this method generator to its parent
+#         class.
+#
+#         """
+#         return self._parent_method('delete')
+#
+#     def getters(self):
+#         """Returns a list of methods that gets an instance of the class to be
+#         generated from the statement of this method generator to its parent
+#         class.
+#
+#         """
+#         return self._parent_method('get')
+#
+#     def parent_access_methods(self):
+#         res = []
+#         res.append(self.access_methods_comment())
+#         res.extend(self.getters())
+#         res.append(self.child_iterator())
+#         res.extend(self.adders())
+#         res.extend(self.deleters())
+#         return res
 
 
 class OrderedSet(collections.MutableSet):
