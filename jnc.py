@@ -1118,7 +1118,15 @@ class ClassGenerator(object):
 
         # Generate classes for children and keep track of augmented modules
         for stmt in search(self.stmt, list(yangelement_stmts | {'augment'})):
-            child_generator = ClassGenerator(stmt, package=self.package,
+            if stmt.i_orig_module.keyword == "submodule":
+                ns_arg = ns_arg+'.'+stmt.i_orig_module.arg
+                path = self.path+'/'+normalize(stmt.i_orig_module.arg)
+                package = self.package+'.'+normalize(stmt.i_orig_module.arg)
+            else:
+                ns_arg = ns_arg
+                path = self.path
+                package = self.package
+            child_generator = ClassGenerator(stmt, path=path, package=package,
                 ns=ns_arg, prefix_name=self.n, parent=self)
             child_generator.generate()
 

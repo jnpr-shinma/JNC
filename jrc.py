@@ -255,7 +255,7 @@ class JRCPlugin(plugin.PyangPlugin):
             generator = ClassGenerator(module,
                 path=os.sep.join([self.ctx.opts.directory, 'api', subpkg]),
                 package=fullpkg, mopackage=mopkg, src=src, ctx=self.ctx)
-            generator.generate()
+            generator.generate(module)
 
         # if not self.ctx.opts.no_schema:
         #     # Generate external schema
@@ -839,6 +839,14 @@ def is_config(stmt):
         stmt = get_parent(stmt)
     return config is None or config.arg == 'true'
 
+def is_include_yangelement(stmt):
+    """Returns True if stmt include a yangelement_stmt data statement"""
+    for ch in stmt.substmts:
+        for keyword in yangelement_stmts:
+            if ch.keyword == keyword:
+                return True
+    return False
+
 def get_typename(stmt):
     t = search_one(stmt, 'type')
     if t is not None:
@@ -989,7 +997,7 @@ class ClassGenerator(object):
 
         self.n = normalize(stmt.arg)
         self.n2 = camelize(stmt.arg)
-        self.rpc_class = None
+
         if stmt.keyword in module_stmts:
             self.filename = normalize(search_one(stmt, 'prefix').arg) + 'Routes.scala'
         else:
@@ -1012,11 +1020,11 @@ class ClassGenerator(object):
         else:
             self.rootpkg = package
 
-    def generate(self):
+    def generate(self, stmt):
         """Generates class(es) for self.stmt"""
-        if self.stmt.keyword in ('module', 'submodule'):
+        if stmt.keyword in ('module', 'submodule'):
             self.generate_classes()
-        elif self.stmt.keyword not in ('notification', 'rpc'):
+        elif stmt.keyword not in ('notification', 'rpc'):
             self.generate_class()
 
     def generate_classes(self):
@@ -1025,114 +1033,107 @@ class ClassGenerator(object):
 
         """
         assert(self.stmt.keyword == 'module')
-        # Namespace and prefix
-        ns_arg = search_one(self.stmt, 'namespace').arg
-        prefix = search_one(self.stmt, 'prefix')
-        
-        # Add root to class_hierarchy dict
-        if self.rootpkg not in class_hierarchy:
-            class_hierarchy[self.rootpkg] = set([])
-        class_hierarchy[self.rootpkg].add(self.n)
-        
-        # Add all classes that will be generated to class_hierarchy dict
-        def record(stmt, package):
-            for ch in search(stmt, yangelement_stmts):
-                if package not in class_hierarchy:
-                    class_hierarchy[package] = set([])
-                class_hierarchy[package].add(normalize(ch.arg))
-                record(ch, '.'.join([package, camelize(ch.arg)]))
-        record(self.stmt, self.rootpkg)
 
-        # Gather typedefs to generate and add to class_hierarchy dict
-        typedef_stmts = set([])
-        module_stmts = set([self.stmt])
+        is_yangelement = is_include_yangelement(self.stmt)
+
+        if is_yangelement:
+            module_stmts = set([self.stmt])
+        else:
+            module_stmts = set([])
         included = map(lambda x: x.arg, search(self.stmt, 'include'))
-        for (module, rev) in self.ctx.modules:
-            if module in included:
-                module_stmts.add(self.ctx.modules[(module, rev)])
-        for module_stmt in module_stmts:
-            for stmt in search(module_stmt, 'typedef'):
-                typedef_stmts.add(stmt)
-                class_hierarchy[self.rootpkg].add(normalize(stmt.arg))
-                try:
-                    while True:
-                        type_stmt = search_one(stmt, 'type')
-                        if type_stmt.i_typedef is None:
-                            break
-                        typedef_stmts.add(type_stmt.i_typedef)
-                        stmt = type_stmt.i_typedef
-                        class_hierarchy[self.rootpkg].add(normalize(stmt.arg))
-                except AttributeError:
-                    pass
 
-        # Generate root class
+        for (module, rev) in self.ctx.modules:
+             if module in included:
+                 module_stmts.add(self.ctx.modules[(module, rev)])
+
+        for module in module_stmts:
+            self.generate_routeclass(module)
+
+    def generate_routeclass(self, module):
+        """Generates a Scala routes class hierarchy from a module or submodule statement
+
+        module        -- A statement (sub)tree represent module or submodule, parsed from a YANG model
+        """
+        filename = normalize(module.arg) + 'Routes.scala'
+        package = self.package + "." + normalize(module.arg)
+        mopackage=self.mopackage + "." + normalize(module.arg)
+        path = self.path + "/" + normalize(module.arg)
+        rpc_class = None
+
+        # Generate routes class
         if self.ctx.opts.verbose:
-            print('Generating Java class "' + self.filename + '"...')
-        self.java_class = JavaClass(filename=self.filename,
-                package=self.package, description=('The root class for namespace ' +
-                    ns_arg + ' (accessible from \n * ' + self.n +
-                    '.NAMESPACE) with prefix "' + prefix.arg + '" (' + self.n +
-                    '.PREFIX).'),
-                source=self.src,
+            print('Generating REST API Routes class "' + filename + '"...')
+
+        java_class = JavaClass(filename=filename,
+                package=package, description=('The routes class for namespace ' +
+                    module.arg),
+                source=module.arg,
                 superclass='EasyRestRoutingDSL with LazyLogging with HttpService')
 
         dispatcher_import = [' ' * 4 + "import net.juniper.easyrest.core.EasyRestActionSystem.system.dispatcher"]
         dispatcher = JavaValue(dispatcher_import)
-        self.java_class.append_access_method("dispatcher", dispatcher)
+        java_class.append_access_method("dispatcher", dispatcher)
 
-        routing = [' ' * 4 + "val " + camelize(prefix.arg) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
+        routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
 
-        res = search(self.stmt, list(yangelement_stmts | {'augment'}))
+        res = search(module, list(yangelement_stmts | {'augment'}))
         append_rpc_impl = False
         if (len(res) > 0):
             prefixGenerated = False
-            # Generate classes for children and keep track of augmented modules
-            for stmt in search(self.stmt, list(yangelement_stmts | {'augment'})):
-                child_generator = ClassGenerator(stmt, package=self.package, mopackage=self.mopackage,
-                    ns=ns_arg, prefix_name=self.n, parent=self)
-                child_generator.generate()
+            # Generate classes for children of module/submodule
+            for stmt in search(module, list(yangelement_stmts)):
+                # Do not generate include stmt in submodule
+                if stmt.i_orig_module.arg == module.arg:
+                    child_generator = ClassGenerator(stmt, path=path, package=package, mopackage=mopackage,
+                                                     ns=module.arg, prefix_name=module.arg, parent=self)
+                    child_generator.generate(stmt)
 
-                if stmt.keyword == 'rpc':
-                    append_rpc_impl = True
-                    routing.extend(child_generator.generate_rpc_routes(self, stmt))
-                    self.generate_rpc_class(stmt)
-                elif stmt.keyword == 'notification':
-                    routing.extend(child_generator.generate_notification_routes(self))
-                else:
-                    if(prefixGenerated is False):
-                        prefixGenerated = True
-                        namespace_def = [' ' * 4 + "private val modelNS = \"" + ns_arg + "\""]
-                        namespace = JavaValue(namespace_def)
-                        self.java_class.append_access_method("namespace", namespace)
-                        model_def = [' ' * 4 + "private val modelPrefix = \"" + prefix.arg + "\""]
-                        model = JavaValue(model_def)
-                        self.java_class.append_access_method("model", model)
-                        prefixmap_def = [' ' * 4 + "private val prefixs = new PrefixMap(Array(new Prefix(\"\", modelNS),new Prefix(modelPrefix, modelNS)))"]
-                        prefixmap = JavaValue(prefixmap_def)
-                        self.java_class.append_access_method("prefixmap", prefixmap)
+                    if stmt.keyword == 'rpc':
+                        append_rpc_impl = True
+                        routing.extend(child_generator.generate_rpc_routes(self, stmt))
+                        self.generate_rpc_class(stmt)
+                    elif stmt.keyword == 'notification':
+                        routing.extend(child_generator.generate_notification_routes(self))
+                    else:
+                        if(prefixGenerated is False):
+                            prefixGenerated = True
+                            namespace_def = [' ' * 4 + "private val modelNS = \"" + module.arg + "\""]
+                            namespace = JavaValue(namespace_def)
+                            java_class.append_access_method("namespace", namespace)
+                            model_def = [' ' * 4 + "private val modelPrefix = \"" + module.arg + "\""]
+                            model = JavaValue(model_def)
+                            java_class.append_access_method("model", model)
+                            prefixmap_def = [' ' * 4 + "private val prefixs = new PrefixMap(Array(new Prefix(\"\", modelNS),new Prefix(modelPrefix, modelNS)))"]
+                            prefixmap = JavaValue(prefixmap_def)
+                            java_class.append_access_method("prefixmap", prefixmap)
 
-                    routing.extend(child_generator.generate_routes(self))
-
+                        routing.extend(child_generator.generate_routes(java_class))
 
             routing[len(routing)-1] = ' ' * 6 + '}'
             routing.append(' ' * 4 + '}')
             res = JavaValue(routing)
-            self.java_class.append_access_method("routing", res)
+            java_class.append_access_method("routing", res)
 
             if append_rpc_impl:
                 rpcapi = [' ' * 4 + 'lazy val '+self.n2+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(self.n2)+'RpcApi])']
                 rpcapiimpl = JavaValue(rpcapi)
-                self.java_class.append_access_method("apiimpl", rpcapiimpl)
+                java_class.append_access_method("apiimpl", rpcapiimpl)
 
-            self.write_to_file()
+            write_file(path,
+                   filename,
+                   java_class.as_list(),
+                   self.ctx)
 
-            if self.rpc_class:
-                self.rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
-                self.rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
+            # Generate RPC API class
+            if rpc_class:
+                rpc_filename = normalize(module.arg) + 'RpcApi.scala'
 
-                write_file(self.path,
-                   normalize(self.n2)+"RpcApi.scala",
-                   self.rpc_class.as_list(),
+                rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
+                rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
+
+                write_file(path,
+                   rpc_filename,
+                   rpc_class.as_list(),
                    self.ctx)
 
     def generate_class(self):
@@ -1141,6 +1142,10 @@ class ClassGenerator(object):
 
         """
         stmt = self.stmt
+        if stmt.i_orig_module.keyword == "submodule":
+            source = stmt.i_orig_module.arg
+        else:
+            source = self.rootpkg[self.rootpkg.rfind('.') + 1:]
 
         # If augment, add target module to augmented_modules dict
         if stmt.keyword == 'augment':
@@ -1167,7 +1172,7 @@ class ClassGenerator(object):
                                      '"\n * <p>\n * See line ',
                                      str(stmt.pos.line), ' in\n * ',
                                      stmt.pos.ref]),
-                source=self.src)
+                source=source)
 
         if self.ctx.opts.debug or self.ctx.opts.verbose:
             if package_generated:
@@ -1344,13 +1349,13 @@ class ClassGenerator(object):
     #                 add(sub.arg, mark_method)
     #     return field
 
-    def generate_routes(self, parent):
-        add = parent.java_class.append_access_method  # XXX: add is a function
+    def generate_routes(self, java_class):
+        add = java_class.append_access_method  # XXX: add is a function
 
         if self.stmt.i_orig_module.keyword == "submodule":
             module_name = self.stmt.i_orig_module.arg
         else:
-            module_name = module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
+            module_name = self.rootpkg[self.rootpkg.rfind('.') + 1:]
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2) +
@@ -1362,7 +1367,19 @@ class ClassGenerator(object):
         api = [' ' * 4 + 'lazy val '+self.n2+'ApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(self.n2)+'Api])']
         apiimpl = JavaValue(api)
 
-        for key in self.key_stmts:
+        is_config_value = is_config(self.stmt)
+        keys = []
+        if is_config_value:
+            key = search_one(self.stmt, 'key')
+            try:
+                keys = key.arg.split(' ')
+            except AttributeError:
+                self.is_config = False  # is_config produced wrong value
+
+        findkey = lambda k: search_one(self.stmt, 'leaf', arg=k)
+        key_stmts = [findkey(k) for k in keys]
+
+        for key in key_stmts:
                 key_arg = camelize(key.arg)
                 key_type = search_one(key, 'type')
                 jnc, primitive = get_types(key_type, self.ctx)
@@ -1470,24 +1487,23 @@ class ClassGenerator(object):
         add('marsheller', marsheller)
         add('apiimpl', apiimpl)
 
-        parent.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
-        parent.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
-        parent.java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
-        parent.java_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
-        parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-        parent.java_class.imports.add("net.juniper.easyrest.util.JsonUtil")
-        parent.java_class.imports.add(self.mopackage + '.' + normalize(self.n2))
-        parent.java_class.imports.add("spray.http.{HttpCharsets, HttpRequest}")
-        parent.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
-        parent.java_class.imports.add("spray.routing.HttpService")
-        parent.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
-
-        parent.java_class.imports.add("scala.util.{Failure, Success}")
-        parent.java_class.imports.add("com.tailf.jnc.PrefixMap")
-        parent.java_class.imports.add("com.tailf.jnc.Prefix")
-        parent.java_class.imports.add("com.tailf.jnc.YangJsonParser")
-        parent.java_class.imports.add("net.juniper.easyrest.ctx.Page")
-        parent.java_class.imports.add(jnc)
+        java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
+        java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
+        java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
+        java_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
+        java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
+        java_class.imports.add("net.juniper.easyrest.util.JsonUtil")
+        java_class.imports.add(self.mopackage + '.' + normalize(self.n2))
+        java_class.imports.add("spray.http.{HttpCharsets, HttpRequest}")
+        java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
+        java_class.imports.add("spray.routing.HttpService")
+        java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
+        java_class.imports.add("scala.util.{Failure, Success}")
+        java_class.imports.add("com.tailf.jnc.PrefixMap")
+        java_class.imports.add("com.tailf.jnc.Prefix")
+        java_class.imports.add("com.tailf.jnc.YangJsonParser")
+        java_class.imports.add("net.juniper.easyrest.ctx.Page")
+        java_class.imports.add(jnc)
 
         return exact
 
