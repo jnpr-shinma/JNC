@@ -1055,12 +1055,16 @@ class ClassGenerator(object):
         module        -- A statement (sub)tree represent module or submodule, parsed from a YANG model
         """
         filename = normalize(module.arg) + 'Routes.scala'
-        package = self.package + "." + normalize(module.arg)
-        mopackage=self.mopackage + "." + normalize(module.arg)
+
         if module.keyword == "module":
             path = self.path
+            mopackage = self.mopackage
+            package = self.package
         else:
             path = self.path + "/" + normalize(module.arg)
+            mopackage = self.mopackage + "." + normalize(module.arg)
+            package = self.package + "." + normalize(module.arg)
+
         self.rpc_class = None
 
         # Generate routes class
