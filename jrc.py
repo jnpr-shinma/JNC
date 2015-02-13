@@ -1057,8 +1057,11 @@ class ClassGenerator(object):
         filename = normalize(module.arg) + 'Routes.scala'
         package = self.package + "." + normalize(module.arg)
         mopackage=self.mopackage + "." + normalize(module.arg)
-        path = self.path + "/" + normalize(module.arg)
-        rpc_class = None
+        if module.keyword == "module":
+            path = self.path
+        else:
+            path = self.path + "/" + normalize(module.arg)
+        self.rpc_class = None
 
         # Generate routes class
         if self.ctx.opts.verbose:
@@ -1090,10 +1093,10 @@ class ClassGenerator(object):
 
                     if stmt.keyword == 'rpc':
                         append_rpc_impl = True
-                        routing.extend(child_generator.generate_rpc_routes(self, stmt))
+                        routing.extend(child_generator.generate_rpc_routes(java_class, stmt))
                         self.generate_rpc_class(stmt)
                     elif stmt.keyword == 'notification':
-                        routing.extend(child_generator.generate_notification_routes(self))
+                        routing.extend(child_generator.generate_notification_routes(java_class))
                     else:
                         if(prefixGenerated is False):
                             prefixGenerated = True
@@ -1125,15 +1128,15 @@ class ClassGenerator(object):
                    self.ctx)
 
             # Generate RPC API class
-            if rpc_class:
+            if self.rpc_class:
                 rpc_filename = normalize(module.arg) + 'RpcApi.scala'
 
-                rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
-                rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
+                self.rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
+                self.rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
 
                 write_file(path,
                    rpc_filename,
-                   rpc_class.as_list(),
+                   self.rpc_class.as_list(),
                    self.ctx)
 
     def generate_class(self):
@@ -1507,13 +1510,13 @@ class ClassGenerator(object):
 
         return exact
 
-    def generate_rpc_routes(self, parent, stmt):
-        add = parent.java_class.append_access_method  # XXX: add is a function
+    def generate_rpc_routes(self, java_class, stmt):
+        add = java_class.append_access_method  # XXX: add is a function
 
         if self.stmt.i_orig_module.keyword == "submodule":
             module_name = self.stmt.i_orig_module.arg
         else:
-            module_name = module = parent.rootpkg[parent.rootpkg.rfind('.') + 1:]
+            module_name = self.rootpkg[self.rootpkg.rfind('.') + 1:]
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'Input] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'Input' +
@@ -1529,10 +1532,10 @@ class ClassGenerator(object):
         for sub in stmt.substmts:
             if sub.keyword == "input":
                 input_para = True
-                parent.java_class.imports.add('net.juniper.yang.mo.'+parent.n2+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
+                java_class.imports.add('net.juniper.yang.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
             elif sub.keyword == "output":
                 output_para = True
-                parent.java_class.imports.add('net.juniper.yang.mo.'+parent.n2+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
+                java_class.imports.add('net.juniper.yang.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
 
         indent = ' ' * 6
         body_indent = ' ' * 8
@@ -1553,9 +1556,9 @@ class ClassGenerator(object):
             exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option[Unit]] {")
 
         if input_para:
-            exact.append(body_indent + "              "+camelize(module)+"RpcApiImpl."+camelize(self.n2)+"Rpc(input, apiCtx)")
+            exact.append(body_indent + "              "+camelize(module_name)+"RpcApiImpl."+camelize(self.n2)+"Rpc(input, apiCtx)")
         else:
-            exact.append(body_indent + "              "+camelize(module)+"RpcApiImpl."+camelize(self.n2)+"Rpc(apiCtx)")
+            exact.append(body_indent + "              "+camelize(module_name)+"RpcApiImpl."+camelize(self.n2)+"Rpc(apiCtx)")
             
         exact.append(body_indent + "            }) {")
 
@@ -1578,8 +1581,8 @@ class ClassGenerator(object):
 
         return exact
 
-    def generate_notification_routes(self, parent):
-        add = parent.java_class.append_access_method  # XXX: add is a function
+    def generate_notification_routes(self, java_class):
+        add = java_class.append_access_method  # XXX: add is a function
 
         streamregistry = [' ' * 4 + 'StreamRegistry.registerStream(']
         streamregistry.append(' ' * 6 + 'new Stream()')
@@ -1615,16 +1618,16 @@ class ClassGenerator(object):
 
         add('streamregistry', streamregistry_value)
 
-        parent.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
-        parent.java_class.imports.add("net.juniper.easyrest.notification.NotificationSubscriptionManager")
-        parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-        parent.java_class.imports.add("net.juniper.easyrest.rest.EasyRestServerSideEventDirective._")
-        parent.java_class.imports.add("net.juniper.easyrest.streams.spray.StreamRegistry")
-        parent.java_class.imports.add("net.juniper.easyrest.streams.yang.Stream")
-        parent.java_class.imports.add("spray.httpx.encoding.Gzip")
-        parent.java_class.imports.add("spray.routing.HttpService")
-        parent.java_class.imports.add("spray.routing.directives.RefFactoryMagnet")
-        parent.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
+        java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
+        java_class.imports.add("net.juniper.easyrest.notification.NotificationSubscriptionManager")
+        java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
+        java_class.imports.add("net.juniper.easyrest.rest.EasyRestServerSideEventDirective._")
+        java_class.imports.add("net.juniper.easyrest.streams.spray.StreamRegistry")
+        java_class.imports.add("net.juniper.easyrest.streams.yang.Stream")
+        java_class.imports.add("spray.httpx.encoding.Gzip")
+        java_class.imports.add("spray.routing.HttpService")
+        java_class.imports.add("spray.routing.directives.RefFactoryMagnet")
+        java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
 
         return exact
 
