@@ -1120,8 +1120,8 @@ class ClassGenerator(object):
         for stmt in search(self.stmt, list(yangelement_stmts | {'augment'})):
             if stmt.i_orig_module.keyword == "submodule":
                 ns_arg = ns_arg+'.'+stmt.i_orig_module.arg
-                path = self.path+'/'+normalize(stmt.i_orig_module.arg)
-                package = self.package+'.'+normalize(stmt.i_orig_module.arg)
+                path = self.path+'/'+camelize(stmt.i_orig_module.arg)
+                package = self.package+'.'+camelize(stmt.i_orig_module.arg)
             else:
                 ns_arg = ns_arg
                 path = self.path

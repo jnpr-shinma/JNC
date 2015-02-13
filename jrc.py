@@ -1061,9 +1061,9 @@ class ClassGenerator(object):
             mopackage = self.mopackage
             package = self.package
         else:
-            path = self.path + "/" + normalize(module.arg)
-            mopackage = self.mopackage + "." + normalize(module.arg)
-            package = self.package + "." + normalize(module.arg)
+            path = self.path + "/" + camelize(module.arg)
+            mopackage = self.mopackage + "." + camelize(module.arg)
+            package = self.package + "." + camelize(module.arg)
 
         self.rpc_class = None
 
