@@ -1258,7 +1258,10 @@ class ClassGenerator(object):
         root_fields = [JavaValue()]
         root_fields[0].set_name('TAG_PATH')
         package = self.package.replace('.', '/')
-        package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name))[2]
+        if self.stmt.i_orig_module.keyword == "submodule":
+            package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name) + '/' + camelize(self.stmt.i_orig_module.arg))[2]
+        else:
+            package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name))[2]
         if package_name:
             tagpath = package_name[1:] + '/' + stmt.arg
         else:
