@@ -546,6 +546,8 @@ def get_package(stmt, ctx):
     sub_packages = collections.deque()
     parent = get_parent(stmt)
     while parent is not None:
+        if stmt.i_orig_module.keyword == "submodule" and stmt.keyword != "typedef" and get_parent(parent) is None:
+            sub_packages.appendleft(camelize(stmt.i_orig_module.arg))
         stmt = parent
         parent = get_parent(stmt)
         sub_packages.appendleft(camelize(stmt.arg))
@@ -1119,15 +1121,15 @@ class ClassGenerator(object):
         # Generate classes for children and keep track of augmented modules
         for stmt in search(self.stmt, list(yangelement_stmts | {'augment'})):
             if stmt.i_orig_module.keyword == "submodule":
-                ns_arg = ns_arg+'.'+stmt.i_orig_module.arg
+                ns = ns_arg+'/'+stmt.i_orig_module.arg
                 path = self.path+'/'+camelize(stmt.i_orig_module.arg)
                 package = self.package+'.'+camelize(stmt.i_orig_module.arg)
             else:
-                ns_arg = ns_arg
+                ns = ns_arg
                 path = self.path
                 package = self.package
             child_generator = ClassGenerator(stmt, path=path, package=package,
-                ns=ns_arg, prefix_name=self.n, parent=self)
+                ns=ns, prefix_name=self.n, parent=self)
             child_generator.generate()
 
         # Generate root class
