@@ -546,6 +546,8 @@ def get_package(stmt, ctx):
     sub_packages = collections.deque()
     parent = get_parent(stmt)
     while parent is not None:
+        if stmt.i_orig_module.keyword == "submodule" and stmt.keyword != "typedef" and get_parent(parent) is None:
+            sub_packages.appendleft(camelize(stmt.i_orig_module.arg))
         stmt = parent
         parent = get_parent(stmt)
         sub_packages.appendleft(camelize(stmt.arg))
@@ -845,6 +847,14 @@ def get_typename(stmt):
     else:
        return ''
 
+def get_tagpath(stmt):
+    tagpath = collections.deque()
+    parent = get_parent(stmt)
+    while parent is not None and parent.keyword != "module":
+        stmt = parent
+        parent = get_parent(stmt)
+        tagpath.appendleft(stmt.arg)
+    return '/'.join(tagpath)
 
 class SchemaNode(object):
 
@@ -909,9 +919,12 @@ class SchemaNode(object):
         res.append('<max_occurs>' + max_occurs + '</max_occurs>')
 
         children = ''
+        yang_children = ''
         for ch in search(stmt, yangelement_stmts | leaf_stmts):
             children += camelize(ch.arg) + ' '
+            yang_children += ch.arg + ' '
         res.append('<children>' + children[:-1] + '</children>')
+        res.append('<yang_children>' + yang_children[:-1] + '</yang_children>')
 
         res.append('<flags>0</flags>')
         res.append('<desc></desc>')
@@ -1118,8 +1131,16 @@ class ClassGenerator(object):
 
         # Generate classes for children and keep track of augmented modules
         for stmt in search(self.stmt, list(yangelement_stmts | {'augment'})):
-            child_generator = ClassGenerator(stmt, package=self.package,
-                ns=ns_arg, prefix_name=self.n, parent=self)
+            if stmt.i_orig_module.keyword == "submodule":
+                ns = ns_arg+'/'+stmt.i_orig_module.arg
+                path = self.path+'/'+camelize(stmt.i_orig_module.arg)
+                package = self.package+'.'+camelize(stmt.i_orig_module.arg)
+            else:
+                ns = ns_arg
+                path = self.path
+                package = self.package
+            child_generator = ClassGenerator(stmt, path=path, package=package,
+                ns=ns, prefix_name=self.n, parent=self)
             child_generator.generate()
 
         # Generate root class
@@ -1247,13 +1268,20 @@ class ClassGenerator(object):
         # Set tagpath field in class
         root_fields = [JavaValue()]
         root_fields[0].set_name('TAG_PATH')
-        package = self.package.replace('.', '/')
-        package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name))[2]
-        if package_name:
-            tagpath = package_name[1:] + '/' + stmt.arg
+        #package = self.package.replace('.', '/')
+        #if self.stmt.i_orig_module.keyword == "submodule":
+        #    package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name) + '/' + camelize(self.stmt.i_orig_module.arg))[2]
+        #else:
+        #    package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name))[2]
+        #if package_name :
+        #    tagpath = package_name[1:] + '/' + stmt.arg
+        #else:
+        tagpath = get_tagpath(stmt)
+        if tagpath:
+            tagpath_value = tagpath + '/' + stmt.arg
         else:
-            tagpath = stmt.arg
-        root_fields[0].value = 'new Tagpath("' + tagpath + '")'
+            tagpath_value = stmt.arg
+        root_fields[0].value = 'new Tagpath("' + tagpath_value + '")'
         for root_field in root_fields:
             for modifier in ('public', 'static', 'final', 'Tagpath'):
                 root_field.add_modifier(modifier)
