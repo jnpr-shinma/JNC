@@ -919,9 +919,12 @@ class SchemaNode(object):
         res.append('<max_occurs>' + max_occurs + '</max_occurs>')
 
         children = ''
+        yang_children = ''
         for ch in search(stmt, yangelement_stmts | leaf_stmts):
             children += camelize(ch.arg) + ' '
+            yang_children += ch.arg + ' '
         res.append('<children>' + children[:-1] + '</children>')
+        res.append('<yang_children>' + yang_children[:-1] + '</yang_children>')
 
         res.append('<flags>0</flags>')
         res.append('<desc></desc>')
