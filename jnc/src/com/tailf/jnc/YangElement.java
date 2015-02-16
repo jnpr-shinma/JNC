@@ -1,7 +1,6 @@
 package com.tailf.jnc;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.WordUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -61,19 +60,19 @@ public abstract class YangElement extends Element {
             String[] paths = path.split("/");
             Object currObj = this;
             for (int i = 0; i < paths.length; i++) {
-                String fieldName = formatFieldName(paths[i]);
+                String fieldName = normalize(paths[i]);
                 if (i != paths.length - 1) {
                     Field f = currObj.getClass().getDeclaredField(StringUtils.uncapitalize(fieldName));
                     f.setAccessible(true);
                     Object tmpObj = f.get(currObj);
                     if (tmpObj == null) {
-                        String methodName = "add" + fieldName;
+                        String methodName = "add" + capitalize(fieldName);
                         Method m = currObj.getClass().getDeclaredMethod(methodName, new Class<?>[]{});
                         tmpObj = m.invoke(currObj, new Object[]{});
                     }
                     currObj = tmpObj;
                 } else {
-                    String methodName = "set" + fieldName + "Value";
+                    String methodName = "set" + capitalize(fieldName) + "Value";
                     Class<?> paramClass = value == null ? null : value.getClass();
                     Method m = getMethodByLowercaseNameAndParam(currObj.getClass(), methodName, paramClass);
                     m.invoke(currObj, new Object[]{value});
@@ -86,9 +85,6 @@ public abstract class YangElement extends Element {
         }
     }
 
-    private String formatFieldName(String fieldName) {
-        return StringUtils.replaceEach(WordUtils.capitalize(StringUtils.replaceEach(fieldName, new String[]{"_", "-"}, new String[]{" ", " "})), new String[]{" "}, new String[]{""});
-    }
 
     /**
      * get setter method ignoring letter cases.
