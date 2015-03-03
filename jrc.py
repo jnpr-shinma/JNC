@@ -41,6 +41,7 @@ import re
 from datetime import date
 from pyang import plugin, util, error
 
+OSSep = "/"
 
 def pyang_plugin_init():
     """Registers an instance of the jnc plugin"""
@@ -247,13 +248,13 @@ class JRCPlugin(plugin.PyangPlugin):
             mopkg = '.'.join([self.ctx.rootpkg, 'mo', subpkg]).replace('/', '.')
         else:
             fullpkg = subpkg
-        d = os.sep.join([self.d , subpkg])
+        d = OSSep.join([self.d , subpkg])
         if not self.ctx.opts.no_classes:
             # Generate Java classes
             src = ('module "' + module.arg + '", revision: "' +
                 util.get_latest_revision(module) + '".')
             generator = ClassGenerator(module,
-                path=os.sep.join([self.ctx.opts.directory, 'api', subpkg]),
+                path=OSSep.join([self.ctx.opts.directory, 'api', subpkg]),
                 package=fullpkg, mopackage=mopkg, src=src, ctx=self.ctx)
             generator.generate(module)
 
@@ -477,7 +478,7 @@ def write_file(d, file_name, file_content, ctx):
     named file_name with file_content in it.
 
     """
-    #d = d.replace('.', os.sep)
+    #d = d.replace('.', OSSep)
     wd = os.getcwd()
     try:
         os.makedirs(d, 0o777)
@@ -497,9 +498,9 @@ def write_file(d, file_name, file_content, ctx):
             raise
     finally:
         if ctx.opts.verbose:
-            print('Writing file to: ' + os.getcwd() + os.sep + file_name)
+            print('Writing file to: ' + os.getcwd() + OSSep + file_name)
         os.chdir(wd)
-    with open(d + os.sep + file_name, 'w+') as f:
+    with open(d + OSSep + file_name, 'w+') as f:
         if isinstance(file_content, str):
             f.write(file_content)
         else:
@@ -550,7 +551,7 @@ def get_package(stmt, ctx):
         stmt = parent
         parent = get_parent(stmt)
         sub_packages.appendleft('mo.'+camelize(stmt.arg))
-    full_package = ctx.rootpkg.split(os.sep)
+    full_package = ctx.rootpkg.split(OSSep)
     full_package.extend(sub_packages)
     return '.'.join(full_package)
 
@@ -987,8 +988,8 @@ class ClassGenerator(object):
         """
         self.stmt = stmt
         self.path = path
-        self.package = None if package is None else package.replace(os.sep, '.')
-        self.mopackage = None if mopackage is None else mopackage.replace(os.sep, '.')
+        self.package = None if package is None else package.replace(OSSep, '.')
+        self.mopackage = None if mopackage is None else mopackage.replace(OSSep, '.')
         self.src = src
         self.ctx = ctx
         self.ns = ns
@@ -1013,7 +1014,7 @@ class ClassGenerator(object):
 
             module = get_module(stmt)
             if self.ctx.rootpkg:
-                self.rootpkg = '.'.join([self.ctx.rootpkg.replace(os.sep, '.'),
+                self.rootpkg = '.'.join([self.ctx.rootpkg.replace(OSSep, '.'),
                                          camelize(module.arg)])
             else:
                 self.rootpkg = camelize(module.arg)
@@ -1104,10 +1105,19 @@ class ClassGenerator(object):
                     else:
                         if(prefixGenerated is False):
                             prefixGenerated = True
-                            namespace_def = [' ' * 4 + "private val modelNS = \"" + module.arg + "\""]
+                            if module.keyword == "submodule":
+                                main_module = get_module(stmt)
+                                namespace_stmt = search_one(main_module, "namespace")
+                                namespace = namespace_stmt.arg
+                                module_name = main_module.arg
+                            else:
+                                namespace_stmt = search_one(module, "namespace")
+                                namespace = namespace_stmt.arg
+                                module_name = module.arg
+                            namespace_def = [' ' * 4 + "private val modelNS = \"" + namespace + "\""]
                             namespace = JavaValue(namespace_def)
                             java_class.append_access_method("namespace", namespace)
-                            model_def = [' ' * 4 + "private val modelPrefix = \"" + module.arg + "\""]
+                            model_def = [' ' * 4 + "private val modelPrefix = \"" + module_name + "\""]
                             model = JavaValue(model_def)
                             java_class.append_access_method("model", model)
                             prefixmap_def = [' ' * 4 + "private val prefixs = new PrefixMap(Array(new Prefix(\"\", modelNS),new Prefix(modelPrefix, modelNS)))"]
@@ -1175,7 +1185,7 @@ class ClassGenerator(object):
                 description=''.join(['This class represents an element from ',
                                      '\n * the namespace ', self.ns,
                                      '\n * generated to "',
-                                     self.path, os.sep, stmt.arg,
+                                     self.path, OSSep, stmt.arg,
                                      '"\n * <p>\n * See line ',
                                      str(stmt.pos.line), ' in\n * ',
                                      stmt.pos.ref]),
@@ -1306,7 +1316,7 @@ class ClassGenerator(object):
     #     if sub.keyword in yangelement_stmts:
     #         pkg = self.package + '.' + self.n2
     #         child_generator = ClassGenerator(stmt=sub, package=pkg,
-    #             path=self.path + os.sep + self.n2,
+    #             path=self.path + OSSep + self.n2,
     #             ns=None, prefix_name=None, parent=self)
     #         child_generator.generate()
     #         child_gen = MethodGenerator(sub, self.ctx)
@@ -1656,7 +1666,7 @@ class ClassGenerator(object):
 #         """
 #         self.d = directory
 #         self.pkg = directory.rpartition('src')[2][1:]
-#         self.pkg = self.pkg.replace(os.sep, '.')
+#         self.pkg = self.pkg.replace(OSSep, '.')
 #         self.stmt = stmt
 #         self.ctx = ctx
 #
@@ -1673,7 +1683,7 @@ class ClassGenerator(object):
 #             for sub in stmts:
 #                 if normalize(sub.arg) == normalize(directory):
 #                     old_d = self.d
-#                     self.d += os.sep + directory
+#                     self.d += OSSep + directory
 #                     old_pkg = self.pkg
 #                     self.pkg += '.' + directory
 #                     old_stmt = self.stmt
@@ -2204,7 +2214,7 @@ class JavaMethod(JavaValue):
 #
 #         self.pkg = get_package(stmt, ctx)
 #         self.basepkg = self.pkg.partition('.')[0]
-#         self.rootpkg = ctx.rootpkg.split(os.sep)
+#         self.rootpkg = ctx.rootpkg.split(OSSep)
 #         if self.rootpkg[:1] == ['src']:
 #             self.rootpkg = self.rootpkg[1:]  # src not part of package
 #         self.rootpkg.append(camelize(self.module_stmt.arg))
