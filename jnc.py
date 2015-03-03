@@ -41,6 +41,7 @@ import re
 from datetime import date
 from pyang import plugin, util, error
 
+OSSep = "/"
 
 def pyang_plugin_init():
     """Registers an instance of the jnc plugin"""
@@ -246,13 +247,13 @@ class JNCPlugin(plugin.PyangPlugin):
             fullpkg = '.'.join([self.ctx.rootpkg, subpkg]).replace('/', '.')
         else:
             fullpkg = subpkg
-        d = os.sep.join([self.d , subpkg])
+        d = OSSep.join([self.d , subpkg])
         if not self.ctx.opts.no_classes:
             # Generate Java classes
             src = ('module "' + module.arg + '", revision: "' +
                 util.get_latest_revision(module) + '".')
             generator = ClassGenerator(module,
-                path=os.sep.join([self.ctx.opts.directory, subpkg]),
+                path=OSSep.join([self.ctx.opts.directory, subpkg]),
                 package=fullpkg, src=src, ctx=self.ctx)
             generator.generate()
 
@@ -476,7 +477,7 @@ def write_file(d, file_name, file_content, ctx):
     named file_name with file_content in it.
 
     """
-    #d = d.replace('.', os.sep)
+    #d = d.replace('.', OSSep)
     wd = os.getcwd()
     try:
         os.makedirs(d, 0o777)
@@ -496,9 +497,9 @@ def write_file(d, file_name, file_content, ctx):
             raise
     finally:
         if ctx.opts.verbose:
-            print('Writing file to: ' + os.getcwd() + os.sep + file_name)
+            print('Writing file to: ' + os.getcwd() + OSSep + file_name)
         os.chdir(wd)
-    with open(d + os.sep + file_name, 'w+') as f:
+    with open(d + OSSep + file_name, 'w+') as f:
         if isinstance(file_content, str):
             f.write(file_content)
         else:
@@ -551,7 +552,7 @@ def get_package(stmt, ctx):
         stmt = parent
         parent = get_parent(stmt)
         sub_packages.appendleft(camelize(stmt.arg))
-    full_package = ctx.rootpkg.split(os.sep)
+    full_package = ctx.rootpkg.split(OSSep)
     full_package.extend(sub_packages)
     return '.'.join(full_package)
 
@@ -872,7 +873,7 @@ def get_uses_package(stmt, ctx):
         stmt = parent
         parent = get_parent(stmt)
         sub_packages.appendleft(camelize(stmt.arg))
-    full_package = ctx.rootpkg.split(os.sep)
+    full_package = ctx.rootpkg.split(OSSep)
     full_package.extend(sub_packages)
     return '.'.join(full_package)
 
@@ -1048,7 +1049,7 @@ class ClassGenerator(object):
         """
         self.stmt = stmt
         self.path = path
-        self.package = None if package is None else package.replace(os.sep, '.')
+        self.package = None if package is None else package.replace(OSSep, '.')
         self.src = src
         self.ctx = ctx
         self.ns = ns
@@ -1077,7 +1078,7 @@ class ClassGenerator(object):
 
             module = get_module(stmt)
             if self.ctx.rootpkg:
-                self.rootpkg = '.'.join([self.ctx.rootpkg.replace(os.sep, '.'),
+                self.rootpkg = '.'.join([self.ctx.rootpkg.replace(OSSep, '.'),
                                          camelize(module.arg)])
             else:
                 self.rootpkg = camelize(module.arg)
@@ -1143,7 +1144,7 @@ class ClassGenerator(object):
             description = ''.join(['This class represents an element from ',
                                    '\n * the namespace ', self.ns,
                                    '\n * generated to "',
-                                   self.path, os.sep, stmt.arg,
+                                   self.path, OSSep, stmt.arg,
                                    '"\n * <p>\n * See line ',
                                    str(stmt.pos.line), ' in\n * ',
                                    stmt.pos.ref])
@@ -1272,7 +1273,7 @@ class ClassGenerator(object):
         #reg.add_dependency('com.tailf.jnc.Tagpath')
         #reg.add_dependency('com.tailf.jnc.SchemaNode')
         #reg.add_dependency('com.tailf.jnc.SchemaTree')
-        schema = os.sep.join([self.ctx.opts.directory.replace('.', os.sep),
+        schema = OSSep.join([self.ctx.opts.directory.replace('.', OSSep),
                               self.n2, normalize(prefix.arg)])
         if self.ctx.opts.classpath_schema_loading:
             reg.add_line('parser.findAndReadFile("' + normalize(prefix.arg) + '.schema", h, ' + normalize(prefix.arg) + '.class);')
@@ -1310,7 +1311,7 @@ class ClassGenerator(object):
                 description=''.join(['This class represents an element from ',
                                      '\n * the namespace ', self.ns,
                                      '\n * generated to "',
-                                     self.path, os.sep, stmt.arg,
+                                     self.path, OSSep, stmt.arg,
                                      '"\n * <p>\n * See line ',
                                      str(stmt.pos.line), ' in\n * ',
                                      stmt.pos.ref]),
@@ -1433,10 +1434,10 @@ class ClassGenerator(object):
         if sub.keyword in yangelement_stmts:
             if hasattr(sub, 'i_uses'):
                 pkg = get_uses_package(sub, self.ctx)
-                path_name = self.ctx.opts.directory + os.sep + get_uses_path(sub)
+                path_name = self.ctx.opts.directory + OSSep + get_uses_path(sub)
             else:
                 pkg = self.package + '.' + self.n2
-                path_name =self.path + os.sep + self.n2
+                path_name =self.path + OSSep + self.n2
             child_generator = ClassGenerator(stmt=sub, package=pkg,
                 path=path_name,
                 ns=None, prefix_name=None, parent=self)
@@ -1509,7 +1510,7 @@ class PackageInfoGenerator(object):
         """
         self.d = directory
         self.pkg = directory.rpartition('src')[2][1:]
-        self.pkg = self.pkg.replace(os.sep, '.')
+        self.pkg = self.pkg.replace(OSSep, '.')
         self.stmt = stmt
         self.ctx = ctx
 
@@ -1526,7 +1527,7 @@ class PackageInfoGenerator(object):
             for sub in stmts:
                 if normalize(sub.arg) == normalize(directory):
                     old_d = self.d
-                    self.d += os.sep + directory
+                    self.d += OSSep + directory
                     old_pkg = self.pkg
                     self.pkg += '.' + directory
                     old_stmt = self.stmt
@@ -2062,7 +2063,7 @@ class MethodGenerator(object):
         else:
             self.pkg = get_package(stmt, ctx)
         self.basepkg = self.pkg.partition('.')[0]
-        self.rootpkg = ctx.rootpkg.split(os.sep)
+        self.rootpkg = ctx.rootpkg.split(OSSep)
         if self.rootpkg[:1] == ['src']:
             self.rootpkg = self.rootpkg[1:]  # src not part of package
         self.rootpkg.append(camelize(self.module_stmt.arg))
