@@ -935,7 +935,7 @@ class SchemaNode(object):
             res.append('<yang_type>' + typename + '</yang_type>')
             res.append('<yang_java_type>' + jnc + '</yang_java_type>')
 
-        if stmt.keyword in 'container':
+        if stmt.keyword in {'container', 'list'}:
             if hasattr(stmt, 'i_uses'):
                 package = get_uses_package(stmt, self.ctx)
                 yang_java_type = package + '.' + normalize(stmt.arg)
