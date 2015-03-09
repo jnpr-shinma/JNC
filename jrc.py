@@ -1287,13 +1287,13 @@ class ClassGenerator(object):
 
         if input_para:
             rpc_input = "(input: " + normalize(stmt.arg) + "Input, apiCtx: ApiContext)"
-            self.rpc_class.imports.add('net.juniper.yang.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Input")
+            self.rpc_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Input")
         else:
             rpc_input = "(apiCtx: ApiContext)"
 
         if output_para:
             rpc_output = "Future[Option[" + normalize(stmt.arg) + "Output"+"]]"
-            self.rpc_class.imports.add('net.juniper.yang.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Output")
+            self.rpc_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Output")
         else:
             rpc_output = "Future[Option[Unit]]"
 
@@ -1546,10 +1546,10 @@ class ClassGenerator(object):
         for sub in stmt.substmts:
             if sub.keyword == "input":
                 input_para = True
-                java_class.imports.add('net.juniper.yang.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
+                java_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
             elif sub.keyword == "output":
                 output_para = True
-                java_class.imports.add('net.juniper.yang.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
+                java_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
 
         indent = ' ' * 6
         body_indent = ' ' * 8
