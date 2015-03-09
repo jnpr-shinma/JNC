@@ -1726,10 +1726,17 @@ public class Element implements Serializable {
      * @throws IOException
      */
 
-    public void toJson(OutputStream outputStream, boolean prettyPrint) throws IOException {
+    public void toJson(OutputStream outputStream, boolean prettyPrint,boolean dropRoot) throws IOException {
         try (JsonGenerator generator = YangJsonFactory.jsonFactory().createGenerator(outputStream)) {
             if (prettyPrint) generator.useDefaultPrettyPrinter();
             generator.writeStartObject();
+            if(dropRoot == false){
+                generator.writeObjectFieldStart(qualifiedName());
+                toJsonString(generator);
+                generator.writeEndObject();
+            } else {
+                toJsonString(generator);
+            }
             toJsonString(generator);
             generator.writeEndObject();
         }
@@ -1737,16 +1744,23 @@ public class Element implements Serializable {
 
     /**
      * Convert object to JSON string and write it a string writer. If pretty print is set to true the
-     * output string is formatted
+     * output string is formatted. If drop root is set to true, the JSON root node will be dropped.
      * @param outputStream
      * @param prettyPrint
+     * @param dropRoot
      * @throws IOException
      */
-    public void toJson(StringWriter outputStream, boolean prettyPrint) throws IOException {
+    public void toJson(StringWriter outputStream, boolean prettyPrint, boolean dropRoot) throws IOException {
         try (JsonGenerator generator = YangJsonFactory.jsonFactory().createGenerator(outputStream)) {
             if (prettyPrint) generator.useDefaultPrettyPrinter();
             generator.writeStartObject();
-            toJsonString(generator);
+            if(dropRoot == false){
+                generator.writeObjectFieldStart(qualifiedName());
+                toJsonString(generator);
+                generator.writeEndObject();
+            } else {
+                toJsonString(generator);
+            }
             generator.writeEndObject();
         }
     }
@@ -1759,9 +1773,23 @@ public class Element implements Serializable {
      */
     public String toJson(boolean prettyPrint) throws IOException {
         StringWriter writer = new StringWriter();
-        toJson(writer, prettyPrint);
+        toJson(writer, prettyPrint,false);
         return writer.toString();
     }
+
+
+    /**
+     * Get JSON string representation with root node
+     * @param prettyPrint
+     * @return
+     * @throws IOException
+     */
+    public String toJsonWithRootNode(boolean prettyPrint) throws IOException {
+        StringWriter writer = new StringWriter();
+        toJson(writer, prettyPrint,false);
+        return writer.toString();
+    }
+
 
     /**
      * Convert object to JSON string. This API can either be schema aware if the schema is registered.

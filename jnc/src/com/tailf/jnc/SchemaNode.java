@@ -19,6 +19,7 @@ public class SchemaNode {
     public int min_occurs;
     public int max_occurs;
     public String[] children;
+    public String[] yang_children;
 
     public long flags; // CS_NODE_*
     public String desc;

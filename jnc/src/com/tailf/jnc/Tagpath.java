@@ -17,8 +17,13 @@ public class Tagpath {
 
     public Tagpath(String s) {
         final String[] tags = s.split("/");
-        p = new String[tags.length];
-        System.arraycopy(tags, 0, p, 0, tags.length);
+        if(tags.length > 0 && tags[0].trim().equals("")==true) {
+            p = new String[tags.length-1];
+            System.arraycopy(tags, 1, p, 0, tags.length-1);
+        } else {
+            p = new String[tags.length];
+            System.arraycopy(tags, 0, p, 0, tags.length);
+        }
     }
 
     @Override
