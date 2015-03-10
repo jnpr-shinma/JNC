@@ -6,8 +6,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * The YangElement is a configuration sub-tree like the
@@ -15,7 +13,7 @@ import java.util.Map;
  * class to make the configuration sub-tree data model aware. Classes generated
  * from the JNC pyang plugin are either YangElements or derived data types.
  * Thus the YangElement which is an abstract class is never used directly.
- * <p>
+ * <p/>
  * Fundamental methods for comparing, syncing, and inspecting sets of
  * configuration data, is provided by this class. The following two methods
  * highlights the fundamental purpose of this library:
@@ -35,7 +33,7 @@ public abstract class YangElement extends Element {
 
     private static final long serialVersionUID = 1L;
 
-    private static final String reservedWords[] = { "abstract", "boolean",
+    private static final String reservedWords[] = {"abstract", "boolean",
             "break", "byte", "case", "catch", "char", "class", "const",
             "continue", "default", "do", "double", "else", "extends",
             "final", "finally", "float", "for", "goto", "if", "implements",
@@ -43,53 +41,54 @@ public abstract class YangElement extends Element {
             "new", "package", "private", "protected", "public", "return",
             "short", "static", "super", "switch", "synchronized", "this",
             "throw", "throws", "transient", "try", "void", "volatile",
-            "while" };
+            "while"};
     public static final String COLON_UNEXPECTED_ELEMENT = ": Unexpected element";
     public static final String DUMMY = "DUMMY";
     public static final String DUMMY_LC = "dummy";
 
     /**
      * A temporary implementation.
+     *
      * @param path
      * @param value
      * @throws JNCException
      */
     public void setMethodByPath(String path, Object value) throws JNCException {
-        if(value == null)
+        if (value == null)
             return;
         try {
             String[] paths = path.split("/");
             Object currObj = this;
             for (int i = 0; i < paths.length; i++) {
-                String fieldName = paths[i];
+                String fieldName = normalize(paths[i]);
                 if (i != paths.length - 1) {
-                    Field f = currObj.getClass().getDeclaredField(fieldName);
+                    Field f = currObj.getClass().getDeclaredField(StringUtils.uncapitalize(fieldName));
                     f.setAccessible(true);
                     Object tmpObj = f.get(currObj);
-                    if(tmpObj == null) {
-                        String methodName = "add" + StringUtils.capitalize(fieldName);
+                    if (tmpObj == null) {
+                        String methodName = "add" + capitalize(fieldName);
                         Method m = currObj.getClass().getDeclaredMethod(methodName, new Class<?>[]{});
                         tmpObj = m.invoke(currObj, new Object[]{});
                     }
                     currObj = tmpObj;
-                }
-                else {
-                    String methodName = "set" + StringUtils.capitalize(fieldName) + "Value";
-                    Class<?> paramClass = value == null? null : value.getClass();
+                } else {
+                    String methodName = "set" + capitalize(fieldName) + "Value";
+                    Class<?> paramClass = value == null ? null : value.getClass();
                     Method m = getMethodByLowercaseNameAndParam(currObj.getClass(), methodName, paramClass);
                     m.invoke(currObj, new Object[]{value});
                 }
             }
-        }
-        catch(Exception e) {
+        } catch (Exception e) {
             //TODO need a logger
             e.printStackTrace();
             throw new YangException(YangException.ELEMENT_MISSING, "Error while setting value by path:" + path);
         }
     }
 
+
     /**
      * get setter method ignoring letter cases.
+     *
      * @param c
      * @param name
      * @param paramClass
@@ -97,11 +96,11 @@ public abstract class YangElement extends Element {
      */
     private Method getMethodByLowercaseNameAndParam(Class<?> c, String name, Class<?> paramClass) {
         Method[] ms = c.getDeclaredMethods();
-        for(int i = 0; i < ms.length; i ++) {
+        for (int i = 0; i < ms.length; i++) {
             Method m = ms[i];
-            if(m.getName().toLowerCase().equals(name.toLowerCase())) {
+            if (m.getName().toLowerCase().equals(name.toLowerCase())) {
                 Class<?>[] paramTypes = m.getParameterTypes();
-                if(paramTypes.length == 1 && (paramClass == null || paramTypes[0] == paramClass))
+                if (paramTypes.length == 1 && (paramClass == null || paramTypes[0] == paramClass))
                     return m;
             }
         }
@@ -127,7 +126,7 @@ public abstract class YangElement extends Element {
 
     /**
      * Gets the package name of the generated class that represents elem.
-     * 
+     *
      * @param elem
      * @return Dot-separated path to highest-level YangElement parent, or empty
      * string if elem or its parent is not a YangElement.
@@ -149,19 +148,19 @@ public abstract class YangElement extends Element {
 
     /**
      * Creates an instance of
-     * 
+     *
      * @param parent of YANG statement counterpart, null if none
-     * @param name (non-normalized) name of class to be instantiated
-     * @param pkg The base package of the generated classes
+     * @param name   (non-normalized) name of class to be instantiated
+     * @param pkg    The base package of the generated classes
      * @return An instance of class name, as a child of parent
      * @throws ClassNotFoundException If normalize(name) does not yield a valid
-     *             class name
+     *                                class name
      * @throws InstantiationException if the referenced class represents an
-     *             abstract class, an interface, an array class, a primitive
-     *             type, or void; or if the class has no nullary constructor;
-     *             or if the instantiation fails for some other reason.
+     *                                abstract class, an interface, an array class, a primitive
+     *                                type, or void; or if the class has no nullary constructor;
+     *                                or if the instantiation fails for some other reason.
      * @throws IllegalAccessException if the class or its nullary constructor
-     *             is not accessible.
+     *                                is not accessible.
      */
     private static Element instantiate(Element parent, String name, String pkg)
             throws ClassNotFoundException, InstantiationException,
@@ -175,18 +174,18 @@ public abstract class YangElement extends Element {
     /**
      * Creates an instance of a child using class generated by the JNC pyang
      * plugin.
-     * 
+     *
      * @param parser ElementHandler to set unknownLevel in, in case incoming
      *               data uses a newer revision
      * @param parent The parent element of the child to be instantiated,
      *               <code>null</code> if root.
-     * @param ns Namespace of the child to be instantiated
-     * @param name Name of the child to be instantiated
+     * @param ns     Namespace of the child to be instantiated
+     * @param name   Name of the child to be instantiated
      * @return The created element or null if no element was created.
      * @throws YangException if unable to instantiate the child
      */
     protected static Element createInstance(ElementHandler parser,
-            Element parent, String ns, String name) throws YangException {
+                                            Element parent, String ns, String name) throws YangException {
         final String pkg = getPackage(ns);
         if (pkg == null) {
             final Element elem = new Element(ns, name);
@@ -204,8 +203,8 @@ public abstract class YangElement extends Element {
                     final String methodName = "add" + normalize(name);
                     final Class<?> parentClass = parent.getClass();
                     final Method addChild = parentClass.getMethod(
-                            methodName, new Class[] {});
-                    return (Element) addChild.invoke(parent, new Object[] {});
+                            methodName, new Class[]{});
+                    return (Element) addChild.invoke(parent, new Object[]{});
                 } catch (final NoSuchMethodException e) {
                     if (((YangElement) parent).isChild(name)) {
                         // known existing leaf will be handled by endElement
@@ -222,9 +221,9 @@ public abstract class YangElement extends Element {
                     return null;
                 }
             } else { // YangElement is aware but parent is not
-                     // This is the case where we stop parsing
-                     // the NETCONF rpc data and start to create
-                     // JNC objects instead
+                // This is the case where we stop parsing
+                // the NETCONF rpc data and start to create
+                // JNC objects instead
                 final Element child = instantiate(parent, name, pkg);
                 parent.addChild(child);
                 return child;
@@ -249,7 +248,7 @@ public abstract class YangElement extends Element {
 
     /**
      * Sets the leaf value of the specified leaf of this YangElement.
-     * 
+     *
      * @param ns
      * @param name
      * @param value
@@ -261,10 +260,10 @@ public abstract class YangElement extends Element {
 
         // Aware
         final String methodName = "set" + normalize(name) + "Value";
-        final Class<?>[] types = new Class[] { String.class };
+        final Class<?>[] types = new Class[]{String.class};
         try {
             Method setLeafValue = getClass().getMethod(methodName, types);
-            setLeafValue.invoke(this, new Object[] { value });
+            setLeafValue.invoke(this, new Object[]{value});
         } catch (final NoSuchMethodException e) {
             if (!RevisionInfo.newerRevisionSupportEnabled) {
                 // e.printStackTrace();
@@ -280,7 +279,7 @@ public abstract class YangElement extends Element {
                 final Element leaf = nodes.first();
                 leaf.setValue(value);
             }
-        } catch (final java.lang.reflect.InvocationTargetException cm) {
+        } catch (final InvocationTargetException cm) {
             // case with added enumerations,
             if (!RevisionInfo.newerRevisionSupportEnabled) {
                 throw new YangException(YangException.BAD_VALUE,
@@ -296,9 +295,7 @@ public abstract class YangElement extends Element {
                 final Element leaf = nodes.first();
                 leaf.setValue(value);
             }
-        }
-
-        catch (final Exception invErr) {
+        } catch (final Exception invErr) {
             // type error
             throw new YangException(YangException.BAD_VALUE, getElementPath(name)
                     + ": " + invErr.getCause().toString());
@@ -317,13 +314,12 @@ public abstract class YangElement extends Element {
 
     /**
      * Static list of packages.
-     * 
      */
     static ArrayList<Package> packages = new ArrayList<Package>();
 
     /**
      * Locate package from Namespace.
-     * 
+     *
      * @return Package name, if namespace is data model aware
      */
     public static String getPackage(String ns) {
@@ -391,7 +387,7 @@ public abstract class YangElement extends Element {
         for (int i = 1; i < len; i++) {
             boolean isLast = i == len - 1;
             char c = s.charAt(i);
-            char next = isLast ? c : s.charAt(i+1);
+            char next = isLast ? c : s.charAt(i + 1);
             boolean isUpper = Character.isUpperCase(c);
             boolean nextIsUpper = Character.isUpperCase(next);
             boolean nextIsLetter = Character.isLetter(next);
@@ -407,13 +403,13 @@ public abstract class YangElement extends Element {
             }
         }
         s = sb.toString();
-        
+
         if (isReserved(s)) {
             s += "_";
         } else if (s.matches("[0-9]")) {
             s = "_" + s;
         }
-        
+
         return s;
     }
 
@@ -438,7 +434,7 @@ public abstract class YangElement extends Element {
     }
 
     protected void setLeafValue(String ns, String path, Object value,
-            String[] childrenNames) throws JNCException {
+                                String[] childrenNames) throws JNCException {
         final NodeSet nodes = get(path);
 
         if (nodes.isEmpty()) {
@@ -452,9 +448,9 @@ public abstract class YangElement extends Element {
     }
 
     protected void setLeafListValue(String ns, String path, Object value,
-            String[] childrenNames) throws JNCException {
+                                    String[] childrenNames) throws JNCException {
         final Element listEntry = get(path).last();
-        
+
         if (listEntry instanceof Leaf && listEntry.value == null) {
             listEntry.setValue(value);
         } else {
@@ -555,15 +551,15 @@ public abstract class YangElement extends Element {
      * YangElement. Returns:
      * <ul>
      * <li>0 - if the name, namespace, value and children of this YangElement
-     *         are equal to the name, namespace, value and children of b.
+     * are equal to the name, namespace, value and children of b.
      * <li>-1 - if name, namespace, value or the key children are not equal.
      * <li>1 - if the key children of this YangElement are equal to those of b,
-     *         but non-key children are different.
+     * but non-key children are different.
      * </ul>
-     * 
+     *
      * @param b YangElement to compare against.
      * @return -1 if not equal, 0 if completely equal, 1 if same except for
-     *         non-key children
+     * non-key children
      */
     public int compare(YangElement b) {
         // check that namespace and name and value are the same.
@@ -613,15 +609,15 @@ public abstract class YangElement extends Element {
      * Element. Returns:
      * <ul>
      * <li>0 - if the name, namespace, value and children of this YangElement
-     *         are equal to the name, namespace, value and children of b.
+     * are equal to the name, namespace, value and children of b.
      * <li>-1 - if name, namespace, value or the key children are not equal.
      * <li>1 - if the key children of this YangElement are equal to those of b,
-     *         but non-key children are different.
+     * but non-key children are different.
      * </ul>
-     * 
+     *
      * @param b Element to compare against.
      * @return -1 if not equal, 0 if completely equal, 1 if same except for
-     *         non-key children
+     * non-key children
      */
     @Override
     public int compare(Element b) {
@@ -645,22 +641,22 @@ public abstract class YangElement extends Element {
      * </ul>
      * If the two trees are identical the three returned nodesets will be
      * empty.
-     * <p>
+     * <p/>
      * Attributes are not included in the inspection. Only YangElement
      * structures and leaf-values are checked.
-     * <p>
+     * <p/>
      * Note that both subtrees must have a common starting point YangElement in
      * order to compare them.
-     * 
-     * @param a Subtree A (YangElement)
-     * @param b Subtree B (YangElement)
-     * @param uniqueA Place for elements that are unique to A.
-     * @param uniqueB Place for elements that are unique to B.
+     *
+     * @param a        Subtree A (YangElement)
+     * @param b        Subtree B (YangElement)
+     * @param uniqueA  Place for elements that are unique to A.
+     * @param uniqueB  Place for elements that are unique to B.
      * @param changedA Place for elements changed in A.
      * @param changedB Place for elements changed in B.
      */
     public static void getDiff(YangElement a, YangElement b, NodeSet uniqueA,
-            NodeSet uniqueB, NodeSet changedA, NodeSet changedB) {
+                               NodeSet uniqueB, NodeSet changedA, NodeSet changedB) {
         if (a.compare(b) >= 0) {
             // parents are equal, go through the children.
             final NodeSet bList = new NodeSet();
@@ -716,7 +712,7 @@ public abstract class YangElement extends Element {
 
     /**
      * Checks if two configurations are equal, or if a sync is needed.
-     * 
+     *
      * @param b
      * @return 'true' if both trees are equal. 'false' otherwise.
      */
@@ -726,7 +722,7 @@ public abstract class YangElement extends Element {
 
     /**
      * Checks if two configurations are equal, or if a sync is needed.
-     * 
+     *
      * @return 'true' if both trees are equal. 'false' otherwise.
      */
     public static boolean checkSync(NodeSet a, NodeSet b) {
@@ -745,7 +741,7 @@ public abstract class YangElement extends Element {
 
     /**
      * Checks if two configurations are equal, or if a sync is needed.
-     * 
+     *
      * @return 'true' if both trees are equal. 'false' otherwise.
      */
     public static boolean checkSync(YangElement a, YangElement b) {
@@ -760,9 +756,9 @@ public abstract class YangElement extends Element {
     /**
      * Will return a subtree for syncing a subtree A with all the necessary
      * operations to make it look like the target tree B.
-     * 
+     *
      * @return Return subtree with operations to transmute subtree A into
-     *         subtree B.
+     * subtree B.
      */
     public YangElement sync(YangElement b) throws JNCException {
         return YangElement.sync(this, b);
@@ -776,9 +772,9 @@ public abstract class YangElement extends Element {
      * "nc:operation="replace". An alternative (and better) method is "merge".
      * The method {@link #syncMerge} produces a NETCONF tree with the merge
      * operation instead.
-     * 
+     *
      * @return Return subtree with operations to transmute subtree A into
-     *         subtree B.
+     * subtree B.
      */
 
     public static YangElement sync(YangElement a, YangElement b)
@@ -814,7 +810,7 @@ public abstract class YangElement extends Element {
      * Returns a list of subtrees for syncing a subtree A with all the
      * necessary operations to make it look like the target tree B. This
      * variant uses the NETCONF merge operation.
-     * 
+     *
      * @return Subtrees with operations to transmute subtree A into subtree B.
      */
 
@@ -837,7 +833,7 @@ public abstract class YangElement extends Element {
      * Will return a subtree for syncing a subtree A with all the necessary
      * operations to make it look like the target tree B. This version of sync
      * will produce a NETCONF tree with NETCONF merge operations.
-     * 
+     *
      * @return Subtree with operations to transmute subtree A into subtree B.
      */
 
@@ -854,9 +850,9 @@ public abstract class YangElement extends Element {
 
     /**
      * Which NETCONF do we need to produce in order to go from a to b?
-     * 
-     * @param a Subtree to sync
-     * @param b Copy of subtree to mimic
+     *
+     * @param a     Subtree to sync
+     * @param b     Copy of subtree to mimic
      * @param toDel A list with leaves that should be removed from 'b'
      * @return Number of diffs
      */
@@ -978,8 +974,8 @@ public abstract class YangElement extends Element {
         for (int i = 0; i < s.size(); i++) {
             final Element x = s.get(i);
             if (x instanceof Leaf && x.compare(e) >= 0) {
-              s.remove(i);
-              return x;
+                s.remove(i);
+                return x;
             }
         }
         return null;
@@ -988,9 +984,9 @@ public abstract class YangElement extends Element {
     /**
      * Will return a list of subtrees for syncing a subtree A with all the
      * necessary operations to make it look like the target tree B.
-     * 
+     *
      * @return Return subtrees with operations to transmute subtree A into
-     *         subtree B.
+     * subtree B.
      */
 
     public static NodeSet sync(NodeSet a, NodeSet b) throws JNCException {
@@ -1011,9 +1007,9 @@ public abstract class YangElement extends Element {
     /**
      * Clones a YangElement. Only key children are cloned, the other children
      * are skipped. Attributes and values are cloned.
-     * 
+     *
      * @return A clone of this YangElement with the same key children,
-     *         attributes and values.
+     * attributes and values.
      */
     @Override
     protected abstract Element cloneShallow();
@@ -1021,10 +1017,10 @@ public abstract class YangElement extends Element {
     /**
      * Clones the contents of this YangElement into a target copy. All content
      * is copied except children (shallow).
-     * <p>
+     * <p/>
      * Note: Used by the generated JNC classes The key children are already
      * cloned.
-     * 
+     *
      * @param copy The target copy to clone the contents to
      * @return copy with attributes and prefix of this YangElement added.
      */
@@ -1036,13 +1032,13 @@ public abstract class YangElement extends Element {
     /**
      * Clones the content of this YangElement into a target copy. Key children
      * are not copied.
-     * <p>
+     * <p/>
      * Note: Used by the generated JNC classes. The key children should already
      * be cloned into copy.
-     * 
+     *
      * @param copy The target copy to clone the contents into
      * @return copy with non-key children, attributes and values of this
-     *         YangElement added.
+     * YangElement added.
      */
     protected YangElement cloneContent(YangElement copy) {
         // copy children, except keys which are already copied
@@ -1067,7 +1063,7 @@ public abstract class YangElement extends Element {
     /**
      * Read file with XML text and parse it into a data model aware
      * configuration tree.
-     * 
+     *
      * @param filename File name.
      * @see #writeFile(String)
      */
@@ -1082,7 +1078,7 @@ public abstract class YangElement extends Element {
 
     @Override
     protected void encode(Transport out, boolean newline_at_end,
-            Capabilities capas) throws JNCException {
+                          Capabilities capas) throws JNCException {
         if (RevisionInfo.olderRevisionSupportEnabled && capas != null) {
             if (tp == null) {
                 tp = tagpath();
@@ -1099,24 +1095,24 @@ public abstract class YangElement extends Element {
                         // This node was somehow modified
                         // System.out.println("REVINFO " + r.type);
                         switch (r.type) {
-                        case RevisionInfo.R_MAX_ELEM_RAISED:
-                            final int max = r.idata;
-                            if (getChildren().size() > max) {
-                                throw new JNCException(
-                                        JNCException.REVISION_ERROR,
-                                        tp
-                                                + "too many children for old node "
-                                                + "with rev( " + rev + ")");
-                            }
-                            break;
-                        case RevisionInfo.R_MIN_ELEM_LOWERED:
-                            // Do nothing
-                            break;
-                        case RevisionInfo.R_NODE_ADDED:
-                            // System.out.println("Dropping "+this.toXMLString());
-                            return;
-                        default:
-                            break;
+                            case RevisionInfo.R_MAX_ELEM_RAISED:
+                                final int max = r.idata;
+                                if (getChildren().size() > max) {
+                                    throw new JNCException(
+                                            JNCException.REVISION_ERROR,
+                                            tp
+                                                    + "too many children for old node "
+                                                    + "with rev( " + rev + ")");
+                                }
+                                break;
+                            case RevisionInfo.R_MIN_ELEM_LOWERED:
+                                // Do nothing
+                                break;
+                            case RevisionInfo.R_NODE_ADDED:
+                                // System.out.println("Dropping "+this.toXMLString());
+                                return;
+                            default:
+                                break;
                         }
                     }
                 }
@@ -1130,7 +1126,7 @@ public abstract class YangElement extends Element {
      *
      * @param childName The name to check for
      * @return <code>true</code> if the child exists, <code>false</code>
-     *         otherwise.
+     * otherwise.
      */
     public boolean isChild(String childName) {
         final String[] children = childrenNames();

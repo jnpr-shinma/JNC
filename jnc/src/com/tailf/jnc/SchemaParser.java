@@ -118,6 +118,14 @@ public class SchemaParser {
                     node.children = new String[child.length];
                     System.arraycopy(child, 0, node.children, 0, child.length);
                 }
+            } else if (localName.equals("yang_children")) {
+                final String[] child = value.split(" ");
+                if (child.length == 0) {
+                    node.yang_children = null;
+                } else {
+                    node.yang_children = new String[child.length];
+                    System.arraycopy(child, 0, node.yang_children, 0, child.length);
+                }
             } else if (localName.equals("flags")) {
                 node.flags = Integer.parseInt(value);
             } else if (localName.equals("desc")) {
