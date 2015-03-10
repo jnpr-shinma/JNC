@@ -1369,10 +1369,10 @@ class ClassGenerator(object):
     def generate_routes(self, java_class):
         add = java_class.append_access_method  # XXX: add is a function
 
-        if self.stmt.i_orig_module.keyword == "submodule":
-            module_name = self.stmt.i_orig_module.arg
-        else:
-            module_name = self.rootpkg[self.rootpkg.rfind('.') + 1:]
+        #if self.stmt.i_orig_module.keyword == "submodule":
+        #    module_name = self.stmt.i_orig_module.arg
+        #else:
+        module_name = self.rootpkg[self.rootpkg.rfind('.') + 1:]
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2) +
@@ -1527,10 +1527,10 @@ class ClassGenerator(object):
     def generate_rpc_routes(self, java_class, stmt):
         add = java_class.append_access_method  # XXX: add is a function
 
-        if self.stmt.i_orig_module.keyword == "submodule":
-            module_name = self.stmt.i_orig_module.arg
-        else:
-            module_name = self.rootpkg[self.rootpkg.rfind('.') + 1:]
+        #if self.stmt.i_orig_module.keyword == "submodule":
+        #    module_name = self.stmt.i_orig_module.arg
+        #else:
+        module_name = self.rootpkg[self.rootpkg.rfind('.') + 1:]
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'Input] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'Input' +
