@@ -1287,13 +1287,13 @@ class ClassGenerator(object):
 
         if input_para:
             rpc_input = "(input: " + normalize(stmt.arg) + "Input, apiCtx: ApiContext)"
-            self.rpc_class.imports.add('net.juniper.yang.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Input")
+            self.rpc_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Input")
         else:
             rpc_input = "(apiCtx: ApiContext)"
 
         if output_para:
             rpc_output = "Future[Option[" + normalize(stmt.arg) + "Output"+"]]"
-            self.rpc_class.imports.add('net.juniper.yang.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Output")
+            self.rpc_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Output")
         else:
             rpc_output = "Future[Option[Unit]]"
 
@@ -1369,10 +1369,10 @@ class ClassGenerator(object):
     def generate_routes(self, java_class):
         add = java_class.append_access_method  # XXX: add is a function
 
-        if self.stmt.i_orig_module.keyword == "submodule":
-            module_name = self.stmt.i_orig_module.arg
-        else:
-            module_name = self.rootpkg[self.rootpkg.rfind('.') + 1:]
+        #if self.stmt.i_orig_module.keyword == "submodule":
+        #    module_name = self.stmt.i_orig_module.arg
+        #else:
+        module_name = get_module(self.stmt).arg
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2) +
@@ -1527,10 +1527,10 @@ class ClassGenerator(object):
     def generate_rpc_routes(self, java_class, stmt):
         add = java_class.append_access_method  # XXX: add is a function
 
-        if self.stmt.i_orig_module.keyword == "submodule":
-            module_name = self.stmt.i_orig_module.arg
-        else:
-            module_name = self.rootpkg[self.rootpkg.rfind('.') + 1:]
+        #if self.stmt.i_orig_module.keyword == "submodule":
+        #    module_name = self.stmt.i_orig_module.arg
+        #else:
+        module_name = get_module(self.stmt).arg
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'Input] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'Input' +
@@ -1546,10 +1546,10 @@ class ClassGenerator(object):
         for sub in stmt.substmts:
             if sub.keyword == "input":
                 input_para = True
-                java_class.imports.add('net.juniper.yang.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
+                java_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
             elif sub.keyword == "output":
                 output_para = True
-                java_class.imports.add('net.juniper.yang.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
+                java_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
 
         indent = ' ' * 6
         body_indent = ' ' * 8
