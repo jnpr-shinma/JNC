@@ -74,8 +74,12 @@ public abstract class YangElement extends Element {
                 } else {
                     String methodName = "set" + capitalize(fieldName) + "Value";
                     Class<?> paramClass = value == null ? null : value.getClass();
-                    Method m = getMethodByLowercaseNameAndParam(currObj.getClass(), methodName, paramClass);
-                    m.invoke(currObj, new Object[]{value});
+                    Method[] methods = getMethodByLowercaseNameAndParam(currObj.getClass(), methodName, paramClass);
+                    if(methods[0]!=null){
+                        methods[0].invoke(currObj, new Object[]{value});
+                    }else if(methods[1]!=null){
+                        methods[1].invoke(currObj, new Object[]{value.toString()});
+                    }
                 }
             }
         } catch (Exception e) {
@@ -94,17 +98,24 @@ public abstract class YangElement extends Element {
      * @param paramClass
      * @return
      */
-    private Method getMethodByLowercaseNameAndParam(Class<?> c, String name, Class<?> paramClass) {
+    private Method[] getMethodByLowercaseNameAndParam(Class<?> c, String name, Class<?> paramClass) {
+        Method[] methods = new Method[2];
         Method[] ms = c.getDeclaredMethods();
         for (int i = 0; i < ms.length; i++) {
             Method m = ms[i];
             if (m.getName().toLowerCase().equals(name.toLowerCase())) {
                 Class<?>[] paramTypes = m.getParameterTypes();
-                if (paramTypes.length == 1 && (paramClass == null || paramTypes[0] == paramClass))
-                    return m;
+                if (paramTypes.length == 1){
+                    if (paramTypes[0] == paramClass){
+                        methods[0]=m;
+                        return methods;
+                    } else if (paramTypes[0] == String.class){
+                        methods[1]=m;
+                    }
+                }
             }
         }
-        return null;
+        return methods;
     }
 
     /**
