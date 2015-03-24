@@ -58,6 +58,8 @@ public class Element implements Serializable {
      */
     public Object value;
 
+    public String module;
+
     /**
      * Attributes on the node. ArrayList of Attribute.
      */
