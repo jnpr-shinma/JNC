@@ -1207,11 +1207,13 @@ class ClassGenerator(object):
                 source=self.src)
 
         # Set fields in root class
-        root_fields = [JavaValue(), JavaValue()]
+        root_fields = [JavaValue(), JavaValue(), JavaValue()]
         root_fields[0].set_name('NAMESPACE')
         root_fields[1].set_name('PREFIX')
+        root_fields[2].set_name('MODULE')
         root_fields[0].value = '"' + ns_arg + '"'
         root_fields[1].value = '"' + prefix.arg + '"'
+        root_fields[2].value = '"' + self.stmt.arg + '"'
         for root_field in root_fields:
             for modifier in ('public', 'static', 'final', 'String'):
                 root_field.add_modifier(modifier)
@@ -2162,7 +2164,9 @@ class MethodGenerator(object):
             if self.is_top_level or self.is_augmented:
                 constructor.add_line('setDefaultPrefix();')
                 setPrefix = ['setPrefix(', self.root, '.PREFIX);']
+                setModule = ['setModule(', self.root, '.MODULE);']
                 constructor.add_line(''.join(setPrefix))
+                constructor.add_line(''.join(setModule))
         elif self.is_typedef:
             constructor.add_line('super(value);')
         else:
