@@ -1218,9 +1218,14 @@ class ClassGenerator(object):
         value = jnc[jnc.rfind('.') + 1:]
 
         getall_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "List(",
-                                        ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[Page[" +
-                                        normalize(self.n2) + "]]]"])
+                                        ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Seq[" +
+                                        normalize(self.n2) + "]]"])
         self.java_class.add_field(getall_field)
+
+        getsize_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "Count(",
+                                        ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Long]"])
+        self.java_class.add_field(getsize_field)
+
 
         indent =  ' ' * 4
         get_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "By" + normalize(key_arg) + "(",
@@ -1243,8 +1248,7 @@ class ClassGenerator(object):
 
         delete_field = JavaValue(exact=[indent + "def delete" + normalize(self.n2) + "(",
                                      ' ' * 6 + key.arg + ": " + value + ",",
-                                     ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[" +
-                                     normalize(self.n2) + "]]"])
+                                     ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Boolean]"])
         self.java_class.add_field(delete_field)
 
         self.java_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
@@ -1411,12 +1415,20 @@ class ClassGenerator(object):
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
+        exact.append(body_indent + "        parameter(FETCH_SIZE) { count =>")
+        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Long] {")
+        exact.append(body_indent + "            "+self.n2+"ApiImpl.get"+normalize(self.n2)+"Count(apiCtx)")
+        exact.append(body_indent + "          }) {")
+        exact.append(body_indent + "            case Success(result) => complete(result.toString)")
+        exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "          }")
+        exact.append(body_indent + "        } ~")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Option[Page["+normalize(self.n2)+"]]] {")
+        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Seq["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "            "+self.n2+"ApiImpl.get"+normalize(self.n2)+"List(apiCtx)")
         exact.append(body_indent + "          }) {")
-        exact.append(body_indent + "            case Success(result) => complete (result.get.toJson)")
-        exact.append(body_indent + "            case Failure(ex) => throw ex")
+        exact.append(body_indent + "            case Success(result) => complete (JsonUtil.elementSeqToJson(result, classOf["+normalize(self.n2)+"]))")
+        exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
         exact.append(body_indent + "      }")
@@ -1440,7 +1452,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "                }")
         exact.append(body_indent + "               }")
         exact.append(body_indent + "              }")
-        exact.append(body_indent + "              case Failure(ex) => throw ex")
+        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1458,8 +1470,8 @@ class ClassGenerator(object):
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "              "+self.n2+"ApiImpl.create"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "            }) {")
-        exact.append(body_indent + "              case Success(result) => complete (JsonUtil.elementToJson(result))")
-        exact.append(body_indent + "              case Failure(ex) => throw ex")
+        exact.append(body_indent + "              case Success(result) => complete (result.get.toJsonWithRootNode(false))")
+        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1478,8 +1490,15 @@ class ClassGenerator(object):
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "              "+self.n2+"ApiImpl.update"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "            }) {")
-        exact.append(body_indent + "              case Success(result) => complete (JsonUtil.elementToJson(result))")
-        exact.append(body_indent + "              case Failure(ex) => throw ex")
+        exact.append(body_indent + "              case Success(result) => {")
+        exact.append(body_indent + "               result match {")
+        exact.append(body_indent + "                case Some(r) => complete(r.toJsonWithRootNode(false))")
+        exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
+        exact.append(body_indent + '                 complete("No '+ self.n2 + ' object was found to update")')
+        exact.append(body_indent + "                }")
+        exact.append(body_indent + "               }")
+        exact.append(body_indent + "              }")
+        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1495,11 +1514,20 @@ class ClassGenerator(object):
         exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "        intercept(apiCtx) {")
         exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Boolean] {")
         exact.append(body_indent + "              "+self.n2+"ApiImpl.delete"+normalize(self.n2)+"(new " + value + "("+ key_arg + "), apiCtx)")
         exact.append(body_indent + "            }) {")
-        exact.append(body_indent + '              case Success(_) => complete("")')
-        exact.append(body_indent + "              case Failure(ex) => throw ex")
+        exact.append(body_indent + "              case Success(result) => {")
+        exact.append(body_indent + "               if(result.booleanValue) {")
+        exact.append(body_indent + '                 complete(\"{\\"id\\": \\"\" + ' + key_arg + ' + \"\\"}\")')
+        exact.append(body_indent + "               }")
+        exact.append(body_indent + "               else {")
+        exact.append(body_indent + "                 respondWithStatus(StatusCodes.NotFound) {")
+        exact.append(body_indent + '                   complete("No '+ self.n2 + ' object was found for id " + '+ key_arg +')')
+        exact.append(body_indent + "                 }")
+        exact.append(body_indent + "               }")
+        exact.append(body_indent + "              }")
+        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1526,7 +1554,6 @@ class ClassGenerator(object):
         java_class.imports.add("com.tailf.jnc.PrefixMap")
         java_class.imports.add("com.tailf.jnc.Prefix")
         java_class.imports.add("com.tailf.jnc.YangJsonParser")
-        java_class.imports.add("net.juniper.easyrest.ctx.Page")
         java_class.imports.add(jnc)
 
         return exact
@@ -1588,7 +1615,7 @@ class ClassGenerator(object):
         else:
             exact.append(body_indent + '              case Success(result) => complete ("")')
 
-        exact.append(body_indent + "              case Failure(ex) => throw ex")
+        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")
 
         if input_para:
