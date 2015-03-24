@@ -2164,7 +2164,7 @@ class MethodGenerator(object):
             if self.is_top_level or self.is_augmented:
                 constructor.add_line('setDefaultPrefix();')
                 setPrefix = ['setPrefix(', self.root, '.PREFIX);']
-                setModule = ['setModule(', self.root, '.MODULE);']
+                setModule = ['this.module = ', self.root, '.MODULE;']
                 constructor.add_line(''.join(setPrefix))
                 constructor.add_line(''.join(setModule))
         elif self.is_typedef:
