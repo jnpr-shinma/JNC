@@ -1633,13 +1633,13 @@ class ClassGenerator(object):
         add = java_class.append_access_method  # XXX: add is a function
 
         streamregistry = [' ' * 4 + 'StreamRegistry.registerStream(']
-        streamregistry.append(' ' * 6 + 'new Stream()')
+        streamregistry.append(' ' * 6 + 'StreamBuilder()')
         streamregistry.append(' ' * 8 + '.name("'+self.stmt.arg+'")')
         for sub in self.stmt.substmts:
             if sub.keyword == 'description':
                 streamregistry.append(' ' * 8 + '.description("'+sub.arg+'")')
         streamregistry.append(' ' * 8 + '.replaySupport("false")')
-        streamregistry.append(' ' * 8 + '.events("")')
+        streamregistry.append(' ' * 8 + '.events("").build()')
         streamregistry.append(' ' * 4 + ')')
         streamregistry_value = JavaValue(streamregistry)
 
@@ -1671,7 +1671,7 @@ class ClassGenerator(object):
         java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
         java_class.imports.add("net.juniper.easyrest.rest.EasyRestServerSideEventDirective._")
         java_class.imports.add("net.juniper.easyrest.streams.spray.StreamRegistry")
-        java_class.imports.add("net.juniper.easyrest.streams.yang.Stream")
+        java_class.imports.add("net.juniper.easyrest.streams.yang.StreamBuilder")
         java_class.imports.add("spray.httpx.encoding.Gzip")
         java_class.imports.add("spray.routing.HttpService")
         java_class.imports.add("spray.routing.directives.RefFactoryMagnet")
