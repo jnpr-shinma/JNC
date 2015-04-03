@@ -548,10 +548,14 @@ def get_package(stmt, ctx):
     sub_packages = collections.deque()
     parent = get_parent(stmt)
     while parent is not None:
+        if stmt.i_orig_module.keyword == "submodule" and stmt.keyword != "typedef" and get_parent(parent) is None:
+            sub_packages.appendleft(camelize(stmt.i_orig_module.arg))
         stmt = parent
         parent = get_parent(stmt)
-        sub_packages.appendleft('mo.'+camelize(stmt.arg))
+        sub_packages.appendleft(camelize(stmt.arg))
+
     full_package = ctx.rootpkg.split(OSSep)
+    full_package.extend(['mo'])
     full_package.extend(sub_packages)
     return '.'.join(full_package)
 
@@ -1099,7 +1103,7 @@ class ClassGenerator(object):
                     if stmt.keyword == 'rpc':
                         append_rpc_impl = True
                         routing.extend(child_generator.generate_rpc_routes(java_class, stmt))
-                        self.generate_rpc_class(stmt)
+                        self.generate_rpc_class(stmt, package_path=package)
                     elif stmt.keyword == 'notification':
                         routing.extend(child_generator.generate_notification_routes(java_class))
                     else:
@@ -1132,7 +1136,11 @@ class ClassGenerator(object):
             java_class.append_access_method("routing", res)
 
             if append_rpc_impl:
-                rpcapi = [' ' * 4 + 'lazy val '+self.n2+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(self.n2)+'RpcApi])']
+                if stmt.i_orig_module.keyword == "submodule":
+                    rpc_api=normalize(stmt.i_module.arg)
+                else:
+                    rpc_api=normalize(self.n2)
+                rpcapi = [' ' * 4 + 'lazy val '+camelize(rpc_api)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+rpc_api+'RpcApi])']
                 rpcapiimpl = JavaValue(rpcapi)
                 java_class.append_access_method("apiimpl", rpcapiimpl)
 
@@ -1259,15 +1267,22 @@ class ClassGenerator(object):
 
         self.write_to_file()
 
-    def generate_rpc_class(self, stmt):
+    def generate_rpc_class(self, stmt, package_path):
         fields = OrderedSet()
         package_generated = False
         all_fully_qualified = True
         fully_qualified = False
 
+        if stmt.i_orig_module.keyword == "submodule":
+            file_name=normalize(stmt.i_module.arg)+"RpcApi"
+        else:
+            file_name=normalize(self.n2)+"RpcApi"
+
+        package_name = get_package(stmt, self.ctx)
+
         if (self.rpc_class is None):
-            self.rpc_class = JavaClass(filename=normalize(self.n2)+"RpcApi",
-                    package=self.package,
+            self.rpc_class = JavaClass(filename=file_name,
+                    package=package_path,
                     description=''.join(['This class represents rpc api']),
                     source=self.src)
 
@@ -1291,13 +1306,13 @@ class ClassGenerator(object):
 
         if input_para:
             rpc_input = "(input: " + normalize(stmt.arg) + "Input, apiCtx: ApiContext)"
-            self.rpc_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Input")
+            self.rpc_class.imports.add(package_name+"."+camelize(stmt.arg)+'.'+normalize(stmt.arg)+"Input")
         else:
             rpc_input = "(apiCtx: ApiContext)"
 
         if output_para:
-            rpc_output = "Future[Option[" + normalize(stmt.arg) + "Output"+"]]"
-            self.rpc_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+self.n2+"."+camelize(stmt.arg)+"."+normalize(stmt.arg)+"Output")
+            rpc_output = "Future[Seq[" + normalize(stmt.arg) + "Output"+"]]"
+            self.rpc_class.imports.add(package_name+"."+camelize(stmt.arg)+'.'+normalize(stmt.arg)+"Output")
         else:
             rpc_output = "Future[Option[Unit]]"
 
@@ -1569,10 +1584,10 @@ class ClassGenerator(object):
     def generate_rpc_routes(self, java_class, stmt):
         add = java_class.append_access_method  # XXX: add is a function
 
-        #if self.stmt.i_orig_module.keyword == "submodule":
-        #    module_name = self.stmt.i_orig_module.arg
-        #else:
-        module_name = get_module(self.stmt).arg
+        if self.stmt.i_orig_module.keyword == "submodule":
+            module_name = self.stmt.i_orig_module.arg
+        else:
+            module_name = get_module(self.stmt).arg
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'Input] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'Input' +
@@ -1585,13 +1600,16 @@ class ClassGenerator(object):
 
         input_para = False
         output_para = False
+
+        package_name = get_package(stmt, self.ctx)
+
         for sub in stmt.substmts:
             if sub.keyword == "input":
                 input_para = True
-                java_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
+                java_class.imports.add(package_name+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
             elif sub.keyword == "output":
                 output_para = True
-                java_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
+                java_class.imports.add(package_name+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
 
         indent = ' ' * 6
         body_indent = ' ' * 8
@@ -1607,7 +1625,7 @@ class ClassGenerator(object):
             exact.append(body_indent + "          entity(as["+normalize(self.n2)+"Input]) {input =>")
 
         if output_para:
-            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"Output]] {")
+            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Seq["+normalize(self.n2)+"Output]] {")
         else:
             exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option[Unit]] {")
 
@@ -1619,7 +1637,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            }) {")
 
         if output_para:
-            exact.append(body_indent + "              case Success(result) => complete (JsonUtil.elementToJson(result))")
+            exact.append(body_indent + "              case Success(result) => complete (JsonUtil.elementSeqToJson(result, classOf["+normalize(self.n2)+"Output]))")
         else:
             exact.append(body_indent + '              case Success(result) => complete ("")')
 
