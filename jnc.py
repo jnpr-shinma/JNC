@@ -146,7 +146,7 @@ class JNCPlugin(plugin.PyangPlugin):
             optparse.make_option(
                 '--jnc-import-package',
                 dest='import_package',
-                default='net.juniper.yang',
+                default='net.juniper.yang.mo',
                 help='The root package name for imported packages, default is net.juniper.yang'),
             ]
         g = optparser.add_option_group('JNC output specific options')
@@ -1088,7 +1088,7 @@ class ClassGenerator(object):
         elif stmt.keyword == 'input' or stmt.keyword == 'output':
              package_name = self.package[self.package.rfind('.')+1:]
              filename = normalize(package_name)+self.n
-             self.n2 = normalize(package_name)+self.n
+             self.n2 = camelize(package_name)+self.n
              self.filename = filename + '.java'
         else:
             self.filename = self.n + '.java'

@@ -1265,8 +1265,13 @@ class ClassGenerator(object):
         all_fully_qualified = True
         fully_qualified = False
 
+        if stmt.i_orig_module.keyword == "submodule":
+            file_name=normalize(stmt.i_module.arg)+"RpcApi"
+        else:
+            file_name=normalize(self.n2)+"RpcApi"
+
         if (self.rpc_class is None):
-            self.rpc_class = JavaClass(filename=normalize(self.n2)+"RpcApi",
+            self.rpc_class = JavaClass(filename=file_name,
                     package=self.package,
                     description=''.join(['This class represents rpc api']),
                     source=self.src)
@@ -1586,10 +1591,10 @@ class ClassGenerator(object):
         for sub in stmt.substmts:
             if sub.keyword == "input":
                 input_para = True
-                java_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
+                java_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+camelize(module_name)+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
             elif sub.keyword == "output":
                 output_para = True
-                java_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+module_name+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
+                java_class.imports.add(self.ctx.rootpkg.replace(OSSep, '.') + '.mo.'+camelize(module_name)+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
 
         indent = ' ' * 6
         body_indent = ' ' * 8
