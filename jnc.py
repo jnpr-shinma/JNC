@@ -2087,7 +2087,7 @@ class MethodGenerator(object):
         prefix = search_one(self.module_stmt, 'prefix')
         self.root = normalize(prefix.arg)
 
-        if stmt.keyword == "container" and hasattr(stmt, 'i_uses') and len(stmt.i_uses) != 0:
+        if stmt.keyword in {"container","list"} and hasattr(stmt, 'i_uses') and len(stmt.i_uses) != 0:
             self.pkg = get_uses_package(stmt, ctx)
         else:
             self.pkg = get_package(stmt, ctx)
