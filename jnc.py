@@ -2196,7 +2196,10 @@ class MethodGenerator(object):
         constructor.set_return_type(None)
         if self.is_container or self.is_list:
             call = ['super']
-            call.extend(self._root_namespace(self.stmt.arg))
+            if self.stmt.arg in ('input', 'output'):
+                call.extend(self._root_namespace(self.stmt.parent.arg+'-'+self.stmt.arg))
+            else:
+                call.extend(self._root_namespace(self.stmt.arg))
             constructor.add_dependency(self.root)
             constructor.add_line(''.join(call))
             if self.is_top_level or self.is_augmented:
