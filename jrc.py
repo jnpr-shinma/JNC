@@ -1276,13 +1276,13 @@ class ClassGenerator(object):
 
         if input_para:
             rpc_input = "(input: " + self.n + "Input, apiCtx: ApiContext)"
-            self.java_class.imports.add(self.mopackage+"."+camelize(self.stmt.arg)+'.'+normalize(self.stmt.arg)+"Input")
+            self.java_class.imports.add(self.mopackage+"."+normalize(self.stmt.arg)+"Input")
         else:
             rpc_input = "(apiCtx: ApiContext)"
 
         if output_para:
             rpc_output = "Future[Seq[" + self.n + "Output"+"]]"
-            self.java_class.imports.add(self.mopackage+"."+camelize(self.stmt.arg)+'.'+normalize(self.stmt.arg)+"Output")
+            self.java_class.imports.add(self.mopackage+"."+normalize(self.stmt.arg)+"Output")
         else:
             rpc_output = "Future[Option[Unit]]"
 
@@ -1443,7 +1443,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
-        exact.append(body_indent + "                case Some(r) => complete(r.toJsonWithRootNode(false))")
+        exact.append(body_indent + "                case Some(r) => complete(r.toJson(false))")
         exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
         exact.append(body_indent + '                 complete("No '+ self.n2 + ' object was found for id " + '+ key_arg +')')
         exact.append(body_indent + "                }")
@@ -1467,7 +1467,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "              "+self.n2+"ApiImpl.create"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "            }) {")
-        exact.append(body_indent + "              case Success(result) => complete (result.get.toJsonWithRootNode(false))")
+        exact.append(body_indent + "              case Success(result) => complete (result.get.toJson(false))")
         exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
@@ -1489,7 +1489,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
-        exact.append(body_indent + "                case Some(r) => complete(r.toJsonWithRootNode(false))")
+        exact.append(body_indent + "                case Some(r) => complete(r.toJson(false))")
         exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
         exact.append(body_indent + '                 complete("No '+ self.n2 + ' object was found to update")')
         exact.append(body_indent + "                }")
@@ -1580,10 +1580,10 @@ class ClassGenerator(object):
         for sub in stmt.substmts:
             if sub.keyword == "input":
                 input_para = True
-                java_class.imports.add(package_name+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
+                java_class.imports.add(package_name+'.'+normalize(stmt.arg)+"Input")
             elif sub.keyword == "output":
                 output_para = True
-                java_class.imports.add(package_name+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
+                java_class.imports.add(package_name+'.'+normalize(stmt.arg)+"Output")
 
         indent = ' ' * 6
         body_indent = ' ' * 8

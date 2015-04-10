@@ -565,8 +565,12 @@ def get_package(stmt, ctx):
         if stmt.i_orig_module.keyword == "submodule" and stmt.keyword != "typedef" and get_parent(parent) is None:
             sub_packages.appendleft(camelize(stmt.i_orig_module.arg))
         stmt = parent
-        parent = get_parent(stmt)
-        sub_packages.appendleft(camelize(stmt.arg))
+        if stmt.arg in ('output', 'input'):
+            parent = get_parent(stmt.parent)
+            sub_packages.appendleft(camelize(stmt.parent.arg)+normalize(stmt.arg))
+        else:
+            parent = get_parent(stmt)
+            sub_packages.appendleft(camelize(stmt.arg))
 
     if stmt.arg in ctx.opts.ignore_modules:
         full_package = ctx.opts.import_package.split('.')
@@ -1086,9 +1090,8 @@ class ClassGenerator(object):
         if stmt.keyword in module_stmts:
             self.filename = normalize(search_one(stmt, 'prefix').arg) + '.java'
         elif stmt.keyword == 'input' or stmt.keyword == 'output':
-             package_name = self.package[self.package.rfind('.')+1:]
-             filename = normalize(package_name)+self.n
-             self.n2 = camelize(package_name)+self.n
+             filename = normalize(stmt.parent.arg)+self.n
+             self.n2 = camelize(stmt.parent.arg)+self.n
              self.filename = filename + '.java'
         else:
             self.filename = self.n + '.java'
@@ -1462,6 +1465,9 @@ class ClassGenerator(object):
             if hasattr(sub, 'i_uses'):
                 pkg = get_uses_package(sub, self.ctx)
                 path_name = self.ctx.opts.directory + OSSep + get_uses_path(sub)
+            elif sub.keyword in ('input', 'output'):
+                pkg = self.package
+                path_name =self.path
             else:
                 pkg = self.package + '.' + self.n2
                 path_name =self.path + OSSep + self.n2
@@ -2190,7 +2196,10 @@ class MethodGenerator(object):
         constructor.set_return_type(None)
         if self.is_container or self.is_list:
             call = ['super']
-            call.extend(self._root_namespace(self.stmt.arg))
+            if self.stmt.arg in ('input', 'output'):
+                call.extend(self._root_namespace(self.stmt.parent.arg+'-'+self.stmt.arg))
+            else:
+                call.extend(self._root_namespace(self.stmt.arg))
             constructor.add_dependency(self.root)
             constructor.add_line(''.join(call))
             if self.is_top_level or self.is_augmented:
