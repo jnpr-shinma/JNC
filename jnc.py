@@ -562,7 +562,8 @@ def get_package(stmt, ctx):
     sub_packages = collections.deque()
     parent = get_parent(stmt)
     while parent is not None:
-        if stmt.i_orig_module.keyword == "submodule" and stmt.keyword != "typedef" and get_parent(parent) is None:
+        if hasattr(stmt, "i_orig_module") and stmt.i_orig_module.keyword == "submodule" \
+                and stmt.keyword != "typedef" and get_parent(parent) is None:
             sub_packages.appendleft(camelize(stmt.i_orig_module.arg))
         stmt = parent
         if stmt.arg in ('output', 'input'):
@@ -1378,6 +1379,8 @@ class ClassGenerator(object):
         self.java_class.imports.add('com.tailf.jnc.Tagpath')
 
         for ch in search(stmt, yangelement_stmts | leaf_stmts):
+            if ch.arg in ("input", "output") and len(ch.i_children) == 0:
+                continue
             field = self.generate_child(ch)
             ch_arg = normalize(ch.arg)
             if field is not None:
@@ -1403,6 +1406,9 @@ class ClassGenerator(object):
                     else:
                         import_ = '.'.join([self.package, self.n2, ch_arg])
                     self.java_class.imports.add(import_)
+
+        if stmt.keyword == "rpc":
+            return
 
         if self.ctx.opts.debug or self.ctx.opts.verbose:
             if package_generated:
