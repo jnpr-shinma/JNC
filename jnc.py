@@ -1349,27 +1349,13 @@ class ClassGenerator(object):
                 source=self.src,
                 superclass='YangElement')
 
-        # Set tagpath field in class
-        #root_fields = [JavaValue()]
-        #root_fields[0].set_name('TAG_PATH')
-        #package = self.package.replace('.', '/')
-        #if self.stmt.i_orig_module.keyword == "submodule":
-        #    package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name) + '/' + camelize(self.stmt.i_orig_module.arg))[2]
-        #else:
-        #    package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name))[2]
-        #if package_name :
-        #    tagpath = package_name[1:] + '/' + stmt.arg
-        #else:
-        #tagpath = get_tagpath(stmt)
-        #if tagpath:
-        #    tagpath_value = tagpath + '/' + stmt.arg
-        #else:
-        #    tagpath_value = stmt.arg
-        #root_fields[0].value = 'new Tagpath("' + tagpath_value + '")'
-        #for root_field in root_fields:
-        #    for modifier in ('public', 'static', 'final', 'Tagpath'):
-        #        root_field.add_modifier(modifier)
-        #    self.java_class.add_field(root_field)
+        if stmt.keyword in ("input", "output"):
+            # Set tagpath field in rpc input and output class
+            indent = ' ' * 4
+            tagpath_field = JavaValue(exact=[indent + "public Tagpath tagpath() {",
+                                             indent * 2 + 'return new Tagpath("'+stmt.parent.arg+'/'+stmt.keyword+'");',
+                                             indent + "}"])
+            self.java_class.add_field(tagpath_field)
 
         module_stmt = get_module(stmt)
         prefix = search_one(module_stmt, 'prefix')
