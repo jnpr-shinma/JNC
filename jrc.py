@@ -1229,8 +1229,8 @@ class ClassGenerator(object):
 
         create_field = JavaValue(exact=[indent + "def create" + normalize(self.n2) + "(",
                                      ' ' * 6 + self.n2 + ": " + normalize(self.n2) + ",",
-                                     ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[Option[" +
-                                     normalize(self.n2) + "]]"])
+                                     ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext):Future[" +
+                                     normalize(self.n2) + "]"])
         self.java_class.add_field(create_field)
 
         update_field = JavaValue(exact=[indent + "def update" + normalize(self.n2) + "(",
@@ -1464,10 +1464,10 @@ class ClassGenerator(object):
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          entity(as["+normalize(self.n2)+"]) {" + self.n2 +" =>")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet["+normalize(self.n2)+"] {")
         exact.append(body_indent + "              "+self.n2+"ApiImpl.create"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "            }) {")
-        exact.append(body_indent + "              case Success(result) => complete(result.get.toJson(true))")
+        exact.append(body_indent + "              case Success(result) => complete(result.toJson(true))")
         exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
