@@ -1291,9 +1291,9 @@ class ClassGenerator(object):
             rpc_output = "Future[" + rpc_name + "Output"+"]"
             self.rpc_class.imports.add(self.mopackage+"."+rpc_name+"Output")
         else:
-            rpc_output = "Future[Option[Unit]]"
+            rpc_output = "Future[Unit]"
 
-        rpc_method = JavaValue(exact=[indent + "def " + rpc_name + rpc_input + "(implicit ec: ExecutionContext): " + rpc_output])
+        rpc_method = JavaValue(exact=[indent + "def " + camelize(rpc_name) + "Rpc"+rpc_input + "(implicit ec: ExecutionContext): " + rpc_output])
         add("rpc", rpc_method)
 
         # Generate RPC API class
@@ -1615,9 +1615,9 @@ class ClassGenerator(object):
             exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Unit] {")
 
         if input_para:
-            exact.append(body_indent + "              "+camelize(module_name)+"RpcApiImpl."+normalize(self.n2)+"(input, apiCtx)")
+            exact.append(body_indent + "              "+camelize(module_name)+"RpcApiImpl."+camelize(self.n2)+"Rpc(input, apiCtx)")
         else:
-            exact.append(body_indent + "              "+camelize(module_name)+"RpcApiImpl."+normalize(self.n2)+"(apiCtx)")
+            exact.append(body_indent + "              "+camelize(module_name)+"RpcApiImpl."+camelize(self.n2)+"Rpc(apiCtx)")
             
         exact.append(body_indent + "            }) {")
 
