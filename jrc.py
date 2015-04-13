@@ -1281,7 +1281,7 @@ class ClassGenerator(object):
             rpc_input = "(apiCtx: ApiContext)"
 
         if output_para:
-            rpc_output = "Future[Seq[" + self.n + "Output"+"]]"
+            rpc_output = "Future[" + self.n + "Output"+"]"
             self.java_class.imports.add(self.mopackage+"."+normalize(self.stmt.arg)+"Output")
         else:
             rpc_output = "Future[Option[Unit]]"
@@ -1371,7 +1371,7 @@ class ClassGenerator(object):
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2) +
-                       '] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
+                       '] = Right((new YangJsonParser()).parse("' + self.stmt.arg + '", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
                         normalize(self.n2) + '])')
         marshell.append(' ' * 4 + '}')
         marsheller = JavaValue(marshell)
@@ -1425,7 +1425,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "        onComplete(OnCompleteFutureMagnet[Long] {")
         exact.append(body_indent + "            "+self.n2+"ApiImpl.get"+normalize(self.n2)+"Count(apiCtx)")
         exact.append(body_indent + "          }) {")
-        exact.append(body_indent + "            case Success(result) => complete(result.toString)")
+        exact.append(body_indent + "            case Success(result) => complete(\"{\\\"total\\\":\" + result.toString + \"}\")")
         exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "      }")
@@ -1443,7 +1443,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
-        exact.append(body_indent + "                case Some(r) => complete(r.toJson(false))")
+        exact.append(body_indent + "                case Some(result) => complete(result.toJson(true))")
         exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
         exact.append(body_indent + '                 complete("No '+ self.n2 + ' object was found for id " + '+ key_arg +')')
         exact.append(body_indent + "                }")
@@ -1467,7 +1467,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
         exact.append(body_indent + "              "+self.n2+"ApiImpl.create"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "            }) {")
-        exact.append(body_indent + "              case Success(result) => complete (result.get.toJson(false))")
+        exact.append(body_indent + "              case Success(result) => complete(result.get.toJson(true))")
         exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
@@ -1489,7 +1489,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
-        exact.append(body_indent + "                case Some(r) => complete(r.toJson(false))")
+        exact.append(body_indent + "                case Some(result) => complete(result.toJson(true))")
         exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
         exact.append(body_indent + '                 complete("No '+ self.n2 + ' object was found to update")')
         exact.append(body_indent + "                }")
@@ -1565,7 +1565,7 @@ class ClassGenerator(object):
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'Input] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'Input' +
-                       '] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
+                       '] = Right((new YangJsonParser()).parse("' + self.stmt.arg + '-input", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
                         normalize(self.n2)+'Input])')
         marshell.append(' ' * 4 + '}')
         marsheller = JavaValue(marshell)
@@ -1599,9 +1599,9 @@ class ClassGenerator(object):
             exact.append(body_indent + "          entity(as["+normalize(self.n2)+"Input]) {input =>")
 
         if output_para:
-            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Seq["+normalize(self.n2)+"Output]] {")
+            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet["+normalize(self.n2)+"Output] {")
         else:
-            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option[Unit]] {")
+            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Unit] {")
 
         if input_para:
             exact.append(body_indent + "              "+camelize(module_name)+"RpcApiImpl."+camelize(self.n2)+"Rpc(input, apiCtx)")
@@ -1611,9 +1611,9 @@ class ClassGenerator(object):
         exact.append(body_indent + "            }) {")
 
         if output_para:
-            exact.append(body_indent + "              case Success(result) => complete (JsonUtil.elementSeqToJson(result, classOf["+normalize(self.n2)+"Output]))")
+            exact.append(body_indent + "              case Success(result) => complete(result.toJson(true))")
         else:
-            exact.append(body_indent + '              case Success(result) => complete ("")')
+            exact.append(body_indent + '              case Success(result) => complete("")')
 
         exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")

@@ -1869,7 +1869,7 @@ public class Element implements Serializable {
      * @return
      */
     private boolean isList(SchemaNode schemaNode) {
-       return schemaNode != null && ( schemaNode.yang_node_type.equals("list") );
+       return schemaNode != null && ( schemaNode.yang_node_type.equals("list") || schemaNode.yang_node_type.equals("input") || schemaNode.yang_node_type.equals("output"));
     }
 
     private void writeYangNumberTypes(JsonGenerator generator,String qName, YangBaseInt value) throws IOException {

@@ -89,7 +89,20 @@ public class YangJsonParser {
     }
 
 
-
+    /**
+     * Parse a json string and convert to Element. If prefix map is set and the Schema is enabled returned type
+     * will be YangElement
+     *
+     * @param jsonString
+     * @param prefixMap
+     * @return
+     * @throws JNCException
+     */
+    public final Element parse(String containerName, String jsonString, PrefixMap prefixMap) throws JNCException {
+        String fullStr = "{\"" + containerName + "\":" + jsonString + "}";
+        final ByteArrayInputStream bis = new ByteArrayInputStream(fullStr.getBytes());
+        return parse(bis, prefixMap);
+    }
 
 
     private void parseObject(final JsonParser jp, final String nameSpace) throws IOException, SAXException {
