@@ -1775,7 +1775,7 @@ public class Element implements Serializable {
      */
     public String toJson(boolean prettyPrint) throws IOException {
         StringWriter writer = new StringWriter();
-        toJson(writer, prettyPrint,false);
+        toJson(writer, prettyPrint,true);
         return writer.toString();
     }
 
