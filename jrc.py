@@ -1006,7 +1006,7 @@ class ClassGenerator(object):
         if stmt.keyword in module_stmts:
             self.filename = normalize(search_one(stmt, 'prefix').arg) + 'Routes.scala'
         elif stmt.keyword in ('rpc'):
-            if self.stmt.i_orig_module.keyword == "submodule":
+            if self.stmt.i_module.keyword in ("submodule", "module"):
                 self.filename=normalize(self.stmt.i_module.arg)+"RpcApi.scala"
             else:
                 self.filename=normalize(self.n2)+"RpcApi.scala"
@@ -1036,8 +1036,6 @@ class ClassGenerator(object):
             self.generate_classes()
         elif stmt.keyword not in ('notification', 'rpc'):
             self.generate_class()
-        elif stmt.keyword in ('rpc'):
-            self.generate_rpc_class()
 
     def generate_classes(self):
         """Generates a Java class hierarchy from a module statement, allowing
@@ -1131,9 +1129,15 @@ class ClassGenerator(object):
 
                     if stmt.keyword == 'rpc':
                         routing.extend(child_generator.generate_rpc_routes(java_class, stmt))
-                        rpcapi = [' ' * 4 + 'lazy val '+camelize(rpc_api)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+rpc_api+'RpcApi])']
-                        rpcapiimpl = JavaValue(rpcapi)
-                        java_class.append_access_method("apiimpl", rpcapiimpl)
+                        if hasattr(self, "rpc_class") == False:
+                            rpcapi = [' ' * 4 + 'lazy val '+camelize(module_name)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module_name)+'RpcApi])']
+                            rpcapiimpl = JavaValue(rpcapi)
+                            java_class.append_access_method("apiimpl", rpcapiimpl)
+                            self.rpc_class = JavaClass(filename=normalize(self.n2+"RpcApi"),
+                                package=self.package,
+                                description=''.join(['This class represents rpc api']),
+                                source=self.src)
+                        self.generate_rpc_class(stmt)
                     elif stmt.keyword == 'notification':
                         routing.extend(child_generator.generate_notification_routes(java_class))
                     else:
@@ -1247,48 +1251,40 @@ class ClassGenerator(object):
 
         self.write_to_file()
 
-    def generate_rpc_class(self):
-
-        self.java_class = JavaClass(filename=self.filename,
-            package=self.package,
-            description=''.join(['This class represents rpc api']),
-            source=self.src)
-
+    def generate_rpc_class(self, stmt):
+        rpc_name = normalize(stmt.arg)
+        add = self.rpc_class.append_access_method
         if self.ctx.opts.debug or self.ctx.opts.verbose:
-            print('Generating "' + self.filename + '"...')
+            print('Generating "' + rpc_name+"Rpc" + '"...')
 
         indent =  ' ' * 4
-
-        rpc_name = self.n2 + "Rpc"
-
         input_para = False
         output_para = False
-        for sub in self.stmt.substmts:
+        for sub in stmt.substmts:
             if sub.keyword == "input":
                 input_para = True
             elif sub.keyword == "output":
                 output_para = True
 
         if input_para:
-            rpc_input = "(input: " + self.n + "Input, apiCtx: ApiContext)"
-            self.java_class.imports.add(self.mopackage+"."+camelize(self.stmt.arg)+'.'+normalize(self.stmt.arg)+"Input")
+            rpc_input = "(input: " + rpc_name + "Input, apiCtx: ApiContext)"
+            self.rpc_class.imports.add(self.mopackage+"."+rpc_name+"Input")
         else:
             rpc_input = "(apiCtx: ApiContext)"
 
         if output_para:
-            rpc_output = "Future[Seq[" + self.n + "Output"+"]]"
-            self.java_class.imports.add(self.mopackage+"."+camelize(self.stmt.arg)+'.'+normalize(self.stmt.arg)+"Output")
+            rpc_output = "Future[" + rpc_name + "Output"+"]"
+            self.rpc_class.imports.add(self.mopackage+"."+rpc_name+"Output")
         else:
-            rpc_output = "Future[Option[Unit]]"
+            rpc_output = "Future[Unit]"
 
-        rpc_method = JavaValue(exact=[indent + "def " + rpc_name + rpc_input + "(implicit ec: ExecutionContext): " + rpc_output])
-        self.java_class.add_field(rpc_method)
+        rpc_method = JavaValue(exact=[indent + "def " + camelize(rpc_name) + "Rpc"+rpc_input + "(implicit ec: ExecutionContext): " + rpc_output])
+        add("rpc", rpc_method)
 
         # Generate RPC API class
-        self.java_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
-        self.java_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
+        self.rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
+        self.rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
 
-        self.write_to_file()
 
     # def generate_child(self, sub):
     #     """Appends access methods to class for children in the YANG module.
@@ -1366,7 +1362,7 @@ class ClassGenerator(object):
 
         marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
         marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2) +
-                       '] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
+                       '] = Right((new YangJsonParser()).parse("' + self.stmt.arg + '", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
                         normalize(self.n2) + '])')
         marshell.append(' ' * 4 + '}')
         marsheller = JavaValue(marshell)
@@ -1560,15 +1556,6 @@ class ClassGenerator(object):
         else:
             module_name = get_module(self.stmt).arg
 
-        marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'Input] {']
-        marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'Input' +
-                       '] = Right((new YangJsonParser()).parse(req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
-                        normalize(self.n2)+'Input])')
-        marshell.append(' ' * 4 + '}')
-        marsheller = JavaValue(marshell)
-
-        add('marsheller', marsheller)
-
         input_para = False
         output_para = False
 
@@ -1577,10 +1564,24 @@ class ClassGenerator(object):
         for sub in stmt.substmts:
             if sub.keyword == "input":
                 input_para = True
-                java_class.imports.add(package_name+'.'+self.n2+"."+normalize(stmt.arg)+"Input")
+                java_class.imports.add(package_name+'.'+normalize(stmt.arg)+"Input")
+                marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'InputUnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'Input] {']
+                marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'Input' +
+                       '] = Right((new YangJsonParser()).parse("' + self.stmt.arg + '-input", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
+                        normalize(self.n2)+'Input])')
+                marshell.append(' ' * 4 + '}')
+                marsheller = JavaValue(marshell)
+                add('marsheller', marsheller)
             elif sub.keyword == "output":
                 output_para = True
-                java_class.imports.add(package_name+'.'+self.n2+"."+normalize(stmt.arg)+"Output")
+                java_class.imports.add(package_name+'.'+normalize(stmt.arg)+"Output")
+                marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'OutputUnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'Output] {']
+                marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2)+'Output' +
+                       '] = Right((new YangJsonParser()).parse("' + self.stmt.arg + '-output", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
+                        normalize(self.n2)+'Output])')
+                marshell.append(' ' * 4 + '}')
+                marsheller = JavaValue(marshell)
+                add('marsheller', marsheller)
 
         indent = ' ' * 6
         body_indent = ' ' * 8
@@ -1596,9 +1597,9 @@ class ClassGenerator(object):
             exact.append(body_indent + "          entity(as["+normalize(self.n2)+"Input]) {input =>")
 
         if output_para:
-            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Seq["+normalize(self.n2)+"Output]] {")
+            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet["+normalize(self.n2)+"Output] {")
         else:
-            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option[Unit]] {")
+            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Unit] {")
 
         if input_para:
             exact.append(body_indent + "              "+camelize(module_name)+"RpcApiImpl."+camelize(self.n2)+"Rpc(input, apiCtx)")
@@ -1608,9 +1609,9 @@ class ClassGenerator(object):
         exact.append(body_indent + "            }) {")
 
         if output_para:
-            exact.append(body_indent + "              case Success(result) => complete (JsonUtil.elementSeqToJson(result, classOf["+normalize(self.n2)+"Output]))")
+            exact.append(body_indent + "              case Success(result) => complete(result.toJson(true))")
         else:
-            exact.append(body_indent + '              case Success(result) => complete ("")')
+            exact.append(body_indent + '              case Success(result) => complete("")')
 
         exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")
