@@ -1153,6 +1153,16 @@ class ClassGenerator(object):
                    java_class.as_list(),
                    self.ctx)
 
+            if hasattr(self, "rpc_class") == True:
+                filename = normalize(self.n2) + "RpcApi.scala"
+                if self.ctx.opts.debug or self.ctx.opts.verbose:
+                    print('Generating "' + filename + '"...')
+
+                write_file(path,
+                   filename,
+                   self.rpc_class.as_list(),
+                   self.ctx)
+
     def generate_class(self):
         """Generates a Java class hierarchy providing an interface to a YANG
         module. Uses mutual recursion with generate_child.
@@ -1216,6 +1226,7 @@ class ClassGenerator(object):
 
         getall_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "List(",
                                         ' ' * 6 + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[String]"])
+
         self.java_class.add_field(getall_field)
 
         getsize_field = JavaValue(exact=[indent + "def get" + normalize(self.n2) + "Count(",
@@ -1251,6 +1262,158 @@ class ClassGenerator(object):
 
         self.write_to_file()
 
+        self.generate_implclass()
+
+    def generate_implclass(self):
+        stmt = self.stmt
+        if stmt.i_orig_module.keyword == "submodule":
+            source = stmt.i_orig_module.arg
+        else:
+            source = self.rootpkg[self.rootpkg.rfind('.') + 1:]
+
+        field = [' ' * 2 + 'implicit val system = EasyRestActionSystem.system']
+        field.append(' ' * 2+'import DefaultJsonProtocol._')
+        field.append(' ' * 2 + 'val name = "'+stmt.arg+'"')
+        field.append(' ' * 2 + 'val module = "'+source+'"')
+        class_field = JavaValue(field)
+
+        superclass = self.filename.split('.')[0]
+        self.filename = self.filename.split('.')[0]+"Impl.scala"
+        java_class = JavaClass(filename=self.filename,
+                package=self.package,
+                description=''.join(['This class represents the implementation of an element ', stmt.arg,
+                                     '\n * from the namespace ', self.ns,
+                                     '\n * generated to "',
+                                     self.path, OSSep, stmt.arg,
+                                     '"\n * <p>\n * See line ',
+                                     str(stmt.pos.line), ' in\n * ',
+                                     stmt.pos.ref]),
+                superclass=superclass,
+                source=source,
+                implement=True)
+        add = java_class.append_access_method  # XXX: add is a function
+        add('class_field', class_field)
+
+        if self.ctx.opts.debug or self.ctx.opts.verbose:
+            print('Generating "' + self.filename + '"...')
+
+        self.is_config = is_config(stmt)
+        self.keys = []
+        if self.is_config:
+            key = search_one(self.stmt, 'key')
+            try:
+                self.keys = key.arg.split(' ')
+            except AttributeError:
+                self.is_config = False  # is_config produced wrong value
+
+        findkey = lambda k: search_one(self.stmt, 'leaf', arg=k)
+        self.key_stmts = [findkey(k) for k in self.keys]
+
+        for key in self.key_stmts:
+                key_arg = camelize(key.arg)
+                key_type = search_one(key, 'type')
+                jnc, primitive = get_types(key_type, self.ctx)
+
+        keytype_value = jnc[jnc.rfind('.')+1:]
+        get_key_value = self.n2+'.get'+keytype_value+'Value'
+        to_json = self.n2+'.toJson(false)'
+
+        indent = ' ' * 2
+        body_indent = ' ' * 4
+        body = [indent + "override def get"+self.n+"List(apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[String] = {"]
+        body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
+        body.append(body_indent + '  encode(Gzip)')
+        body.append(body_indent + '    ~> sendReceive')
+        body.append(body_indent + "  )")
+        body.append(body_indent + 'pipeline(ElasticSearchUtil.get(module + "/" + name + "/_search")) map {')
+        body.append(body_indent + "  resp =>")
+        body.append(body_indent + "    if (resp.status == StatusCodes.NotFound) {")
+        body.append(body_indent + "      val rtArr = JsArray()")
+        body.append(body_indent + "      val obj = new JsObject(Map[String, JsArray](name -> rtArr))")
+        body.append(body_indent + "      obj.toString()")
+        body.append(body_indent + "    }")
+        body.append(body_indent + "    else {")
+        body.append(body_indent + "      val result = resp.entity.data.asString.parseJson.asJsObject")
+        body.append(body_indent + '      val resultArr = result.getFields("hits")(0).asJsObject.getFields("hits")(0).asInstanceOf[JsArray]')
+        body.append(body_indent + "      val obj = new JsObject(Map[String, JsArray](name -> rtArr))")
+        body.append(body_indent + "      obj.toString()")
+        body.append(body_indent + '    }')
+        body.append(body_indent + '}')
+        body.append(indent + '}')
+        body.append(indent)
+        body.append(indent + 'override def get'+ self.n +'By'+keytype_value+"("+key_arg+": " +keytype_value+', apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[String]] = {')
+        body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
+        body.append(body_indent + '  encode(Gzip)')
+        body.append(body_indent + '    ~> sendReceive')
+        body.append(body_indent + "  )")
+        body.append(body_indent + 'pipeline(ElasticSearchUtil.get(module + "/" + name + "/" + '+key_arg+')) map {')
+        body.append(body_indent + "  resp =>")
+        body.append(body_indent + "    if (resp.status == StatusCodes.NotFound) {")
+        body.append(body_indent + "      None")
+        body.append(body_indent + "  }")
+        body.append(body_indent + "  else {")
+        body.append(body_indent + '    val result = resp.entity.data.asString.parseJson.asJsObject.getFields("_source")(0).asJsObject')
+        body.append(body_indent + "    Some(ElasticSearchUtil.wrapObject(result).toString())")
+        body.append(body_indent + '  }')
+        body.append(body_indent + '}')
+        body.append(indent + '}')
+        body.append(indent)
+        body.append(indent + "override def get"+self.n+"Count(apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Long] = ???")
+        body.append(indent)
+        body.append(indent + "override def create"+self.n+"("+self.n2+":"+self.n2+", apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[String] = {")
+        body.append(body_indent + "val pipeline: HttpRequest => Future[String] = (")
+        body.append(body_indent + "    sendReceive")
+        body.append(body_indent + "    ~> unmarshal[String]")
+        body.append(body_indent + "  )")
+        body.append(body_indent + 'pipeline(ElasticSearchUtil.post(module + "/" + name + "/" + '+get_key_value+', '+to_json+')) map({')
+        body.append(body_indent + "  result =>")
+        body.append(body_indent + "    Await.result(get"+self.n+"By"+keytype_value+"("+get_key_value+", apiCtx) map {")
+        body.append(body_indent + "      r =>")
+        body.append(body_indent + "        r.get.toString")
+        body.append(body_indent + "    }, 10 seconds)")
+        body.append(body_indent + '})')
+        body.append(indent + '}')
+        body.append(indent)
+        body.append(indent + "override def update"+self.n+"("+self.n2+":"+self.n+", apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[String]] = {")
+        body.append(body_indent + "val pipeline: HttpRequest => Future[String] = (")
+        body.append(body_indent + "    sendReceive")
+        body.append(body_indent + "    ~> unmarshal[String]")
+        body.append(body_indent + "  )")
+        body.append(body_indent + 'pipeline(ElasticSearchUtil.put(module + "/" + name + "/" + '+get_key_value+',  '+to_json+')) map {')
+        body.append(body_indent + "  result =>")
+        body.append(body_indent + '    if (result == "") {')
+        body.append(body_indent + "      None")
+        body.append(body_indent + "    }")
+        body.append(body_indent + "    else {")
+        body.append(body_indent + "      Some("+to_json+")")
+        body.append(body_indent + '    }')
+        body.append(body_indent + '}')
+        body.append(indent + '}')
+        body.append(indent)
+        body.append(indent + "override def delete"+self.n+"("+key_arg+": "+keytype_value+", apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Boolean] = ???")
+        class_body = JavaValue(body)
+        java_class.append_access_method("class_body", class_body)
+
+        java_class.imports.add("net.juniper.easyrest.core.EasyRestActionSystem")
+        java_class.imports.add("net.juniper.easyrest.ctx.ApiContext")
+        java_class.imports.add("net.juniper.elasticsearch.ElasticSearchUtil")
+        java_class.imports.add(jnc)
+        java_class.imports.add(self.mopackage + '.' + self.n)
+        java_class.imports.add("spray.client.pipelining._")
+        java_class.imports.add("spray.http._")
+        java_class.imports.add("spray.httpx.SprayJsonSupport._")
+        java_class.imports.add("spray.httpx.encoding.{Deflate, Gzip}")
+        java_class.imports.add("spray.json.{DefaultJsonProtocol, JsArray, JsBoolean, JsObject}")
+        java_class.imports.add("scala.concurrent.{Await, ExecutionContext, Future}")
+        java_class.imports.add("spray.json._")
+        java_class.imports.add("scala.concurrent.duration._")
+
+        write_file(self.path,
+                   self.filename,
+                   java_class.as_list(),
+                   self.ctx)
+
+
     def generate_rpc_class(self, stmt):
         rpc_name = normalize(stmt.arg)
         add = self.rpc_class.append_access_method
@@ -1284,7 +1447,6 @@ class ClassGenerator(object):
         # Generate RPC API class
         self.rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
         self.rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
-
 
     # def generate_child(self, sub):
     #     """Appends access methods to class for children in the YANG module.
@@ -1360,14 +1522,14 @@ class ClassGenerator(object):
         #else:
         module_name = get_module(self.stmt).arg
 
-        marshell = [' ' * 4 + 'implicit object '+normalize(self.n2)+'UnMarshaller extends FromRequestUnmarshaller['+normalize(self.n2)+'] {']
-        marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+normalize(self.n2) +
+        marshell = [' ' * 4 + 'implicit object '+self.n+'UnMarshaller extends FromRequestUnmarshaller['+self.n+'] {']
+        marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+self.n +
                        '] = Right((new YangJsonParser()).parse("' + self.stmt.arg + '", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
-                        normalize(self.n2) + '])')
+                        self.n + '])')
         marshell.append(' ' * 4 + '}')
         marsheller = JavaValue(marshell)
 
-        api = [' ' * 4 + 'lazy val '+self.n2+'ApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(self.n2)+'Api])']
+        api = [' ' * 4 + 'lazy val '+self.n2+'ApiImpl = ApiImplRegistry.getImplementation(classOf['+self.n+'Api])']
         apiimpl = JavaValue(api)
 
         is_config_value = is_config(self.stmt)
@@ -1415,7 +1577,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Long] {")
-        exact.append(body_indent + "            "+self.n2+"ApiImpl.get"+normalize(self.n2)+"Count(apiCtx)")
+        exact.append(body_indent + "            "+self.n2+"ApiImpl.get"+self.n+"Count(apiCtx)")
         exact.append(body_indent + "          }) {")
         exact.append(body_indent + "            case Success(result) => complete(\"{\\\"total\\\":\" + result.toString + \"}\")")
         exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
@@ -1432,7 +1594,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "        intercept(apiCtx) {")
         exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option[String]] {")
-        exact.append(body_indent + "              "+self.n2+"ApiImpl.get"+normalize(self.n2)+ "By" + normalize(key_arg) +"(new " + value + "("+ key_arg + "), apiCtx)")
+        exact.append(body_indent + "              "+self.n2+"ApiImpl.get"+self.n+ "By" + normalize(key_arg) +"(new " + value + "("+ key_arg + "), apiCtx)")
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
@@ -1456,9 +1618,9 @@ class ClassGenerator(object):
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          entity(as["+normalize(self.n2)+"]) {" + self.n2 +" =>")
+        exact.append(body_indent + "          entity(as["+self.n+"]) {" + self.n2 +" =>")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[String] {")
-        exact.append(body_indent + "              "+self.n2+"ApiImpl.create"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
+        exact.append(body_indent + "              "+self.n2+"ApiImpl.create"+self.n+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => complete(result)")
         exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
@@ -1476,9 +1638,9 @@ class ClassGenerator(object):
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          entity(as["+normalize(self.n2)+"]) {" + self.n2 +" =>")
+        exact.append(body_indent + "          entity(as["+self.n+"]) {" + self.n2 +" =>")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option[String]] {")
-        exact.append(body_indent + "              "+self.n2+"ApiImpl.update"+normalize(self.n2)+"(" + self.n2 + ", apiCtx)")
+        exact.append(body_indent + "              "+self.n2+"ApiImpl.update"+self.n+"(" + self.n2 + ", apiCtx)")
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
@@ -1505,7 +1667,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "        intercept(apiCtx) {")
         exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Boolean] {")
-        exact.append(body_indent + "              "+self.n2+"ApiImpl.delete"+normalize(self.n2)+"(new " + value + "("+ key_arg + "), apiCtx)")
+        exact.append(body_indent + "              "+self.n2+"ApiImpl.delete"+self.n+"(new " + value + "("+ key_arg + "), apiCtx)")
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               if(result.booleanValue) {")
@@ -1535,7 +1697,7 @@ class ClassGenerator(object):
         java_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
         java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
         java_class.imports.add("net.juniper.easyrest.util.JsonUtil")
-        java_class.imports.add(self.mopackage + '.' + normalize(self.n2))
+        java_class.imports.add(self.mopackage + '.' + self.n)
         java_class.imports.add("spray.http._")
         java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
         java_class.imports.add("spray.routing.HttpService")
@@ -1750,7 +1912,7 @@ class JavaClass(object):
 
     def __init__(self, filename=None, package=None, imports=None,
                  description=None, body=None, version='1.0',
-                 superclass=None, interfaces=None, source='<unknown>.yang'):
+                 superclass=None, interfaces=None, source='<unknown>.yang', implement=False):
         """Constructor.
 
         filename    -- Should preferably not contain a complete path since it is
@@ -1794,6 +1956,7 @@ class JavaClass(object):
                       self.enablers, self.schema_registrators,
                       self.name_getters, self.access_methods,
                       self.support_methods]
+        self.implement_class = implement
 
     def add_field(self, field):
         """Adds a field represented as a string"""
@@ -1911,7 +2074,7 @@ class JavaClass(object):
                 #            or cls == '*')):
                 if (pkg != 'com.tailf.jnc' or cls in com_tailf_jnc
                             or cls == '*'):
-                    if cls in imported_classes:
+                    if cls in imported_classes and cls != "_":
                         continue
                     else:
                         imported_classes.append(cls)
@@ -1931,7 +2094,11 @@ class JavaClass(object):
                                 date.today().isoformat()]))
         header.append(' * @author Auto Generated')
         header.append(' */')
-        header.append(''.join(['trait ',
+        if self.implement_class:
+            class_body = 'class '
+        else:
+            class_body = 'trait '
+        header.append(''.join([class_body,
                                self.filename.split('.')[0],
                                self.get_superclass_and_interfaces(),
                                ' {']))
