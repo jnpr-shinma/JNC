@@ -89,7 +89,20 @@ public class YangJsonParser {
     }
 
 
-
+    /**
+     * Parse a json string and convert to Element. If prefix map is set and the Schema is enabled returned type
+     * will be YangElement
+     *
+     * @param jsonString
+     * @param prefixMap
+     * @return
+     * @throws JNCException
+     */
+    public final Element parse(String containerName, String jsonString, PrefixMap prefixMap) throws JNCException {
+        String fullStr = "{\"" + containerName + "\":" + jsonString + "}";
+        final ByteArrayInputStream bis = new ByteArrayInputStream(fullStr.getBytes());
+        return parse(bis, prefixMap);
+    }
 
 
     private void parseObject(final JsonParser jp, final String nameSpace) throws IOException, SAXException {
@@ -130,10 +143,23 @@ public class YangJsonParser {
     private void processArray(final JsonParser jp, final String nameSpace, final String name) throws IOException, SAXException {
         while (jp.nextToken() != JsonToken.END_ARRAY) {
             elementHandler.startElement(nameSpace, name, name, attr);
-            parseObject(jp, nameSpace);
+            String text = jp.getText();
+            if(!text.startsWith("{")) {
+                YangElement parent = (YangElement)elementHandler.current;
+                try{
+                    parent.setLeafValue(nameSpace, name, text);
+                }
+                catch(JNCException e) {
+                    e.printStackTrace();
+                    throw new SAXException(e.toString());
+                }
+            }
+            else
+                parseObject(jp, nameSpace);
             elementHandler.endElement(nameSpace, name, name);
         }
     }
+
 
     private String getAndUpdateNamespace(PrefixMap prefixes) {
         String nameSpace = "";
