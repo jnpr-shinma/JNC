@@ -146,13 +146,8 @@ public class YangJsonParser {
             String text = jp.getText();
             if(!text.startsWith("{")) {
                 YangElement parent = (YangElement)elementHandler.current;
-                try{
-                    parent.setLeafValue(nameSpace, name, text);
-                }
-                catch(JNCException e) {
-                    e.printStackTrace();
-                    throw new SAXException(e.toString());
-                }
+                NodeSet nodeSet = parent.getChildren();
+                nodeSet.last().setValue(text);
             }
             else
                 parseObject(jp, nameSpace);
