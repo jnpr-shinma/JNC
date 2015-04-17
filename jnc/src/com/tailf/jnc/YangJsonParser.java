@@ -144,11 +144,8 @@ public class YangJsonParser {
         while (jp.nextToken() != JsonToken.END_ARRAY) {
             elementHandler.startElement(nameSpace, name, name, attr);
             String text = jp.getText();
-            if(!text.startsWith("{")) {
-                YangElement parent = (YangElement)elementHandler.current;
-                NodeSet nodeSet = parent.getChildren();
-                nodeSet.last().setValue(text);
-            }
+            if(!text.startsWith("{"))
+                this.elementHandler.leafValue = text;
             else
                 parseObject(jp, nameSpace);
             elementHandler.endElement(nameSpace, name, name);
