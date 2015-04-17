@@ -143,10 +143,18 @@ public class YangJsonParser {
     private void processArray(final JsonParser jp, final String nameSpace, final String name) throws IOException, SAXException {
         while (jp.nextToken() != JsonToken.END_ARRAY) {
             elementHandler.startElement(nameSpace, name, name, attr);
-            parseObject(jp, nameSpace);
+            String text = jp.getText();
+            if(!text.startsWith("{")) {
+                YangElement parent = (YangElement)elementHandler.current;
+                NodeSet nodeSet = parent.getChildren();
+                nodeSet.last().setValue(text);
+            }
+            else
+                parseObject(jp, nameSpace);
             elementHandler.endElement(nameSpace, name, name);
         }
     }
+
 
     private String getAndUpdateNamespace(PrefixMap prefixes) {
         String nameSpace = "";
