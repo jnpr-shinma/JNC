@@ -1338,8 +1338,7 @@ class ClassGenerator(object):
         body_indent = ' ' * 4
         body = [indent + "override def get"+self.n+"List(apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[String] = {"]
         body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
-        body.append(body_indent + '  encode(Gzip)')
-        body.append(body_indent + '    ~> sendReceive')
+        body.append(body_indent + '    sendReceive')
         body.append(body_indent + "  )")
         body.append(body_indent + 'pipeline(ElasticSearchUtil.get(module + "/" + name + "/_search")) map {')
         body.append(body_indent + "  resp =>")
@@ -1359,8 +1358,7 @@ class ClassGenerator(object):
         body.append(indent)
         body.append(indent + 'override def get'+ self.n +'By'+keytype_value+"("+key_arg+": " +keytype_value+', apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[String]] = {')
         body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
-        body.append(body_indent + '  encode(Gzip)')
-        body.append(body_indent + '    ~> sendReceive')
+        body.append(body_indent + '    sendReceive')
         body.append(body_indent + "  )")
         body.append(body_indent + 'pipeline(ElasticSearchUtil.get(module + "/" + name + "/" + '+key_arg+')) map {')
         body.append(body_indent + "  resp =>")
@@ -1421,8 +1419,8 @@ class ClassGenerator(object):
         body.append(indent + '}')
         body.append(indent)
         body.append(indent + "override def delete"+self.n+"("+key_arg+": "+keytype_value+", apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Boolean] = {")
-        body.append(body_indent + '  encode(Gzip)')
-        body.append(body_indent + '    ~> sendReceive')
+        body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
+        body.append(body_indent + '    sendReceive')
         body.append(body_indent + "  )")
         body.append(body_indent + 'pipeline(ElasticSearchUtil.get(module + "/" + name + "/" + '+key_arg+')) map {')
         body.append(body_indent + "  resp =>")
@@ -1489,7 +1487,7 @@ class ClassGenerator(object):
             rpc_output = "Future[Unit]"
 
         rpc_method = JavaValue(exact=[indent + "def " + camelize(rpc_name) + "Rpc"+rpc_input + "(implicit ec: ExecutionContext): " + rpc_output])
-        body = [" " *2 + "def " + camelize(rpc_name) + "Rpc"+rpc_input + "(implicit ec: ExecutionContext): " + rpc_output+"{"]
+        body = [" " *2 + "def " + camelize(rpc_name) + "Rpc"+rpc_input + "(implicit ec: ExecutionContext): " + rpc_output+" = {"]
         body.append(indent+"Future{new "+rpc_name + "Output()"+"}")
         body.append(" " * 2+"}")
         rpc_impl_method = JavaValue(body)
