@@ -1137,6 +1137,12 @@ class ClassGenerator(object):
                                 package=self.package,
                                 description=''.join(['This class represents rpc api']),
                                 source=self.src)
+                            self.rpc_impl_class = JavaClass(filename=normalize(self.n2+"RpcApiImpl"),
+                                package=self.package,
+                                description=''.join(['This class represents rpc api implementation']),
+                                source=self.src,
+                                superclass=normalize(self.n2+"RpcApi"),
+                                implement=True)
                         self.generate_rpc_class(stmt)
                     elif stmt.keyword == 'notification':
                         routing.extend(child_generator.generate_notification_routes(java_class))
@@ -1161,6 +1167,16 @@ class ClassGenerator(object):
                 write_file(path,
                    filename,
                    self.rpc_class.as_list(),
+                   self.ctx)
+
+            if hasattr(self, "rpc_class") == True:
+                filename = normalize(self.n2) + "RpcApiImpl.scala"
+                if self.ctx.opts.debug or self.ctx.opts.verbose:
+                    print('Generating "' + filename + '"...')
+
+                write_file(path,
+                   filename,
+                   self.rpc_impl_class.as_list(),
                    self.ctx)
 
     def generate_class(self):
@@ -1358,7 +1374,21 @@ class ClassGenerator(object):
         body.append(body_indent + '}')
         body.append(indent + '}')
         body.append(indent)
-        body.append(indent + "override def get"+self.n+"Count(apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Long] = ???")
+        body.append(indent + "override def get"+self.n+"Count(apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Long] = {")
+        body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
+        body.append(body_indent + "    sendReceive")
+        body.append(body_indent + "  )")
+        body.append(body_indent + 'pipeline(ElasticSearchUtil.get(module + "/" + name + "/_count")) map {')
+        body.append(body_indent + "  resp =>")
+        body.append(body_indent + "    if (resp.status == StatusCodes.NotFound) {")
+        body.append(body_indent + "      0")
+        body.append(body_indent + "  }")
+        body.append(body_indent + "  else {")
+        body.append(body_indent + '    val result = resp.entity.data.asString.parseJson.asJsObject.getFields("count")(0).toString')
+        body.append(body_indent + "    result.toLong")
+        body.append(body_indent + '  }')
+        body.append(body_indent + '}')
+        body.append(indent + '}')
         body.append(indent)
         body.append(indent + "override def create"+self.n+"("+self.n2+":"+self.n+", apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[String] = {")
         body.append(body_indent + "val pipeline: HttpRequest => Future[String] = (")
@@ -1390,7 +1420,21 @@ class ClassGenerator(object):
         body.append(body_indent + '}')
         body.append(indent + '}')
         body.append(indent)
-        body.append(indent + "override def delete"+self.n+"("+key_arg+": "+keytype_value+", apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Boolean] = ???")
+        body.append(indent + "override def delete"+self.n+"("+key_arg+": "+keytype_value+", apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Boolean] = {")
+        body.append(body_indent + '  encode(Gzip)')
+        body.append(body_indent + '    ~> sendReceive')
+        body.append(body_indent + "  )")
+        body.append(body_indent + 'pipeline(ElasticSearchUtil.get(module + "/" + name + "/" + '+key_arg+')) map {')
+        body.append(body_indent + "  resp =>")
+        body.append(body_indent + "    if (resp.status == StatusCodes.NotFound) {")
+        body.append(body_indent + "      false")
+        body.append(body_indent + "  }")
+        body.append(body_indent + "  else {")
+        body.append(body_indent + '    val result = resp.entity.data.asString.parseJson.asJsObject')
+        body.append(body_indent + '    result.getFields("found")(0).asInstanceOf[JsBoolean].value')
+        body.append(body_indent + '  }')
+        body.append(body_indent + '}')
+        body.append(indent + '}')
         class_body = JavaValue(body)
         java_class.append_access_method("class_body", class_body)
 
@@ -1417,6 +1461,7 @@ class ClassGenerator(object):
     def generate_rpc_class(self, stmt):
         rpc_name = normalize(stmt.arg)
         add = self.rpc_class.append_access_method
+        add_impl = self.rpc_impl_class.append_access_method
         if self.ctx.opts.debug or self.ctx.opts.verbose:
             print('Generating "' + rpc_name+"Rpc" + '"...')
 
@@ -1432,21 +1477,30 @@ class ClassGenerator(object):
         if input_para:
             rpc_input = "(input: " + rpc_name + "Input, apiCtx: ApiContext)"
             self.rpc_class.imports.add(self.mopackage+"."+rpc_name+"Input")
+            self.rpc_impl_class.imports.add(self.mopackage+"."+rpc_name+"Input")
         else:
             rpc_input = "(apiCtx: ApiContext)"
 
         if output_para:
             rpc_output = "Future[" + rpc_name + "Output"+"]"
             self.rpc_class.imports.add(self.mopackage+"."+rpc_name+"Output")
+            self.rpc_impl_class.imports.add(self.mopackage+"."+rpc_name+"Output")
         else:
             rpc_output = "Future[Unit]"
 
         rpc_method = JavaValue(exact=[indent + "def " + camelize(rpc_name) + "Rpc"+rpc_input + "(implicit ec: ExecutionContext): " + rpc_output])
+        body = [" " *2 + "def " + camelize(rpc_name) + "Rpc"+rpc_input + "(implicit ec: ExecutionContext): " + rpc_output+"{"]
+        body.append(indent+"Future{new "+rpc_name + "Output()"+"}")
+        body.append(" " * 2+"}")
+        rpc_impl_method = JavaValue(body)
         add("rpc", rpc_method)
+        add_impl("rpc_impl", rpc_impl_method)
 
         # Generate RPC API class
         self.rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
         self.rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
+        self.rpc_impl_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
+        self.rpc_impl_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
 
     # def generate_child(self, sub):
     #     """Appends access methods to class for children in the YANG module.
