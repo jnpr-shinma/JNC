@@ -1438,7 +1438,7 @@ class ClassGenerator(object):
 
         java_class.imports.add("net.juniper.easyrest.core.EasyRestActionSystem")
         java_class.imports.add("net.juniper.easyrest.ctx.ApiContext")
-        java_class.imports.add("net.juniper.elasticsearch.ElasticSearchUtil")
+        java_class.imports.add("net.juniper.easyrest.elasticsearch.ElasticSearchUtil")
         java_class.imports.add(jnc)
         java_class.imports.add(self.mopackage + '.' + self.n)
         java_class.imports.add("spray.client.pipelining._")
