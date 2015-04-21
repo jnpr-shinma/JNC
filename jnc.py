@@ -562,11 +562,16 @@ def get_package(stmt, ctx):
     sub_packages = collections.deque()
     parent = get_parent(stmt)
     while parent is not None:
-        if stmt.i_orig_module.keyword == "submodule" and stmt.keyword != "typedef" and get_parent(parent) is None:
+        if hasattr(stmt, "i_orig_module") and stmt.i_orig_module.keyword == "submodule" \
+                and stmt.keyword != "typedef" and get_parent(parent) is None:
             sub_packages.appendleft(camelize(stmt.i_orig_module.arg))
         stmt = parent
-        parent = get_parent(stmt)
-        sub_packages.appendleft(camelize(stmt.arg))
+        if stmt.arg in ('output', 'input'):
+            parent = get_parent(stmt.parent)
+            sub_packages.appendleft(camelize(stmt.parent.arg)+normalize(stmt.arg))
+        else:
+            parent = get_parent(stmt)
+            sub_packages.appendleft(camelize(stmt.arg))
 
     if stmt.arg in ctx.opts.ignore_modules:
         full_package = ctx.opts.import_package.split('.')
@@ -1086,9 +1091,8 @@ class ClassGenerator(object):
         if stmt.keyword in module_stmts:
             self.filename = normalize(search_one(stmt, 'prefix').arg) + '.java'
         elif stmt.keyword == 'input' or stmt.keyword == 'output':
-             package_name = self.package[self.package.rfind('.')+1:]
-             filename = normalize(package_name)+self.n
-             self.n2 = camelize(package_name)+self.n
+             filename = normalize(stmt.parent.arg)+self.n
+             self.n2 = camelize(stmt.parent.arg)+self.n
              self.filename = filename + '.java'
         else:
             self.filename = self.n + '.java'
@@ -1345,27 +1349,13 @@ class ClassGenerator(object):
                 source=self.src,
                 superclass='YangElement')
 
-        # Set tagpath field in class
-        #root_fields = [JavaValue()]
-        #root_fields[0].set_name('TAG_PATH')
-        #package = self.package.replace('.', '/')
-        #if self.stmt.i_orig_module.keyword == "submodule":
-        #    package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name) + '/' + camelize(self.stmt.i_orig_module.arg))[2]
-        #else:
-        #    package_name = package.partition(self.ctx.rootpkg + '/' + camelize(self.prefix_name))[2]
-        #if package_name :
-        #    tagpath = package_name[1:] + '/' + stmt.arg
-        #else:
-        #tagpath = get_tagpath(stmt)
-        #if tagpath:
-        #    tagpath_value = tagpath + '/' + stmt.arg
-        #else:
-        #    tagpath_value = stmt.arg
-        #root_fields[0].value = 'new Tagpath("' + tagpath_value + '")'
-        #for root_field in root_fields:
-        #    for modifier in ('public', 'static', 'final', 'Tagpath'):
-        #        root_field.add_modifier(modifier)
-        #    self.java_class.add_field(root_field)
+        if stmt.keyword in ("input", "output"):
+            # Set tagpath field in rpc input and output class
+            indent = ' ' * 4
+            tagpath_field = JavaValue(exact=[indent + "public Tagpath tagpath() {",
+                                             indent * 2 + 'return new Tagpath("'+stmt.parent.arg+'/'+stmt.keyword+'");',
+                                             indent + "}"])
+            self.java_class.add_field(tagpath_field)
 
         module_stmt = get_module(stmt)
         prefix = search_one(module_stmt, 'prefix')
@@ -1375,6 +1365,8 @@ class ClassGenerator(object):
         self.java_class.imports.add('com.tailf.jnc.Tagpath')
 
         for ch in search(stmt, yangelement_stmts | leaf_stmts):
+            if ch.arg in ("input", "output") and len(ch.i_children) == 0:
+                continue
             field = self.generate_child(ch)
             ch_arg = normalize(ch.arg)
             if field is not None:
@@ -1400,6 +1392,9 @@ class ClassGenerator(object):
                     else:
                         import_ = '.'.join([self.package, self.n2, ch_arg])
                     self.java_class.imports.add(import_)
+
+        if stmt.keyword == "rpc":
+            return
 
         if self.ctx.opts.debug or self.ctx.opts.verbose:
             if package_generated:
@@ -1462,6 +1457,9 @@ class ClassGenerator(object):
             if hasattr(sub, 'i_uses'):
                 pkg = get_uses_package(sub, self.ctx)
                 path_name = self.ctx.opts.directory + OSSep + get_uses_path(sub)
+            elif sub.keyword in ('input', 'output'):
+                pkg = self.package
+                path_name =self.path
             else:
                 pkg = self.package + '.' + self.n2
                 path_name =self.path + OSSep + self.n2
@@ -2087,7 +2085,7 @@ class MethodGenerator(object):
         prefix = search_one(self.module_stmt, 'prefix')
         self.root = normalize(prefix.arg)
 
-        if stmt.keyword == "container" and hasattr(stmt, 'i_uses') and len(stmt.i_uses) != 0:
+        if stmt.keyword in {"container","list"} and hasattr(stmt, 'i_uses') and len(stmt.i_uses) != 0:
             self.pkg = get_uses_package(stmt, ctx)
         else:
             self.pkg = get_package(stmt, ctx)
