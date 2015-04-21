@@ -1488,7 +1488,10 @@ class ClassGenerator(object):
 
         rpc_method = JavaValue(exact=[indent + "def " + camelize(rpc_name) + "Rpc"+rpc_input + "(implicit ec: ExecutionContext): " + rpc_output])
         body = [" " *2 + "def " + camelize(rpc_name) + "Rpc"+rpc_input + "(implicit ec: ExecutionContext): " + rpc_output+" = {"]
-        body.append(indent+"Future{new "+rpc_name + "Output()"+"}")
+        if output_para:
+            body.append(indent+"Future{new "+rpc_name + "Output()"+"}")
+        else:
+            body.append(indent+"Future{}")
         body.append(" " * 2+"}")
         rpc_impl_method = JavaValue(body)
         add("rpc", rpc_method)
