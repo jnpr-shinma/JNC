@@ -1203,6 +1203,13 @@ class ClassGenerator(object):
 
         package_generated = False
 
+        # for ch in search(stmt, list(yangelement_stmts)):
+        #     path_value = self.path+'/'+camelize(stmt.arg)
+        #     package_value = self.package+'.'+camelize(stmt.arg)
+        #     mopackage_value = self.mopackage+'.'+camelize(stmt.arg)
+        #     child_generator = ClassGenerator(ch, path=path_value, package=package_value, mopackage=mopackage_value, parent=self)
+        #     child_generator.generate(ch)
+
         self.java_class = JavaClass(filename=self.filename,
                 package=self.package,
                 description=''.join(['This class represents an element from ',
@@ -1350,7 +1357,8 @@ class ClassGenerator(object):
         body.append(body_indent + "    else {")
         body.append(body_indent + "      val result = resp.entity.data.asString.parseJson.asJsObject")
         body.append(body_indent + '      val resultArr = result.getFields("hits")(0).asJsObject.getFields("hits")(0).asInstanceOf[JsArray]')
-        body.append(body_indent + "      val obj = new JsObject(Map[String, JsArray](name -> resultArr))")
+        body.append(body_indent + '      val rtArr = new JsArray(for (obj <- resultArr.elements) yield ElasticSearchUtil.wrapObject(obj.asJsObject.getFields("_source")(0).asJsObject))')
+        body.append(body_indent + "      val obj = new JsObject(Map[String, JsArray](name -> rtArr))")
         body.append(body_indent + "      obj.toString()")
         body.append(body_indent + '    }')
         body.append(body_indent + '}')
