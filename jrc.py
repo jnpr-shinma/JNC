@@ -1295,6 +1295,7 @@ class ClassGenerator(object):
             source = self.rootpkg[self.rootpkg.rfind('.') + 1:]
 
         field = [' ' * 2 + 'implicit val system = EasyRestActionSystem.system']
+        field.append(' ' * 2+'import system.dispatcher')
         field.append(' ' * 2+'import DefaultJsonProtocol._')
         field.append(' ' * 2 + 'val name = "'+stmt.arg+'"')
         field.append(' ' * 2 + 'val module = "'+source+'"')
@@ -1404,7 +1405,7 @@ class ClassGenerator(object):
         body.append(body_indent + 'pipeline(ElasticSearchUtil.post(module + "/" + name + "/" + '+get_key_value+', '+to_json+')) flatMap({')
         body.append(body_indent + "  result =>")
         body.append(body_indent + "    refreshIndex flatMap({")
-        body.append(body_indent + "      index = >")
+        body.append(body_indent + "      index =>")
         body.append(body_indent + "        get"+self.n +'By'+keytype_value+"("+self.n2+".getUuidValue, apiCtx) map {")
         body.append(body_indent + "          r =>")
         body.append(body_indent + "            r.get.toString")
@@ -1430,7 +1431,7 @@ class ClassGenerator(object):
         body.append(body_indent + "  result =>")
         body.append(body_indent + '    refreshIndex map({')
         body.append(body_indent + "      index => {")
-        body.append(body_indent + '        if result == "") {')
+        body.append(body_indent + '        if (result == "") {')
         body.append(body_indent + "          None")
         body.append(body_indent + "        }")
         body.append(body_indent + "        else {")
@@ -1445,7 +1446,7 @@ class ClassGenerator(object):
         body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
         body.append(body_indent + '    sendReceive')
         body.append(body_indent + "  )")
-        body.append(body_indent + 'pipeline(ElasticSearchUtil.get(module + "/" + name + "/" + '+key_arg+')) flatMap {')
+        body.append(body_indent + 'pipeline(ElasticSearchUtil.delete(module + "/" + name + "/" + '+key_arg+')) flatMap {')
         body.append(body_indent + "  resp =>")
         body.append(body_indent + "  refreshIndex map({")
         body.append(body_indent + "    index=>")
