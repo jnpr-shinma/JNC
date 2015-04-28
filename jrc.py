@@ -1238,45 +1238,51 @@ class ClassGenerator(object):
             if self.ctx.opts.verbose:
                 print('Generating "' + self.filename + '"...')
 
-        key_arg, value, jnc = self.get_stmt_key(stmt)
-        self.java_class.imports.add(jnc)
+        key_arg, value = self.get_stmt_key(stmt)
 
         indent =  ' ' * 4
         body_indent = ' ' * 6
-        parent_para = ""
+
+        parent_keyname_list = []
+
         packages = get_parents(stmt)
         while packages:
             parent_stmt = packages.popleft()
             parent_name = camelize(parent_stmt.arg)
-            parent_key, parent_keyclass, parent_jnc = self.get_stmt_key(parent_stmt)
-            parent_para = parent_para+ parent_name+normalize(parent_key)+ ':'+parent_keyclass+', '
-            self.java_class.imports.add(parent_jnc)
+            parent_key, parent_keyclass = self.get_parent_stmt_key(parent_stmt, parent_name)
+            parent_keyname_list.append(parent_key)
+
+        parent_para= ', '.join(parent_keyname_list)
 
         getall_body=[indent + "def get" + normalize(self.n2) + "List("]
         if parent_para:
-            getall_body.append(parent_para)
+            getall_body.append(body_indent+parent_para+',')
         getall_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[String]")
         getall_field = JavaValue(getall_body)
         self.java_class.add_field(getall_field)
 
         getsize_body=[indent + "def get" + normalize(self.n2) + "Count("]
         if parent_para:
-            getsize_body.append(parent_para)
+            getsize_body.append(body_indent+parent_para+',')
         getsize_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Long]")
         getsize_field = JavaValue(getsize_body)
         self.java_class.add_field(getsize_field)
 
-        get_body=[indent + "def get" + normalize(self.n2) + "By" + normalize(key_arg) + "("]
+        if len(key_arg.split(',')) > 1:
+            key_name = "Key"
+        else:
+            key_name = normalize(key_arg)
+        get_body=[indent + "def get" + normalize(self.n2) + "By" + key_name + "("]
         if parent_para:
-            get_body.append(parent_para)
-        get_body.append(body_indent + key_arg + ": " + value + ",")
+            get_body.append(body_indent+parent_para+',')
+        get_body.append(body_indent + value + ",")
         get_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[String]]")
         get_field = JavaValue(get_body)
         self.java_class.add_field(get_field)
 
         create_body = [indent + "def create" + normalize(self.n2) + "("]
         if parent_para:
-            create_body.append(parent_para)
+            create_body.append(body_indent+parent_para+',')
         create_body.append(body_indent + self.n2 + ": " + normalize(self.n2) + ",")
         create_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[String]")
         create_field = JavaValue(create_body)
@@ -1284,7 +1290,7 @@ class ClassGenerator(object):
 
         update_body = [indent + "def update" + normalize(self.n2) + "("]
         if parent_para:
-            update_body.append(parent_para)
+            update_body.append(body_indent+parent_para+',')
         update_body.append(body_indent + self.n2 + ": " + normalize(self.n2) + ",")
         update_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[String]]")
         update_field = JavaValue(update_body)
@@ -1292,8 +1298,8 @@ class ClassGenerator(object):
 
         delete_body = [indent + "def delete" + normalize(self.n2) + "("]
         if parent_para:
-            delete_body.append(parent_para)
-        delete_body.append(body_indent + key_arg + ": " + value + ",")
+            delete_body.append(body_indent+parent_para+',')
+        delete_body.append(body_indent + value + ",")
         delete_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Boolean]")
         delete_field = JavaValue(delete_body)
         self.java_class.add_field(delete_field)
@@ -1314,7 +1320,7 @@ class ClassGenerator(object):
 
         superclass = self.filename.split('.')[0]
         self.filename = self.filename.split('.')[0]+"Impl.scala"
-        java_class = JavaClass(filename=self.filename,
+        self.java_class = JavaClass(filename=self.filename,
                 package=self.package,
                 description=''.join(['This class represents the implementation of an element ', stmt.arg,
                                      '\n * from the namespace ', self.ns,
@@ -1333,37 +1339,56 @@ class ClassGenerator(object):
         field.append(' ' * 2 + 'val name = "'+stmt.arg+'"')
         field.append(' ' * 2 + 'val module = "'+source+'"')
         class_field = JavaValue(field)
-        add = java_class.append_access_method  # XXX: add is a function
+        add = self.java_class.append_access_method  # XXX: add is a function
         add('class_field', class_field)
 
         if self.ctx.opts.debug or self.ctx.opts.verbose:
             print('Generating "' + self.filename + '"...')
 
-        key_arg, keytype_value, jnc = self.get_stmt_key(stmt)
+        key_arg, key_list = self.get_stmt_key(stmt)
 
-        get_key_value = self.n2+'.get'+normalize(key_arg)+'Value'
+        if len(key_arg.split(',')) > 1:
+            key_name = "Key"
+            key_value = []
+            key_arg_name = []
+            for key in key_arg.split(','):
+                key_value.append(self.n2+'.get'+normalize(key.strip())+'Value')
+                key_arg_name.append(camelize(key.strip()))
+            get_key_value = '+","+'.join(key_value)
+            get_key_value_method = ', '.join(key_value)
+            key_para_value = '+","+'.join(key_arg_name)
+        else:
+            key_name = normalize(key_arg)
+            get_key_value = self.n2+'.get'+normalize(key_arg)+'Value'
+            get_key_value_method = self.n2+'.get'+normalize(key_arg)+'Value'
+            key_para_value = key_arg
+
         to_json = self.n2+'.toJson(false)'
 
         indent = ' ' * 2
         body_indent = ' ' * 4
-        parent_para = ""
+
+        parent_keyname_list = []
         packages = get_parents(stmt)
         while packages:
             parent_stmt = packages.popleft()
             parent_name = camelize(parent_stmt.arg)
-            parent_key, parent_keyclass, parent_jnc = self.get_stmt_key(parent_stmt)
-            parent_para = parent_para + parent_name+normalize(parent_key)+ ': '+parent_keyclass+', '
-            java_class.imports.add(parent_jnc)
+            parent_key, parent_keyclass = self.get_parent_stmt_key(parent_stmt, parent_name)
+            parent_keyname_list.append(parent_key)
 
+        parent_para = ', '.join(parent_keyname_list)
 
         body = []
         body_content = indent + "override def get"+self.n+"List("
-        method_head = "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[String] = {"
+        method_head = "(implicit ec: ExecutionContext): Future[String] = {"
         if parent_para:
-            body_content = body_content+parent_para.strip()+" "+method_head
+            para_list = [parent_para.strip()]
         else:
-            body_content = body_content+method_head
-        body.append(body_content)
+            para_list = []
+        para_list.append("apiCtx: ApiContext)")
+        para_content = ", ".join(para_list)
+
+        body.append(body_content+para_content+method_head)
         body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
         body.append(body_indent + '    sendReceive')
         body.append(body_indent + "  )")
@@ -1385,18 +1410,24 @@ class ClassGenerator(object):
         body.append(indent + '}')
         body.append(indent)
 
-        body_content = indent + 'override def get'+ self.n +'By'+normalize(key_arg)+"("
-        key_para = ' '+key_arg+": " +keytype_value+','
-        method_head = ' apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[String]] = {'
+
+        body_content = indent + 'override def get'+ self.n +'By'+key_name+"("
+        method_head = '(implicit ec: ExecutionContext): Future[Option[String]] = {'
+
         if parent_para:
-            body_content = body_content+parent_para.strip()+key_para+method_head
+            para_list = [parent_para.strip()]
+            para_list.append(key_list)
         else:
-            body_content = body_content+key_para+method_head
-        body.append(body_content)
+            para_list = [key_list]
+
+        para_list.append("apiCtx: ApiContext)")
+        para_content = ", ".join(para_list)
+
+        body.append(body_content+para_content+method_head)
         body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
         body.append(body_indent + '    sendReceive')
         body.append(body_indent + "  )")
-        body.append(body_indent + 'pipeline(ElasticSearchUtil.get(module + "/" + name + "/" + '+key_arg+')) map {')
+        body.append(body_indent + 'pipeline(ElasticSearchUtil.get(module + "/" + name + "/" + '+key_para_value+')) map {')
         body.append(body_indent + "  resp =>")
         body.append(body_indent + "    if (resp.status == StatusCodes.NotFound) {")
         body.append(body_indent + "      None")
@@ -1409,13 +1440,18 @@ class ClassGenerator(object):
         body.append(indent + '}')
         body.append(indent)
 
-        body_content = "override def get"+self.n+"Count("
-        method_head = " apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Long] = {"
+        body_content = indent+"override def get"+self.n+"Count("
+        method_head = "(implicit ec: ExecutionContext): Future[Long] = {"
+
         if parent_para:
-            body_content = body_content+parent_para.strip()+method_head
+            para_list = [parent_para.strip()]
         else:
-            body_content = body_content+method_head
-        body.append(body_content)
+            para_list = []
+
+        para_list.append("apiCtx: ApiContext)")
+        para_content = ", ".join(para_list)
+
+        body.append(body_content+para_content+method_head)
         body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
         body.append(body_indent + "    sendReceive")
         body.append(body_indent + "  )")
@@ -1433,13 +1469,19 @@ class ClassGenerator(object):
         body.append(indent)
 
         body_content = indent + "override def create"+self.n+"("
-        key_para = ' '+self.n2+": "+self.n+','
-        method_head = " apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[String] = {"
+        key_para = self.n2+":"+self.n
+        method_head = "(implicit ec: ExecutionContext): Future[String] = {"
+
         if parent_para:
-            body_content = body_content+parent_para.strip()+key_para+method_head
+            para_list = [parent_para.strip()]
+            para_list.append(key_para)
         else:
-            body_content = body_content+key_para+method_head
-        body.append(body_content)
+            para_list = [key_para]
+
+        para_list.append("apiCtx: ApiContext)")
+        para_content = ", ".join(para_list)
+
+        body.append(body_content+para_content+method_head)
         body.append(body_indent + "val pipeline: HttpRequest => Future[String] = (")
         body.append(body_indent + "    sendReceive")
         body.append(body_indent + "    ~> unmarshal[String]")
@@ -1448,10 +1490,12 @@ class ClassGenerator(object):
         body.append(body_indent + "  result =>")
         body.append(body_indent + "    refreshIndex flatMap({")
         body.append(body_indent + "      index =>")
+
         if parent_para:
-            body.append(body_indent + "        get"+self.n +'By'+normalize(key_arg)+"("+parent_para.strip()+self.n2+".get"+normalize(key_arg)+"Value, apiCtx) map {")
+            body.append(body_indent + "        get"+self.n +'By'+key_name+"("+parent_para.strip()+", "+get_key_value_method+", apiCtx) map {")
         else:
-            body.append(body_indent + "        get"+self.n +'By'+normalize(key_arg)+"("+self.n2+".get"+normalize(key_arg)+"Value, apiCtx) map {")
+            body.append(body_indent + "        get"+self.n +'By'+key_name+"("+get_key_value_method+", apiCtx) map {")
+
         body.append(body_indent + "          r =>")
         body.append(body_indent + "            r.get.toString")
         body.append(body_indent + "        }")
@@ -1469,19 +1513,25 @@ class ClassGenerator(object):
         body.append(indent + "}")
         body.append(indent)
 
-        body_content = "override def update"+self.n+"("
-        key_para = ' '+self.n2+":"+self.n+','
-        method_head = " apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[String]] = {"
+        body_content = indent+"override def update"+self.n+"("
+        key_para = self.n2+":"+self.n
+        method_head = "(implicit ec: ExecutionContext): Future[Option[String]] = {"
+
         if parent_para:
-            body_content = body_content+parent_para.strip()+key_para+method_head
+            para_list = [parent_para.strip()]
+            para_list.append(key_para)
         else:
-            body_content = body_content+key_para+method_head
-        body.append(body_content)
+            para_list = [key_para]
+
+        para_list.append("apiCtx: ApiContext)")
+        para_content = ", ".join(para_list)
+
+        body.append(body_content+para_content+method_head)
         body.append(body_indent + "val pipeline: HttpRequest => Future[String] = (")
         body.append(body_indent + "    sendReceive")
         body.append(body_indent + "    ~> unmarshal[String]")
         body.append(body_indent + "  )")
-        body.append(body_indent + 'pipeline(ElasticSearchUtil.put(module + "/" + name + "/" + '+get_key_value+',  '+to_json+')) flatMap {')
+        body.append(body_indent + 'pipeline(ElasticSearchUtil.put(module + "/" + name + "/" + '+get_key_value+', '+to_json+')) flatMap {')
         body.append(body_indent + "  result =>")
         body.append(body_indent + '    refreshIndex map({')
         body.append(body_indent + "      index => {")
@@ -1498,17 +1548,22 @@ class ClassGenerator(object):
         body.append(indent)
 
         body_content = indent + "override def delete"+self.n+"("
-        key_para = ' '+key_arg+": " +keytype_value+','
-        method_head = " apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Boolean] = {"
+        method_head = "(implicit ec: ExecutionContext): Future[Boolean] = {"
+
         if parent_para:
-            body_content = body_content+parent_para.strip()+key_para+method_head
+            para_list = [parent_para.strip()]
+            para_list.append(key_list)
         else:
-            body_content = body_content+key_para+method_head
-        body.append(body_content)
+            para_list = [key_list]
+
+        para_list.append("apiCtx: ApiContext)")
+        para_content = ", ".join(para_list)
+
+        body.append(body_content+para_content+method_head)
         body.append(body_indent + 'val pipeline: HttpRequest => Future[HttpResponse] = (')
         body.append(body_indent + '    sendReceive')
         body.append(body_indent + "  )")
-        body.append(body_indent + 'pipeline(ElasticSearchUtil.delete(module + "/" + name + "/" + '+key_arg+')) flatMap {')
+        body.append(body_indent + 'pipeline(ElasticSearchUtil.delete(module + "/" + name + "/" + '+key_para_value+')) flatMap {')
         body.append(body_indent + "  resp =>")
         body.append(body_indent + "  refreshIndex map({")
         body.append(body_indent + "    index=>")
@@ -1523,26 +1578,22 @@ class ClassGenerator(object):
         body.append(body_indent + '}')
         body.append(indent + '}')
         class_body = JavaValue(body)
-        java_class.append_access_method("class_body", class_body)
+        self.java_class.append_access_method("class_body", class_body)
 
-        java_class.imports.add("net.juniper.easyrest.core.EasyRestActionSystem")
-        java_class.imports.add("net.juniper.easyrest.ctx.ApiContext")
-        java_class.imports.add("net.juniper.easyrest.elasticsearch.ElasticSearchUtil")
-        java_class.imports.add(jnc)
-        java_class.imports.add(self.mopackage + '.' + self.n)
-        java_class.imports.add("spray.client.pipelining._")
-        java_class.imports.add("spray.http._")
-        java_class.imports.add("spray.httpx.SprayJsonSupport._")
-        java_class.imports.add("spray.httpx.encoding.{Deflate, Gzip}")
-        java_class.imports.add("spray.json.{DefaultJsonProtocol, JsArray, JsBoolean, JsObject}")
-        java_class.imports.add("scala.concurrent.{Await, ExecutionContext, Future}")
-        java_class.imports.add("spray.json._")
-        java_class.imports.add("scala.concurrent.duration._")
+        self.java_class.imports.add("net.juniper.easyrest.core.EasyRestActionSystem")
+        self.java_class.imports.add("net.juniper.easyrest.ctx.ApiContext")
+        self.java_class.imports.add("net.juniper.easyrest.elasticsearch.ElasticSearchUtil")
+        self.java_class.imports.add(self.mopackage + '.' + self.n)
+        self.java_class.imports.add("spray.client.pipelining._")
+        self.java_class.imports.add("spray.http._")
+        self.java_class.imports.add("spray.httpx.SprayJsonSupport._")
+        self.java_class.imports.add("spray.httpx.encoding.{Deflate, Gzip}")
+        self.java_class.imports.add("spray.json.{DefaultJsonProtocol, JsArray, JsBoolean, JsObject}")
+        self.java_class.imports.add("scala.concurrent.{Await, ExecutionContext, Future}")
+        self.java_class.imports.add("spray.json._")
+        self.java_class.imports.add("scala.concurrent.duration._")
 
-        write_file(self.path,
-                   self.filename,
-                   java_class.as_list(),
-                   self.ctx)
+        self.write_to_file()
 
 
     def generate_rpc_class(self, stmt):
@@ -1680,6 +1731,7 @@ class ClassGenerator(object):
 
         package_name = get_package(stmt, self.ctx)
         api_package_name = get_api_package(stmt, self.ctx)
+
         file_indent = ' ' * 4
         indent = ' ' * 6
         body_indent = ' ' * 8
@@ -1696,18 +1748,28 @@ class ClassGenerator(object):
 
         if api_package_name != self.package:
             self.java_class.imports.add(api_package_name+'.'+class_name+"Api")
-        key_arg, value, jnc = self.get_stmt_key(stmt)
+
+        key_arg, value = self.get_stmt_key_route(stmt)
+
+        if (len(key_arg.split(","))>1):
+            key_name = "Key"
+        else:
+            key_name = normalize(key_arg)
+
         packages = get_parents(stmt)
-        parent_key_name = ""
         parent_para = ""
-        parent_para_instance = ""
+        parent_keyname_list = []
+        parent_paralist = []
         while packages:
-           parent_stmt = packages.popleft()
-           parent_name = camelize(parent_stmt.arg)
-           parent_key, parent_keyclass, parent_jnc = self.get_stmt_key(parent_stmt)
-           parent_key_name = parent_key_name + parent_name+normalize(parent_key) + ', '
-           parent_para = parent_para + '/ "'+module_name.lower()+":"+parent_stmt.arg+'=" ~ Rest'
-           parent_para_instance = parent_para_instance + "new "+ parent_keyclass+"("+parent_name+normalize(parent_key)+"), "
+            parent_stmt = packages.popleft()
+            parent_name = camelize(parent_stmt.arg)
+            parent_para = parent_para + '/ "'+module_name.lower()+":"+parent_stmt.arg+'=" ~ Rest'
+            parent_key_list, parent_para_list = self.get_parent_stmt_key_route(parent_stmt, parent_name)
+            parent_keyname_list.append(parent_key_list)
+            parent_paralist.append(parent_para_list)
+
+        parent_key_name = ', '.join(parent_keyname_list)
+        parent_para_instance = ', '.join(parent_paralist)
 
         exact = [indent + "get {"]
         if parent_para:
@@ -1717,14 +1779,14 @@ class ClassGenerator(object):
         exact.append(content)
 
         if parent_para:
-            exact.append(body_indent + '('+parent_key_name.rstrip(', ')+') =>')
+            exact.append(body_indent + '('+parent_key_name+') =>')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[String] {")
         if parent_para:
-            exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"List(" + parent_para_instance +"apiCtx)")
+            exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"List(" + parent_para_instance +", apiCtx)")
         else:
             exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"List(apiCtx)")
         exact.append(body_indent + "          }) {")
@@ -1744,7 +1806,7 @@ class ClassGenerator(object):
         exact.append(content)
 
         if parent_para:
-            exact.append(body_indent + '('+parent_key_name.rstrip(', ')+') =>')
+            exact.append(body_indent + '('+parent_key_name+') =>')
 
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
@@ -1752,7 +1814,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Long] {")
         if parent_para:
-            exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"Count(" + parent_para_instance +"apiCtx)")
+            exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"Count(" + parent_para_instance +", apiCtx)")
         else:
             exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"Count(apiCtx)")
         exact.append(body_indent + "          }) {")
@@ -1771,26 +1833,36 @@ class ClassGenerator(object):
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'=" ~ Rest) {'
         exact.append(content)
 
-        if parent_para:
-            exact.append(body_indent + '  (' +parent_key_name + key_arg+ ') =>')
+        if (len(key_arg.split(","))>1):
+            keys = "keys"
         else:
-            exact.append(body_indent + '  (' + key_arg+ ') =>')
+            keys = key_arg
+
+        if parent_para:
+            exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
+        else:
+            exact.append(body_indent + '  (' + keys+ ') =>')
+
+        if (len(key_arg.split(","))>1):
+            exact.append(body_indent + '    val pair = keys.split(",")')
 
         exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "        intercept(apiCtx) {")
         exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option[String]] {")
+
+
         if parent_para:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.get"+class_name+ "By" + normalize(key_arg) +"("+parent_para_instance+"new " + value + "("+ key_arg + "), apiCtx)")
+            exact.append(body_indent + "              "+lower_name+"ApiImpl.get"+class_name+ "By" + key_name +"("+parent_para_instance+", " + value + ", apiCtx)")
         else:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.get"+class_name+ "By" + normalize(key_arg) +"(new " + value + "("+ key_arg + "), apiCtx)")
+            exact.append(body_indent + "              "+lower_name+"ApiImpl.get"+class_name+ "By" + key_name +"("+ value + ", apiCtx)")
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
         exact.append(body_indent + "                case Some(result) => complete(result)")
         exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
-        exact.append(body_indent + '                 complete("No '+ lower_name + ' object was found for id " + '+ key_arg +')')
+        exact.append(body_indent + '                 complete("No '+ lower_name + ' object was found for id " + '+ keys +')')
         exact.append(body_indent + "                }")
         exact.append(body_indent + "               }")
         exact.append(body_indent + "              }")
@@ -1812,7 +1884,7 @@ class ClassGenerator(object):
         exact.append(content)
 
         if parent_para:
-            exact.append(body_indent + '('+parent_key_name.rstrip(', ')+') =>')
+            exact.append(body_indent + '('+parent_key_name+') =>')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
@@ -1820,7 +1892,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "          entity(as["+class_name+"]) {" + lower_name +" =>")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[String] {")
         if parent_para:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.create"+class_name+"(" + parent_para_instance + lower_name + ", apiCtx)")
+            exact.append(body_indent + "              "+lower_name+"ApiImpl.create"+class_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
         else:
             exact.append(body_indent + "              "+lower_name+"ApiImpl.create"+class_name+"(" + lower_name + ", apiCtx)")
 
@@ -1844,7 +1916,7 @@ class ClassGenerator(object):
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'") {'
         exact.append(content)
         if parent_para:
-            exact.append(body_indent + '('+parent_key_name.rstrip(', ')+') =>')
+            exact.append(body_indent + '('+parent_key_name+') =>')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
@@ -1852,7 +1924,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "          entity(as["+class_name+"]) {" + lower_name +" =>")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option[String]] {")
         if parent_para:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.update"+class_name+"(" + parent_para_instance + lower_name + ", apiCtx)")
+            exact.append(body_indent + "              "+lower_name+"ApiImpl.update"+class_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
         else:
             exact.append(body_indent + "              "+lower_name+"ApiImpl.update"+class_name+"(" + lower_name + ", apiCtx)")
         exact.append(body_indent + "            }) {")
@@ -1881,28 +1953,38 @@ class ClassGenerator(object):
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'=" ~ Rest) {'
         exact.append(content)
 
-        if parent_para:
-            exact.append(body_indent + '  (' +parent_key_name + key_arg+ ') =>')
+        if (len(key_arg.split(","))>1):
+            keys = "keys"
         else:
-            exact.append(body_indent + '  (' + key_arg+ ') =>')
+            keys = key_arg
+
+        if parent_para:
+            exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
+        else:
+            exact.append(body_indent + '  (' + keys+ ') =>')
+
+        if (len(key_arg.split(","))>1):
+            exact.append(body_indent + '    val pair = keys.split(",")')
 
         exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "        intercept(apiCtx) {")
         exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Boolean] {")
+
         if parent_para:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.delete"+class_name+"(" + parent_para_instance+"new " + value + "("+ key_arg + "), apiCtx)")
+            exact.append(body_indent + "              "+lower_name+"ApiImpl.delete"+class_name+"(" + parent_para_instance+", " + value + ", apiCtx)")
         else:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.delete"+class_name+"(new " + value + "("+ key_arg + "), apiCtx)")
+            exact.append(body_indent + "              "+lower_name+"ApiImpl.delete"+class_name+ "("+ value + ", apiCtx)")
+
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               if(result.booleanValue) {")
-        exact.append(body_indent + '                 complete(\"{\\"id\\": \\"\" + ' + key_arg + ' + \"\\"}\")')
+        exact.append(body_indent + '                 complete(\"{\\"id\\": \\"\" + ' + keys + ' + \"\\"}\")')
         exact.append(body_indent + "               }")
         exact.append(body_indent + "               else {")
         exact.append(body_indent + "                 respondWithStatus(StatusCodes.NotFound) {")
-        exact.append(body_indent + '                   complete("No '+ lower_name + ' object was found for id " + '+ key_arg +')')
+        exact.append(body_indent + '                   complete("No '+ lower_name + ' object was found for id " + '+ keys +')')
         exact.append(body_indent + "                 }")
         exact.append(body_indent + "               }")
         exact.append(body_indent + "              }")
@@ -1933,7 +2015,6 @@ class ClassGenerator(object):
         self.java_class.imports.add("com.tailf.jnc.PrefixMap")
         self.java_class.imports.add("com.tailf.jnc.Prefix")
         self.java_class.imports.add("com.tailf.jnc.YangJsonParser")
-        self.java_class.imports.add(jnc)
 
         self.routing.extend(exact)
 
@@ -1954,13 +2035,106 @@ class ClassGenerator(object):
         findkey = lambda k: search_one(stmt, 'leaf', arg=k)
         key_stmts = [findkey(k) for k in keys]
 
+        key_arg = []
+        para = []
         for key in key_stmts:
-            key_arg = camelize(key.arg)
+            key_arg.append(camelize(key.arg))
             key_type = search_one(key, 'type')
             jnc, primitive = get_types(key_type, self.ctx)
+            self.java_class.imports.add(jnc)
+            key_class = jnc[jnc.rfind('.')+1:]
+            para.append(camelize(key.arg)+": "+key_class)
 
-        key_class = jnc[jnc.rfind('.')+1:]
-        return key_arg, key_class, jnc
+        return ', '.join(key_arg), ', '.join(para)
+
+    def get_stmt_key_route(self, stmt):
+        is_config_value = is_config(stmt)
+        keys = []
+        if is_config_value:
+            key = search_one(stmt, 'key')
+            try:
+                keys = key.arg.split(' ')
+            except AttributeError:
+                print_warning(msg='Unknown attribute: ' + key, key=key)  # is_config produced wrong value
+
+        findkey = lambda k: search_one(stmt, 'leaf', arg=k)
+        key_stmts = [findkey(k) for k in keys]
+
+        key_arg = []
+        para = []
+        i = 0
+
+        if len(key_stmts) > 1:
+            for key in key_stmts:
+                key_arg.append(camelize(key.arg))
+                key_type = search_one(key, 'type')
+                jnc, primitive = get_types(key_type, self.ctx)
+                self.java_class.imports.add(jnc)
+                key_class = jnc[jnc.rfind('.')+1:]
+                para.append("new "+ key_class+"(pair("+str(i)+"))")
+                i = i+1
+        else:
+            key_stmt = key_stmts[0]
+            key_arg.append(camelize(key_stmt.arg))
+            key_type = search_one(key_stmt, 'type')
+            jnc, primitive = get_types(key_type, self.ctx)
+            self.java_class.imports.add(jnc)
+            key_class = jnc[jnc.rfind('.')+1:]
+            para.append("new "+ key_class+"("+camelize(key_stmt.arg)+")")
+
+        return ', '.join(key_arg), ', '.join(para)
+
+    def get_parent_stmt_key(self, stmt, parent_name):
+        is_config_value = is_config(stmt)
+        keys = []
+        if is_config_value:
+            key = search_one(stmt, 'key')
+            try:
+                keys = key.arg.split(' ')
+            except AttributeError:
+                print_warning(msg='Unknown attribute: ' + key, key=key)  # is_config produced wrong value
+
+        findkey = lambda k: search_one(stmt, 'leaf', arg=k)
+        key_stmts = [findkey(k) for k in keys]
+
+        key_arg = []
+        para = []
+
+        for key in key_stmts:
+            key_type = search_one(key, 'type')
+            jnc, primitive = get_types(key_type, self.ctx)
+            self.java_class.imports.add(jnc)
+            key_class = jnc[jnc.rfind('.')+1:]
+            para.append("new "+ key_class+"("+parent_name+normalize(key.arg)+")")
+            key_arg.append(parent_name+normalize(key.arg)+ ": " + key_class)
+
+        return ', '.join(key_arg), ', '.join(para)
+
+    def get_parent_stmt_key_route(self, stmt, parent_name):
+        is_config_value = is_config(stmt)
+        keys = []
+        if is_config_value:
+            key = search_one(stmt, 'key')
+            try:
+                keys = key.arg.split(' ')
+            except AttributeError:
+                print_warning(msg='Unknown attribute: ' + key, key=key)  # is_config produced wrong value
+
+        findkey = lambda k: search_one(stmt, 'leaf', arg=k)
+        key_stmts = [findkey(k) for k in keys]
+
+        key_arg = []
+        para = []
+
+        for key in key_stmts:
+            key_type = search_one(key, 'type')
+            jnc, primitive = get_types(key_type, self.ctx)
+            self.java_class.imports.add(jnc)
+            key_class = jnc[jnc.rfind('.')+1:]
+            para.append("new "+ key_class+"("+parent_name+normalize(key.arg)+")")
+            key_arg.append(parent_name+normalize(key.arg))
+
+        return ', '.join(key_arg), ', '.join(para)
 
     def generate_rpc_routes(self, stmt):
         add = self.java_class.append_access_method  # XXX: add is a function
