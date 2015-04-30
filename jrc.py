@@ -1041,7 +1041,7 @@ class ClassGenerator(object):
         self.n2 = camelize(stmt.arg)
 
         if stmt.keyword in module_stmts:
-            self.filename = normalize(search_one(stmt, 'prefix').arg) + 'Routes.scala'
+            self.filename = normalize(stmt.arg) + 'Routes.scala'
         elif stmt.keyword in ('rpc'):
             if self.stmt.i_module.keyword in ("submodule", "module"):
                 self.filename=normalize(self.stmt.i_module.arg)+"RpcApi.scala"
