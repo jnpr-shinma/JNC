@@ -1181,7 +1181,7 @@ class ClassGenerator(object):
             res = JavaValue(self.routing)
             self.java_class.append_access_method("routing", res)
             if import_rpc_impl:
-                rpcapi = [' ' * 4 + 'lazy val '+camelize(module_name)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module_name)+'RpcApi])']
+                rpcapi = [' ' * 4 + 'lazy val '+camelize(module_name)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module_name)+'RpcApi], null)']
                 rpcapiimpl = JavaValue(rpcapi)
                 self.java_class.append_access_method("apiimpl", rpcapiimpl)
 
