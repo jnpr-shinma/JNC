@@ -1743,7 +1743,7 @@ class ClassGenerator(object):
         marshell.append(file_indent + '}')
         marsheller = JavaValue(marshell)
 
-        api = [file_indent + 'lazy val '+lower_name+'ApiImpl = ApiImplRegistry.getImplementation(classOf['+class_name+'Api])']
+        api = [file_indent + 'lazy val '+lower_name+'ApiImpl = ApiImplRegistry.getImplementation(classOf['+class_name+'Api], classOf['+class_name+'])']
         apiimpl = JavaValue(api)
 
         if api_package_name != self.package:
