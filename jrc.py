@@ -1181,7 +1181,7 @@ class ClassGenerator(object):
             res = JavaValue(self.routing)
             self.java_class.append_access_method("routing", res)
             if import_rpc_impl:
-                rpcapi = [' ' * 4 + 'lazy val '+camelize(module_name)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module_name)+'RpcApi], null)']
+                rpcapi = [' ' * 4 + 'lazy val '+camelize(module_name)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module_name)+'RpcApi])']
                 rpcapiimpl = JavaValue(rpcapi)
                 self.java_class.append_access_method("apiimpl", rpcapiimpl)
 
@@ -2005,7 +2005,6 @@ class ClassGenerator(object):
         self.java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
         self.java_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
         self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-        self.java_class.imports.add("net.juniper.easyrest.util.JsonUtil")
         self.java_class.imports.add(package_name + '.' + class_name)
         self.java_class.imports.add("spray.http._")
         self.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
