@@ -1272,7 +1272,7 @@ class ClassGenerator(object):
             key_name = "Key"
         else:
             key_name = normalize(key_arg)
-        get_body=[indent + "def get" + normalize(self.n2) + "By" + key_name + "("]
+        get_body=[indent + "def get" + normalize(self.n2) + "ById("]
         if parent_para:
             get_body.append(body_indent+parent_para+',')
         get_body.append(body_indent + value + ",")
@@ -1309,7 +1309,7 @@ class ClassGenerator(object):
         self.java_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
 
         self.write_to_file()
-        self.generate_implclass()
+        #self.generate_implclass()
 
     def generate_implclass(self):
         stmt = self.stmt
@@ -1854,9 +1854,9 @@ class ClassGenerator(object):
 
 
         if parent_para:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.get"+class_name+ "By" + key_name +"("+parent_para_instance+", " + value + ", apiCtx)")
+            exact.append(body_indent + "              "+lower_name+"ApiImpl.get"+class_name+ "ById("+parent_para_instance+", " + value + ", apiCtx)")
         else:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.get"+class_name+ "By" + key_name +"("+ value + ", apiCtx)")
+            exact.append(body_indent + "              "+lower_name+"ApiImpl.get"+class_name+ "ById("+ value + ", apiCtx)")
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
