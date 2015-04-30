@@ -1036,6 +1036,7 @@ class ClassGenerator(object):
         self.ns = ns
         self.prefix_name = prefix_name
         self.yang_types = yang_types
+        self.body = []
 
         self.n = normalize(stmt.arg)
         self.n2 = camelize(stmt.arg)
@@ -1134,10 +1135,6 @@ class ClassGenerator(object):
         dispatcher = JavaValue(dispatcher_import)
         self.java_class.append_access_method("dispatcher", dispatcher)
 
-        routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
-
-        res = search(module, list(yangelement_stmts | {'augment'}))
-
         namespace_def = [' ' * 4 + "private val modelNS = \"" + namespace + "\""]
         namespace = JavaValue(namespace_def)
         self.java_class.append_access_method("namespace", namespace)
@@ -1157,6 +1154,9 @@ class ClassGenerator(object):
         self.java_class.imports.add(self.mopackage +"."+ normalize(module_prefix))
 
         import_rpc_impl = False
+
+        res = search(module, list(yangelement_stmts | {'augment'}))
+
         if (len(res) > 0):
             # Generate classes for children of module/submodule
             for stmt in search(module, list(yangelement_stmts)):
@@ -1177,16 +1177,18 @@ class ClassGenerator(object):
 
             self.path = path
             self.write_rpc_to_file()
-            if self.java_class.body:
-                routing.extend(self.java_class.body)
-                routing[len(routing)-1] = ' ' * 6 + '}'
-                routing.append(' ' * 4 + '}')
-                res = JavaValue(routing)
-                self.java_class.append_access_method("routing", res)
+            if self.body:
                 if import_rpc_impl:
                     rpcapi = [' ' * 4 + 'lazy val '+camelize(module_name)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module_name)+'RpcApi])']
                     rpcapiimpl = JavaValue(rpcapi)
                     self.java_class.append_access_method("apiimpl", rpcapiimpl)
+
+                routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
+                routing.extend(self.body)
+                routing[len(routing)-1] = ' ' * 6 + '}'
+                routing.append(' ' * 4 + '}')
+                res = JavaValue(routing)
+                self.java_class.append_access_method("routing", res)
 
                 self.write_to_file()
             else:
@@ -1740,9 +1742,6 @@ class ClassGenerator(object):
         package_name = get_package(stmt, self.ctx)
         api_package_name = get_api_package(stmt, self.ctx)
 
-        if self.java_class.body is None:
-            self.java_class.body = []
-
         file_indent = ' ' * 4
         indent = ' ' * 6
         body_indent = ' ' * 8
@@ -2026,7 +2025,7 @@ class ClassGenerator(object):
         self.java_class.imports.add("com.tailf.jnc.Prefix")
         self.java_class.imports.add("com.tailf.jnc.YangJsonParser")
 
-        self.java_class.body.extend(exact)
+        self.body.extend(exact)
 
         for ch in search(stmt, list(yangelement_stmts)):
             if search_one(ch, ('csp-common', 'vertex')) or search_one(ch, ('csp-common', 'edge')):
@@ -2162,9 +2161,6 @@ class ClassGenerator(object):
         rpc_class_name = normalize(stmt.arg)
         rpc_method_name = camelize(stmt.arg)
 
-        if self.java_class.body is None:
-            self.java_class.body = []
-
         for sub in stmt.substmts:
             if sub.keyword == "input":
                 input_para = True
@@ -2239,8 +2235,11 @@ class ClassGenerator(object):
         self.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
         self.java_class.imports.add("spray.routing.HttpService")
         self.java_class.imports.add("scala.util.{Failure, Success}")
+        self.java_class.imports.add("com.tailf.jnc.PrefixMap")
+        self.java_class.imports.add("com.tailf.jnc.Prefix")
+        self.java_class.imports.add("com.tailf.jnc.YangJsonParser")
 
-        self.java_class.body.extend(exact)
+        self.body.extend(exact)
 
     def generate_notification_routes(self, stmt):
         add = self.java_class.append_access_method  # XXX: add is a function
