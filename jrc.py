@@ -1072,7 +1072,7 @@ class ClassGenerator(object):
         if self.stmt.keyword in ('module', 'submodule'):
             self.generate_classes()
         elif self.stmt.keyword in ('list', 'container'):
-            if search_one(self.stmt, ('iq-gt-extension', 'vertex')) or search_one(self.stmt, ('iq-gt-extension', 'edge')) :
+            if search_one(self.stmt, ('csp-common', 'vertex')) or search_one(self.stmt, ('csp-common', 'edge')) :
                 self.generate_class()
 
     def generate_classes(self):
@@ -1168,7 +1168,7 @@ class ClassGenerator(object):
                     elif stmt.keyword == 'notification':
                         self.generate_notification_routes(stmt)
                     else:
-                        if search_one(stmt, ('iq-gt-extension', 'vertex')) or search_one(stmt, ('iq-gt-extension', 'edge')):
+                        if search_one(stmt, ('csp-common', 'vertex')) or search_one(stmt, ('csp-common', 'edge')):
                             self.generate_routes(stmt)
                             child_generator = ClassGenerator(stmt, path=path, package=package, mopackage=mopackage,
                                                      ns=module.arg, prefix_name=module.arg, parent=self)
@@ -2019,7 +2019,7 @@ class ClassGenerator(object):
         self.routing.extend(exact)
 
         for ch in search(stmt, list(yangelement_stmts)):
-            if search_one(ch, ('iq-gt-extension', 'vertex')) or search_one(ch, ('iq-gt-extension', 'edge')):
+            if search_one(ch, ('csp-common', 'vertex')) or search_one(ch, ('csp-common', 'edge')):
                 self.generate_routes(ch)
 
     def get_stmt_key(self, stmt):
