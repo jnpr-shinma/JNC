@@ -1036,14 +1036,13 @@ class ClassGenerator(object):
         self.ns = ns
         self.prefix_name = prefix_name
         self.yang_types = yang_types
-        self.body = []
 
         self.n = normalize(stmt.arg)
         self.n2 = camelize(stmt.arg)
 
         if stmt.keyword in module_stmts:
             self.filename = normalize(stmt.arg) + 'Routes.scala'
-        elif stmt.keyword in ('rpc'):
+        if stmt.keyword in ('rpc'):
             if self.stmt.i_module.keyword in ("submodule", "module"):
                 self.filename=normalize(self.stmt.i_module.arg)+"RpcApi.scala"
             else:
@@ -1104,6 +1103,7 @@ class ClassGenerator(object):
         module        -- A statement (sub)tree represent module or submodule, parsed from a YANG model
         """
         filename = normalize(module.arg) + 'Routes.scala'
+        self.body = []
 
         if module.keyword == "module":
             path = self.path
@@ -1111,7 +1111,6 @@ class ClassGenerator(object):
             package = self.package
             namespace_stmt = search_one(module, "namespace")
             namespace = namespace_stmt.arg
-            module_name = module.arg
         elif module.keyword == "submodule":
             path = self.path + "/" + camelize(module.arg)
             mopackage = self.mopackage + "." + camelize(module.arg)
@@ -1119,7 +1118,6 @@ class ClassGenerator(object):
             main_module = get_module(self.stmt)
             namespace_stmt = search_one(main_module, "namespace")
             namespace = namespace_stmt.arg
-            module_name = main_module.arg
 
         # Generate routes class
         if self.ctx.opts.verbose:
@@ -1131,6 +1129,8 @@ class ClassGenerator(object):
                 source=module.arg,
                 superclass='EasyRestRoutingDSL with LazyLogging with HttpService')
 
+        rpc_class = None
+
         dispatcher_import = [' ' * 4 + "import net.juniper.easyrest.core.EasyRestActionSystem.system.dispatcher"]
         dispatcher = JavaValue(dispatcher_import)
         self.java_class.append_access_method("dispatcher", dispatcher)
@@ -1139,7 +1139,7 @@ class ClassGenerator(object):
         namespace = JavaValue(namespace_def)
         self.java_class.append_access_method("namespace", namespace)
 
-        model_def = [' ' * 4 + "private val modelPrefix = \"" + module_name + "\""]
+        model_def = [' ' * 4 + "private val modelPrefix = \"" + module.arg + "\""]
         model = JavaValue(model_def)
         self.java_class.append_access_method("model", model)
 
@@ -1164,7 +1164,12 @@ class ClassGenerator(object):
                 if stmt.i_orig_module.arg == module.arg:
                     if stmt.keyword == 'rpc':
                         self.generate_rpc_routes(stmt)
-                        self.generate_rpc_class(stmt)
+                        if rpc_class == None:
+                            rpc_class = JavaClass(filename=normalize(module.arg+"RpcApi")+".scala",
+                                package=package,
+                                description=''.join(['This class represents rpc api']),
+                                source=self.src)
+                        self.generate_rpc_class(stmt, rpc_class, mopackage)
                         import_rpc_impl = True
                     elif stmt.keyword == 'notification':
                         self.generate_notification_routes(stmt)
@@ -1175,11 +1180,13 @@ class ClassGenerator(object):
                                                      ns=module.arg, prefix_name=module.arg, parent=self)
                             child_generator.generate()
 
-            self.path = path
-            self.write_rpc_to_file()
+            #self.path = path
+            if rpc_class is not None:
+                self.write_rpc_to_file(path, rpc_class)
+
             if self.body:
                 if import_rpc_impl:
-                    rpcapi = [' ' * 4 + 'lazy val '+camelize(module_name)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module_name)+'RpcApi])']
+                    rpcapi = [' ' * 4 + 'lazy val '+camelize(module.arg)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module.arg)+'RpcApi])']
                     rpcapiimpl = JavaValue(rpcapi)
                     self.java_class.append_access_method("apiimpl", rpcapiimpl)
 
@@ -1190,7 +1197,10 @@ class ClassGenerator(object):
                 res = JavaValue(routing)
                 self.java_class.append_access_method("routing", res)
 
-                self.write_to_file()
+                write_file(path,
+                   filename,
+                   self.java_class.as_list(),
+                   self.ctx)
             else:
                 print('The class file is empty, ignore writing "'+ filename + '"to file.')
         else:
@@ -1605,12 +1615,8 @@ class ClassGenerator(object):
         self.write_to_file()
 
 
-    def generate_rpc_class(self, stmt):
-        if hasattr(self, "rpc_class") == False:
-            self.rpc_class = JavaClass(filename=normalize(self.n2+"RpcApi"),
-                package=self.package,
-                description=''.join(['This class represents rpc api']),
-                source=self.src)
+    def generate_rpc_class(self, stmt, rpc_class, mopackage):
+
             # self.rpc_impl_class = JavaClass(filename=normalize(self.n2+"RpcApiImpl"),
             #     package=self.package,
             #     description=''.join(['This class represents rpc api implementation']),
@@ -1618,7 +1624,7 @@ class ClassGenerator(object):
             #     superclass=normalize(self.n2+"RpcApi"),
             #     implement=True)
         rpc_name = normalize(stmt.arg)
-        add = self.rpc_class.append_access_method
+        add = rpc_class.append_access_method
         #add_impl = self.rpc_impl_class.append_access_method
         if self.ctx.opts.debug or self.ctx.opts.verbose:
             print('Generating "' + rpc_name+"Rpc" + '"...')
@@ -1634,14 +1640,14 @@ class ClassGenerator(object):
 
         if input_para:
             rpc_input = "(input: " + rpc_name + "Input, apiCtx: ApiContext)"
-            self.rpc_class.imports.add(self.mopackage+"."+rpc_name+"Input")
+            rpc_class.imports.add(mopackage+"."+rpc_name+"Input")
             #self.rpc_impl_class.imports.add(self.mopackage+"."+rpc_name+"Input")
         else:
             rpc_input = "(apiCtx: ApiContext)"
 
         if output_para:
             rpc_output = "Future[" + rpc_name + "Output"+"]"
-            self.rpc_class.imports.add(self.mopackage+"."+rpc_name+"Output")
+            rpc_class.imports.add(mopackage+"."+rpc_name+"Output")
             #self.rpc_impl_class.imports.add(self.mopackage+"."+rpc_name+"Output")
         else:
             rpc_output = "Future[Unit]"
@@ -1659,8 +1665,8 @@ class ClassGenerator(object):
         #add_impl("rpc_impl", rpc_impl_method)
 
         # Generate RPC API class
-        self.rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
-        self.rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
+        rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
+        rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
         #self.rpc_impl_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
         #self.rpc_impl_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
 
@@ -2238,14 +2244,12 @@ class ClassGenerator(object):
         self.java_class.imports.add("com.tailf.jnc.PrefixMap")
         self.java_class.imports.add("com.tailf.jnc.Prefix")
         self.java_class.imports.add("com.tailf.jnc.YangJsonParser")
+        self.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
 
         self.body.extend(exact)
 
     def generate_notification_routes(self, stmt):
         add = self.java_class.append_access_method  # XXX: add is a function
-
-        if self.java_class.body is None:
-            self.java_class.body = []
 
         streamregistry = [' ' * 4 + 'StreamRegistry.registerStream(']
         streamregistry.append(' ' * 6 + 'StreamBuilder()')
@@ -2289,10 +2293,10 @@ class ClassGenerator(object):
         self.java_class.imports.add("net.juniper.easyrest.streams.yang.StreamBuilder")
         self.java_class.imports.add("spray.httpx.encoding.Gzip")
         self.java_class.imports.add("spray.routing.HttpService")
-        self.java_class.imports.add("spray.routing.directives.RefFactoryMagnet")
+        self.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
         self.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
 
-        self.java_class.body.extend(exact)
+        self.body.extend(exact)
 
     def write_to_file(self):
         write_file(self.path,
@@ -2300,16 +2304,14 @@ class ClassGenerator(object):
                    self.java_class.as_list(),
                    self.ctx)
 
-    def write_rpc_to_file(self):
-        if hasattr(self, "rpc_class") == True:
-            filename = normalize(self.n2) + "RpcApi.scala"
-            if self.ctx.opts.debug or self.ctx.opts.verbose:
-                print('Generating "' + filename + '"...')
+    def write_rpc_to_file(self, path, rpc_class):
+        if self.ctx.opts.debug or self.ctx.opts.verbose:
+            print('Generating "' + rpc_class.filename + '"...')
 
-            write_file(self.path,
-               filename,
-               self.rpc_class.as_list(),
-               self.ctx)
+        write_file(path,
+            rpc_class.filename,
+            rpc_class.as_list(),
+            self.ctx)
 
             # impl_filename = normalize(self.n2) + "RpcApiImpl.scala"
             # if self.ctx.opts.debug or self.ctx.opts.verbose:
