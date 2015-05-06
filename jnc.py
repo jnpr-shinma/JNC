@@ -47,7 +47,7 @@ def pyang_plugin_init():
     """Registers an instance of the jnc plugin"""
     plugin.register_plugin(JNCPlugin())
 
-def ignore_modules(option, opt, value, parser):
+def include_modules(option, opt, value, parser):
     setattr(parser.values, option.dest, value.split(','))
 
 class JNCPlugin(plugin.PyangPlugin):
@@ -136,18 +136,18 @@ class JNCPlugin(plugin.PyangPlugin):
                 action='store_true',
                 help='Load schema files using classpath rather than location.'),
             optparse.make_option(
-                '--jnc-ignore-modules',
-                dest='ignore_modules',
+                '--jnc-include-modules',
+                dest='include_modules',
                 action='callback',
-                callback=ignore_modules,
+                callback=include_modules,
                 type='string',
                 default=[],
-                help='Ignore these modules when generate classes.'),
+                help='Generate classes for stmt which belongs to modules in this option, default is all modules'),
             optparse.make_option(
                 '--jnc-import-package',
                 dest='import_package',
                 default='net.juniper.yang.mo',
-                help='The root package name for imported packages, default is net.juniper.yang'),
+                help='The root package name for imported packages, default is net.juniper.yang.mo'),
             ]
         g = optparser.add_option_group('JNC output specific options')
         g.add_options(optlist)
@@ -219,17 +219,25 @@ class JNCPlugin(plugin.PyangPlugin):
                     print_warning(msg=(etag.lower() + ', aborting.'), key=etag)
                     self.fatal("%s contains errors" % epos.top.arg)
 
+        self.ctx.include_modules = set([])
         # Sweep, adding included and imported modules, until no change
         module_set = set(modules)
         num_modules = 0
         while num_modules != len(module_set):
             num_modules = len(module_set)
             for module in list(module_set):
+                self.ctx.include_modules.add(module.arg)
                 imported = map(lambda x: x.arg, search(module, 'import'))
                 included = map(lambda x: x.arg, search(module, 'include'))
                 for (module_stmt, rev) in self.ctx.modules:
-                    if module_stmt in (imported + included) and module_stmt not in self.ctx.opts.ignore_modules:
-                        module_set.add(self.ctx.modules[(module_stmt, rev)])
+                    if module_stmt in (imported + included):
+                        if self.ctx.opts.include_modules:
+                            if module_stmt in self.ctx.opts.include_modules:
+                                module_set.add(self.ctx.modules[(module_stmt, rev)])
+                                self.ctx.include_modules.add(module_stmt)
+                        else:
+                            module_set.add(self.ctx.modules[(module_stmt, rev)])
+                            self.ctx.include_modules.add(module_stmt)
 
         # Generate files from main modules
         for module in filter(lambda s: s.keyword == 'module', module_set):
@@ -573,10 +581,10 @@ def get_package(stmt, ctx):
             parent = get_parent(stmt)
             sub_packages.appendleft(camelize(stmt.arg))
 
-    if stmt.arg in ctx.opts.ignore_modules:
-        full_package = ctx.opts.import_package.split('.')
-    else:
+    if stmt.arg in ctx.include_modules:
         full_package = ctx.rootpkg.split(OSSep)
+    else:
+        full_package = ctx.opts.import_package.split('.')
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -899,10 +907,10 @@ def get_uses_package(stmt, ctx):
         parent = get_parent(stmt)
         sub_packages.appendleft(camelize(stmt.arg))
 
-    if stmt.arg in ctx.opts.ignore_modules:
-        full_package = ctx.opts.import_package.split('.')
-    else:
+    if stmt.arg in ctx.include_modules:
         full_package = ctx.rootpkg.split(OSSep)
+    else:
+        full_package = ctx.opts.import_package.split('.')
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -1464,11 +1472,13 @@ class ClassGenerator(object):
                 pkg = self.package + '.' + self.n2
                 path_name =self.path + OSSep + self.n2
             module_name = get_module(sub)
-            if module_name.arg not in self.ctx.opts.ignore_modules:
+
+            if module_name.arg in self.ctx.include_modules:
                 child_generator = ClassGenerator(stmt=sub, package=pkg,
                     path=path_name,
                     ns=None, prefix_name=None, parent=self)
                 child_generator.generate()
+
             child_gen = MethodGenerator(sub, self.ctx)
             if sub.keyword in ('container', 'notification'):
                 field = sub.arg
@@ -2091,10 +2101,10 @@ class MethodGenerator(object):
             self.pkg = get_package(stmt, ctx)
         self.basepkg = self.pkg.partition('.')[0]
 
-        if self.module_stmt.arg in ctx.opts.ignore_modules:
-            self.rootpkg = ctx.opts.import_package.split('.')
-        else:
+        if self.module_stmt.arg in ctx.include_modules:
             self.rootpkg = ctx.rootpkg.split(OSSep)
+        else:
+            self.rootpkg = ctx.opts.import_package.split('.')
 
         if self.rootpkg[:1] == ['src']:
             self.rootpkg = self.rootpkg[1:]  # src not part of package
