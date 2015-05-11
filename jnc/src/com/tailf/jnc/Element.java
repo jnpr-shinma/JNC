@@ -688,7 +688,8 @@ public class Element implements Serializable {
      * @return String value of the attribute.
      */
     public String getAttrValue(String name) {
-        return getAttr(name).getValue();
+        Attribute attr = getAttr(name);
+        return attr == null? null: attr.getValue();
     }
 
     /**
@@ -1813,9 +1814,10 @@ public class Element implements Serializable {
             }
             //Mark list node processed
             String processedNode = null;
+            String namespace = this.getRootElement().namespace;
 //            String d[]=childrenNames();
             for (final Element child : children) {
-                SchemaNode schemaNode=SchemaTree.lookup(child.namespace, new Tagpath(tagpath()+"/"+child.name));
+                SchemaNode schemaNode=SchemaTree.lookup(namespace, new Tagpath(tagpath()+"/"+child.name));
 //                SchemaNode schemaNode = SchemaNode.get(child);
                 String childQName = child.qualifiedName();
                 if (schemaNode != null) {

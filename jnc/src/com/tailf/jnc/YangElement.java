@@ -132,7 +132,12 @@ public abstract class YangElement extends Element {
         String[] kns = keyNames();
         Object[] values = new Object[kns.length];
         for(int i = 0;  i < kns.length; i ++) {
-            values[i] = getAttrValue(kns[i]);
+            try{
+                values[i] = getValue(kns[i]);
+            }
+            catch(JNCException e) {
+                e.printStackTrace();
+            }
         }
         return values;
     }

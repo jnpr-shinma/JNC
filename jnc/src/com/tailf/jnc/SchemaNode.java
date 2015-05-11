@@ -84,7 +84,7 @@ public class SchemaNode {
      * @return the schema node with same namespace and tagpath as e
      */
     public static SchemaNode get(Element e) {
-        return SchemaTree.lookup(e.namespace, e.tagpath());
+        return SchemaTree.lookup(e.getRootElement().namespace, e.tagpath());
     }
 
 }
