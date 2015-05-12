@@ -973,6 +973,13 @@ class SchemaNode(object):
             res.append('<yang_type>' + typename + '</yang_type>')
             res.append('<yang_java_type>' + jnc + '</yang_java_type>')
 
+        if search_one(self.stmt, ('csp-common', 'vertex')):
+            res.append('<yang_graph_type>1</yang_graph_type>')
+        elif search_one(self.stmt, ('csp-common', 'edge')):
+            res.append('<yang_graph_type>2</yang_graph_type>')
+        else:
+            res.append('<yang_graph_type>0</yang_graph_type>')
+
         if stmt.keyword in {'container', 'list'}:
             if hasattr(stmt, 'i_uses'):
                 package = get_uses_package(stmt, self.ctx)
