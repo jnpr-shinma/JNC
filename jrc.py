@@ -1215,8 +1215,10 @@ class ClassGenerator(object):
                 self.java_class.append_access_method("routing", res)
 
                 schema_routing = [' ' * 4 + "val " + camelize(module.arg) + "SchemaRestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
+                schema_routing.append(' ' * 6 + 'get {')
                 schema_routing.extend(self.schema_body)
-                schema_routing[len(schema_routing)-1] = ' ' * 6 + '}'
+                schema_routing[len(schema_routing)-1] = ' ' * 8 + '}'
+                schema_routing.append(' ' * 6 + '}')
                 schema_routing.append(' ' * 4 + '}')
                 schema_res = JavaValue(schema_routing)
                 self.schema_class.append_access_method("routing", schema_res)
@@ -1706,7 +1708,6 @@ class ClassGenerator(object):
             return
         module_name = get_module(stmt).arg
         class_name = normalize(stmt.arg)
-        lower_name = camelize(stmt.arg)
 
         package_name = get_package(stmt, self.ctx)
         api_package_name = get_api_package(stmt, self.ctx)
@@ -1737,10 +1738,7 @@ class ClassGenerator(object):
             parent_keyname_list.append(parent_key_list)
             parent_paralist.append(parent_para_list)
 
-        parent_key_name = ', '.join(parent_keyname_list)
-        parent_para_instance = ', '.join(parent_paralist)
-
-        exact = [indent + "get {"]
+        exact = []
         if parent_para:
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'"/ "namespace="~Rest) {'
         else:
@@ -1762,6 +1760,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "      }")
         exact.append(body_indent + "    }")
         exact.append(body_indent + "  }")
+        exact.append(body_indent + " }")
         exact.append(body_indent + "} ~")
 
 
