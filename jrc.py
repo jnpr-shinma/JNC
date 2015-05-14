@@ -1145,8 +1145,12 @@ class ClassGenerator(object):
         self.schema_class.append_access_method("dispatcher", dispatcher)
 
         namespace_def = [' ' * 4 + "private val modelNS = \"" + namespace + "\""]
-        namespace = JavaValue(namespace_def)
-        self.java_class.append_access_method("namespace", namespace)
+        namespace_str = JavaValue(namespace_def)
+        self.java_class.append_access_method("namespace", namespace_str)
+
+        schema_namespace_def = [' ' * 4 + "private val namespace = \"" + namespace + "\""]
+        schema_namespace = JavaValue(schema_namespace_def)
+        self.schema_class.append_access_method("namespace", schema_namespace)
 
         model_def = [' ' * 4 + "private val modelPrefix = \"" + module.arg + "\""]
         model = JavaValue(model_def)
@@ -1740,16 +1744,16 @@ class ClassGenerator(object):
 
         exact = []
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'"/ "namespace="~Rest) {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_API_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'") {'
         else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'"/ "namespace="~Rest) {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_API_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'") {'
         exact.append(content)
 
-        exact.append(body_indent + ' namespace => {')
+
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
-        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
+        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangAPIMediaType) {")
         exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Option[String]] {")
         exact.append(body_indent + '            schemaReadFunctionApiImpl.getschemaElements("'+stmt.arg.lower()+'", namespace)')
         exact.append(body_indent + "          }) {")
@@ -1760,7 +1764,6 @@ class ClassGenerator(object):
         exact.append(body_indent + "      }")
         exact.append(body_indent + "    }")
         exact.append(body_indent + "  }")
-        exact.append(body_indent + " }")
         exact.append(body_indent + "} ~")
 
 
@@ -1779,6 +1782,7 @@ class ClassGenerator(object):
 
     def generate_routes(self, stmt):
         add = self.java_class.append_access_method  # XXX: add is a function
+        stmt_arg = stmt.arg.replace("_", "-")
 
         if stmt.keyword == "container":
             return
