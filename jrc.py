@@ -1103,7 +1103,9 @@ class ClassGenerator(object):
         module        -- A statement (sub)tree represent module or submodule, parsed from a YANG model
         """
         filename = normalize(module.arg) + 'Routes.scala'
+        schema_route_filename = normalize(module.arg) + 'SchemaRoutes.scala'
         self.body = []
+        self.schema_body = []
 
         if module.keyword == "module":
             path = self.path
@@ -1129,15 +1131,26 @@ class ClassGenerator(object):
                 source=module.arg,
                 superclass='EasyRestRoutingDSL with LazyLogging with HttpService')
 
+        self.schema_class = JavaClass(filename=schema_route_filename,
+                package=package, description=('The routes class for namespace ' +
+                    module.arg),
+                source=module.arg,
+                superclass='EasyRestRoutingDSL with LazyLogging with HttpService')
+
         rpc_class = None
 
         dispatcher_import = [' ' * 4 + "import net.juniper.easyrest.core.EasyRestActionSystem.system.dispatcher"]
         dispatcher = JavaValue(dispatcher_import)
         self.java_class.append_access_method("dispatcher", dispatcher)
+        self.schema_class.append_access_method("dispatcher", dispatcher)
 
         namespace_def = [' ' * 4 + "private val modelNS = \"" + namespace + "\""]
-        namespace = JavaValue(namespace_def)
-        self.java_class.append_access_method("namespace", namespace)
+        namespace_str = JavaValue(namespace_def)
+        self.java_class.append_access_method("namespace", namespace_str)
+
+        schema_namespace_def = [' ' * 4 + "private val namespace = \"" + namespace + "\""]
+        schema_namespace = JavaValue(schema_namespace_def)
+        self.schema_class.append_access_method("namespace", schema_namespace)
 
         model_def = [' ' * 4 + "private val modelPrefix = \"" + module.arg + "\""]
         model = JavaValue(model_def)
@@ -1152,6 +1165,13 @@ class ClassGenerator(object):
         enable_method = JavaValue(enable_def)
         self.java_class.append_access_method("enable", enable_method)
         self.java_class.imports.add(self.mopackage +"."+ normalize(module_prefix))
+        self.schema_class.append_access_method("enable", enable_method)
+        self.schema_class.imports.add(self.mopackage +"."+ normalize(module_prefix))
+
+        api = [' ' * 4 + 'lazy val schemaReadFunctionApiImpl = new SchemaReadApiImpl()']
+        apiimpl = JavaValue(api)
+        self.schema_class.append_access_method("api", apiimpl)
+        self.schema_class.imports.add("net.juniper.easyrest.yang.schema.SchemaReadApiImpl")
 
         import_rpc_impl = False
 
@@ -1176,6 +1196,7 @@ class ClassGenerator(object):
                     else:
                         if search_one(stmt, ('csp-common', 'vertex')) or search_one(stmt, ('csp-common', 'edge')):
                             self.generate_routes(stmt)
+                            self.generate_schema_routes(stmt)
                             child_generator = ClassGenerator(stmt, path=path, package=package, mopackage=mopackage,
                                                      ns=module.arg, prefix_name=module.arg, parent=self)
                             child_generator.generate()
@@ -1197,9 +1218,23 @@ class ClassGenerator(object):
                 res = JavaValue(routing)
                 self.java_class.append_access_method("routing", res)
 
+                schema_routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiSchemaRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
+                schema_routing.append(' ' * 6 + 'get {')
+                schema_routing.extend(self.schema_body)
+                schema_routing[len(schema_routing)-1] = ' ' * 8 + '}'
+                schema_routing.append(' ' * 6 + '}')
+                schema_routing.append(' ' * 4 + '}')
+                schema_res = JavaValue(schema_routing)
+                self.schema_class.append_access_method("routing", schema_res)
+
                 write_file(path,
                    filename,
                    self.java_class.as_list(),
+                   self.ctx)
+
+                write_file(path,
+                   schema_route_filename,
+                   self.schema_class.as_list(),
                    self.ctx)
             else:
                 print('The class file is empty, ignore writing "'+ filename + '"to file.')
@@ -1670,74 +1705,84 @@ class ClassGenerator(object):
         #self.rpc_impl_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
         #self.rpc_impl_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
 
-    # def generate_child(self, sub):
-    #     """Appends access methods to class for children in the YANG module.
-    #     Returns the name of sub if it is a container or notification, an empty
-    #     string if sub is a list, None otherwise.
-    #
-    #     Uses mutual recursion with generate_class. For this function to work,
-    #     self.java_class must be defined.
-    #
-    #     sub -- A data model subtree statement, child of self.stmt.
-    #
-    #     """
-    #     field = None
-    #     add = self.java_class.append_access_method  # XXX: add is a function
-    #     if sub.keyword in yangelement_stmts:
-    #         pkg = self.package + '.' + self.n2
-    #         child_generator = ClassGenerator(stmt=sub, package=pkg,
-    #             path=self.path + OSSep + self.n2,
-    #             ns=None, prefix_name=None, parent=self)
-    #         child_generator.generate()
-    #         child_gen = MethodGenerator(sub, self.ctx)
-    #         if sub.keyword in ('container', 'notification'):
-    #             field = sub.arg
-    #             self.java_class.add_field(child_gen.child_field())
-    #         else:
-    #             field = ''
-    #         for access_method in child_gen.parent_access_methods():
-    #             name = normalize(sub.arg)
-    #             def f(s):
-    #                 f_name = '.'.join([pkg, name])
-    #                 res = s.replace(name, f_name)
-    #                 res = res.replace('add' + f_name, 'add' + name)
-    #                 return res
-    #             if (name == self.n and isinstance(access_method, JavaMethod)):
-    #                 access_method.return_type = f(access_method.return_type)
-    #                 access_method.parameters = [f(x) for x in access_method.parameters]
-    #                 access_method.body = [f(x) for x in access_method.body]
-    #             elif name == self.n:
-    #                 access_method.modifiers = [f(x) for x in access_method.modifiers]
-    #             add(sub.arg, access_method)
-    #     elif sub.keyword in leaf_stmts:
-    #         child_gen = MethodGenerator(sub, self.ctx)
-    #         add(sub.arg, child_gen.access_methods_comment())
-    #         if sub.keyword == 'leaf':
-    #             key = search_one(self.stmt, 'key')
-    #             optional = key is None or sub.arg not in key.arg.split(' ')
-    #             # FIXME: The leaf might be mandatory even if it is not a key
-    #             add(sub.arg, child_gen.getters())
-    #             for setter in child_gen.setters():
-    #                 add(sub.arg, setter)
-    #             if optional:
-    #                 add(sub.arg, child_gen.unsetter())
-    #             add(sub.arg, child_gen.adders())
-    #         else:  # sub.keyword == 'leaf-list':
-    #             add(sub.arg, child_gen.child_iterator())
-    #             for setter in child_gen.setters():
-    #                 add(sub.arg, setter)
-    #             for deleter in child_gen.deleters():
-    #                 add(sub.arg, deleter)
-    #             add(sub.arg, child_gen.adders())
-    #             optional = True
-    #         if optional:
-    #             child_gen = MethodGenerator(sub, self.ctx)
-    #             for mark_method in child_gen.markers():
-    #                 add(sub.arg, mark_method)
-    #     return field
+    def generate_schema_routes(self, stmt):
+        add = self.schema_class.append_access_method  # XXX: add is a function
+
+        if stmt.keyword == "container":
+            return
+        module_name = get_module(stmt).arg
+        class_name = normalize(stmt.arg)
+
+        package_name = get_package(stmt, self.ctx)
+        api_package_name = get_api_package(stmt, self.ctx)
+
+        file_indent = ' ' * 4
+        indent = ' ' * 6
+        body_indent = ' ' * 8
+
+        if api_package_name != self.package:
+            self.java_class.imports.add(api_package_name+'.'+class_name+"Api")
+
+        key_arg, value = self.get_stmt_key_route(stmt)
+
+        if (len(key_arg.split(","))>1):
+            key_name = "Key"
+        else:
+            key_name = normalize(key_arg)
+
+        packages = get_parents(stmt)
+        parent_para = ""
+        parent_keyname_list = []
+        parent_paralist = []
+        while packages:
+            parent_stmt = packages.popleft()
+            parent_name = camelize(parent_stmt.arg)
+            parent_para = parent_para + '/ "'+module_name.lower()+":"+parent_stmt.arg+'=" ~ Rest'
+            parent_key_list, parent_para_list = self.get_parent_stmt_key_route(parent_stmt, parent_name)
+            parent_keyname_list.append(parent_key_list)
+            parent_paralist.append(parent_para_list)
+
+        exact = []
+        if parent_para:
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_API_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'") {'
+        else:
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_API_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'") {'
+        exact.append(content)
+
+
+        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
+        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
+        exact.append(body_indent + "      intercept(apiCtx) {")
+        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangApiMediaType) {")
+        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Option[String]] {")
+        exact.append(body_indent + '            schemaReadFunctionApiImpl.getschemaElements("'+stmt.arg.lower()+'", namespace)')
+        exact.append(body_indent + "          }) {")
+        exact.append(body_indent + "            case Success(result) => complete(result)")
+        exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "          }")
+        exact.append(body_indent + "        }")
+        exact.append(body_indent + "      }")
+        exact.append(body_indent + "    }")
+        exact.append(body_indent + "  }")
+        exact.append(body_indent + "} ~")
+
+
+        self.schema_class.imports.add("com.typesafe.scalalogging.LazyLogging")
+        self.schema_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
+        self.schema_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
+        self.schema_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
+        self.schema_class.imports.add(package_name + '.' + class_name)
+        self.schema_class.imports.add("spray.http._")
+        self.schema_class.imports.add("spray.routing.HttpService")
+        self.schema_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
+        self.schema_class.imports.add("scala.util.{Failure, Success}")
+
+        self.schema_body.extend(exact)
+
 
     def generate_routes(self, stmt):
         add = self.java_class.append_access_method  # XXX: add is a function
+        stmt_arg = stmt.arg.replace("_", "-")
 
         if stmt.keyword == "container":
             return
