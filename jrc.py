@@ -1137,6 +1137,8 @@ class ClassGenerator(object):
                 source=module.arg,
                 superclass='EasyRestRoutingDSL with LazyLogging with HttpService')
 
+        self.java_class.imports.add("net.juniper.easyrest.util.JsonUtil")
+        
         rpc_class = None
 
         dispatcher_import = [' ' * 4 + "import net.juniper.easyrest.core.EasyRestActionSystem.system.dispatcher"]
@@ -1312,7 +1314,7 @@ class ClassGenerator(object):
         if parent_para:
             getall_body.append(body_indent+parent_para+',')
         getall_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Seq[" +
-                                        normalize(self.n2) + "]]"])
+                                        normalize(self.n2) + "]]")
         getall_field = JavaValue(getall_body)
         self.java_class.add_field(getall_field)
 
@@ -1332,7 +1334,7 @@ class ClassGenerator(object):
             get_body.append(body_indent+parent_para+',')
         get_body.append(body_indent + value + ",")
         get_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[" +
-                                     normalize(self.n2) + "]]"])
+                                     normalize(self.n2) + "]]")
         get_field = JavaValue(get_body)
         self.java_class.add_field(get_field)
 
@@ -1341,7 +1343,7 @@ class ClassGenerator(object):
             create_body.append(body_indent+parent_para+',')
         create_body.append(body_indent + self.n2 + ": " + normalize(self.n2) + ",")
         create_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[" +
-                                     normalize(self.n2) + "]"])
+                                     normalize(self.n2) + "]")
         create_field = JavaValue(create_body)
         self.java_class.add_field(create_field)
 
@@ -1350,7 +1352,7 @@ class ClassGenerator(object):
             update_body.append(body_indent+parent_para+',')
         update_body.append(body_indent + self.n2 + ": " + normalize(self.n2) + ",")
         update_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[" +
-                                     normalize(self.n2) + "]]"])
+                                     normalize(self.n2) + "]]")
         update_field = JavaValue(update_body)
         self.java_class.add_field(update_field)
 
@@ -1849,13 +1851,13 @@ class ClassGenerator(object):
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Seq["+normalize(self.n2)+"]] {")
+        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Seq["+class_name+"]] {")
         if parent_para:
             exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"List(" + parent_para_instance +", apiCtx)")
         else:
             exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"List(apiCtx)")
         exact.append(body_indent + "          }) {")
-        exact.append(body_indent + "            case Success(result) => complete(JsonUtil.elementSeqToJson(result, classOf["+normalize(self.n2)+"]))")
+        exact.append(body_indent + "            case Success(result) => complete(JsonUtil.elementSeqToJson(result, classOf["+class_name+"]))")
         exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1915,7 +1917,7 @@ class ClassGenerator(object):
         exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "        intercept(apiCtx) {")
         exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+class_name+"]] {")
 
 
         if parent_para:
@@ -1925,7 +1927,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
-        exact.append(body_indent + "                case Some(result) => complete(result.toJson(true)")
+        exact.append(body_indent + "                case Some(result) => complete(result.toJson(true))")
         exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
         exact.append(body_indent + '                 complete("No '+ lower_name + ' object was found for id " + '+ keys +')')
         exact.append(body_indent + "                }")
@@ -1955,14 +1957,14 @@ class ClassGenerator(object):
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          entity(as["+class_name+"]) {" + lower_name +" =>")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet["+normalize(self.n2)+"] {")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet["+class_name+"] {")
         if parent_para:
             exact.append(body_indent + "              "+lower_name+"ApiImpl.create"+class_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
         else:
             exact.append(body_indent + "              "+lower_name+"ApiImpl.create"+class_name+"(" + lower_name + ", apiCtx)")
 
         exact.append(body_indent + "            }) {")
-        exact.append(body_indent + "              case Success(result) => complete(result.toJson(true)")
+        exact.append(body_indent + "              case Success(result) => complete(result.toJson(true))")
         exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
@@ -1987,7 +1989,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          entity(as["+class_name+"]) {" + lower_name +" =>")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+normalize(self.n2)+"]] {")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+class_name+"]] {")
         if parent_para:
             exact.append(body_indent + "              "+lower_name+"ApiImpl.update"+class_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
         else:
@@ -1995,7 +1997,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
-        exact.append(body_indent + "                case Some(result) => complete(result.toJson(true)")
+        exact.append(body_indent + "                case Some(result) => complete(result.toJson(true))")
         exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
         exact.append(body_indent + '                 complete("No '+ lower_name + ' object was found to update")')
         exact.append(body_indent + "                }")
