@@ -1753,7 +1753,7 @@ class ClassGenerator(object):
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
-        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangAPIMediaType) {")
+        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangApiMediaType) {")
         exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Option[String]] {")
         exact.append(body_indent + '            schemaReadFunctionApiImpl.getschemaElements("'+stmt.arg.lower()+'", namespace)')
         exact.append(body_indent + "          }) {")
