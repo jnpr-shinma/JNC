@@ -1214,7 +1214,7 @@ class ClassGenerator(object):
                 res = JavaValue(routing)
                 self.java_class.append_access_method("routing", res)
 
-                schema_routing = [' ' * 4 + "val " + camelize(module.arg) + "SchemaRestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
+                schema_routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiSchemaRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
                 schema_routing.append(' ' * 6 + 'get {')
                 schema_routing.extend(self.schema_body)
                 schema_routing[len(schema_routing)-1] = ' ' * 8 + '}'
