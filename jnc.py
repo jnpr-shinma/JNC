@@ -1244,7 +1244,7 @@ class ClassGenerator(object):
         # Generate root class
         if self.ctx.opts.verbose:
             print('Generating Java class "' + self.filename + '"...')
-        self.java_class = JavaClass(filename=self.fielname,
+        self.java_class = JavaClass(filename=self.filename,
                 package=self.package, description=('The root class for namespace ' +
                     ns_arg + ' (accessible from \n * ' + self.n +
                     '.NAMESPACE) with prefix "' + prefix.arg + '" (' + self.n +
