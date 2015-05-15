@@ -1101,8 +1101,8 @@ class ClassGenerator(object):
         self.prefix_name = prefix_name
         self.yang_types = yang_types
 
-        self.n = normalize(stmt.arg)
-        self.n2 = camelize(stmt.arg)
+        self.n = normalize(stmt.arg.replace("_", "-"))
+        self.n2 = camelize(stmt.arg.replace("_", "-"))
         if stmt.keyword in module_stmts:
             self.filename = normalize(search_one(stmt, 'prefix').arg) + '.java'
         elif stmt.keyword == 'input' or stmt.keyword == 'output':
@@ -1184,7 +1184,8 @@ class ClassGenerator(object):
 
         # Generate the typedef classes
         for stmt in typedef_stmts:
-            name = normalize(stmt.arg)
+            stmt_arg = stmt.arg.replace("_", "-")
+            name = normalize(stmt_arg)
             description = ''.join(['This class represents an element from ',
                                    '\n * the namespace ', self.ns,
                                    '\n * generated to "',
@@ -1243,7 +1244,7 @@ class ClassGenerator(object):
         # Generate root class
         if self.ctx.opts.verbose:
             print('Generating Java class "' + self.filename + '"...')
-        self.java_class = JavaClass(filename=self.filename,
+        self.java_class = JavaClass(filename=self.fielname,
                 package=self.package, description=('The root class for namespace ' +
                     ns_arg + ' (accessible from \n * ' + self.n +
                     '.NAMESPACE) with prefix "' + prefix.arg + '" (' + self.n +

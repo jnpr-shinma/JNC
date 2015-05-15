@@ -637,7 +637,7 @@ def camelize(string):
                         camelized_str.append(character.upper())
                     else:
                         camelized_str.append(character.lower())
-            elif character in '-.':
+            elif character in '-._':
                 camelized_str.append(capitalize_first(next_character))
                 next(iterator)
             elif (character.isupper()
@@ -1037,8 +1037,8 @@ class ClassGenerator(object):
         self.prefix_name = prefix_name
         self.yang_types = yang_types
 
-        self.n = normalize(stmt.arg)
-        self.n2 = camelize(stmt.arg)
+        self.n = normalize(stmt.arg.replace("_","-"))
+        self.n2 = camelize(stmt.arg.replace("_","-"))
 
         if stmt.keyword in module_stmts:
             self.filename = normalize(stmt.arg) + 'Routes.scala'
@@ -1267,6 +1267,7 @@ class ClassGenerator(object):
             return
 
         stmt = self.stmt
+        stmt_arg = stmt.arg.replace("_","-")
         if stmt.i_orig_module.keyword == "submodule":
             source = stmt.i_orig_module.arg
         else:
@@ -1286,9 +1287,9 @@ class ClassGenerator(object):
         package_generated = False
 
         for ch in search(stmt, list(yangelement_stmts)):
-            path_value = self.path+'/'+camelize(stmt.arg)
-            package_value = self.package+'.'+camelize(stmt.arg)
-            mopackage_value = self.mopackage+'.'+camelize(stmt.arg)
+            path_value = self.path+'/'+camelize(stmt_arg)
+            package_value = self.package+'.'+camelize(stmt_arg)
+            mopackage_value = self.mopackage+'.'+camelize(stmt_arg)
             child_generator = ClassGenerator(ch, path=path_value, package=package_value, mopackage=mopackage_value, parent=self)
             child_generator.generate()
 
@@ -1679,7 +1680,7 @@ class ClassGenerator(object):
             #     source=self.src,
             #     superclass=normalize(self.n2+"RpcApi"),
             #     implement=True)
-        rpc_name = normalize(stmt.arg)
+        rpc_name = normalize(stmt.arg.replace("_","-"))
         add = rpc_class.append_access_method
         #add_impl = self.rpc_impl_class.append_access_method
         if self.ctx.opts.debug or self.ctx.opts.verbose:
