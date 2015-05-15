@@ -1763,7 +1763,8 @@ class JavaClass(object):
             prevpkg = ''
             for import_ in self.imports.as_sorted_list():
                 pkg, _, cls = import_.rpartition('.')
-                cls = normalize(cls.replace("_", "-"))
+                if cls == "Id_perms":
+                    cls = normalize(cls.replace("_", "-"))
                 if (cls != self.filename.split('.')[0]
                         and (pkg != 'com.tailf.jnc' or cls in com_tailf_jnc
                             or cls == '*')):
