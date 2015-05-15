@@ -239,7 +239,7 @@ class JCCPlugin(plugin.PyangPlugin):
             util.get_latest_revision(module) + '".')
         generator = ClassGenerator(module,
             path=OSSep.join([self.ctx.opts.directory]),
-            package=fullpkg, mopackage=mopkg, src=src, ctx=self.ctx)
+            package=self.ctx.rootpkg, mopackage=mopkg, src=src, ctx=self.ctx)
         generator.generate()
 
     def fatal(self, exitCode=1):
@@ -956,9 +956,9 @@ class ClassGenerator(object):
             module_stmts = set([])
         included = map(lambda x: x.arg, search(self.stmt, 'include'))
 
-        for (module, rev) in self.ctx.modules:
-             if module in included:
-                 module_stmts.add(self.ctx.modules[(module, rev)])
+        #for (module, rev) in self.ctx.modules:
+        #     if module in included:
+        #         module_stmts.add(self.ctx.modules[(module, rev)])
 
         for module in module_stmts:
             self.generate_routeclass(module)
@@ -1060,8 +1060,8 @@ class ClassGenerator(object):
         add = self.java_class.append_access_method  # XXX: add is a function
 
         file_indent = '\t'
-        indent = ' ' * 8
-        body_indent = ' ' * 12
+        indent = '\t' * 2
+        body_indent = '\t' * 3
 
         exact = []
         uses_stmt = search_one(stmt, 'uses')
