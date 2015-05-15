@@ -1219,7 +1219,17 @@ class ClassGenerator(object):
                 routing.append(' ' * 4 + '}')
                 res = JavaValue(routing)
                 self.java_class.append_access_method("routing", res)
+            else:
+                routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiRouting = PLACE_HOLDER_ROUTE"]
+                res = JavaValue(routing)
+                self.java_class.append_access_method("routing", res)
 
+            write_file(path,
+                   filename,
+                   self.java_class.as_list(),
+                   self.ctx)
+
+            if self.schema_body:
                 schema_routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiSchemaRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
                 schema_routing.append(' ' * 6 + 'get {')
                 schema_routing.extend(self.schema_body)
@@ -1228,18 +1238,15 @@ class ClassGenerator(object):
                 schema_routing.append(' ' * 4 + '}')
                 schema_res = JavaValue(schema_routing)
                 self.schema_class.append_access_method("routing", schema_res)
+            else:
+                schema_routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiSchemaRouting = PLACE_HOLDER_ROUTE"]
+                schema_res = JavaValue(schema_routing)
+                self.schema_class.append_access_method("routing", schema_res)
 
-                write_file(path,
-                   filename,
-                   self.java_class.as_list(),
-                   self.ctx)
-
-                write_file(path,
+            write_file(path,
                    schema_route_filename,
                    self.schema_class.as_list(),
                    self.ctx)
-            else:
-                print('The class file is empty, ignore writing "'+ filename + '"to file.')
         else:
             print('There is no list, container, rpc or notification in "'+ module.arg + '"')
 
