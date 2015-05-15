@@ -1808,24 +1808,36 @@ class ClassGenerator(object):
         if stmt.keyword == "container":
             return
         module_name = get_module(stmt).arg
-        class_name = normalize(stmt.arg)
-        lower_name = camelize(stmt.arg)
 
         package_name = get_package(stmt, self.ctx)
         api_package_name = get_api_package(stmt, self.ctx)
+        full_name = package_name+"."+normalize(stmt_arg)
+        full_api_name = api_package_name+"."+ normalize(stmt_arg)+"Api"
+
+        packages = get_parents(stmt)
+        parent_name = ""
+        while packages:
+            parent_stmt = packages.popleft()
+            parent_name = parent_name+normalize(parent_stmt.arg)
+
+        class_name = parent_name + normalize(stmt_arg)
+        api_impl_name = camelize(class_name)+"ApiImpl"
+        lower_name = camelize(stmt_arg)
+        object_name = normalize(stmt_arg)
 
         file_indent = ' ' * 4
         indent = ' ' * 6
         body_indent = ' ' * 8
 
-        marshell = [file_indent + 'implicit object '+class_name+'UnMarshaller extends FromRequestUnmarshaller['+class_name+'] {']
-        marshell.append(file_indent + '  override def apply(req: HttpRequest): Deserialized['+class_name +
-                       '] = Right((new YangJsonParser()).parse("' + stmt.arg + '", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
-                        class_name + '])')
+
+        marshell = [file_indent + 'implicit object '+class_name+'UnMarshaller extends FromRequestUnmarshaller['+full_name+'] {']
+        marshell.append(file_indent + '  override def apply(req: HttpRequest): Deserialized['+full_name +
+                       '] = Right((new YangJsonParser()).parse("' + stmt_arg + '", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
+                        full_name + '])')
         marshell.append(file_indent + '}')
         marsheller = JavaValue(marshell)
 
-        api = [file_indent + 'lazy val '+lower_name+'ApiImpl = ApiImplRegistry.getImplementation(classOf['+class_name+'Api], classOf['+class_name+'])']
+        api = [file_indent + 'lazy val '+api_impl_name+' = ApiImplRegistry.getImplementation(classOf['+full_api_name+'], classOf['+full_name+'])']
         apiimpl = JavaValue(api)
 
         if api_package_name != self.package:
@@ -1855,9 +1867,9 @@ class ClassGenerator(object):
 
         exact = [indent + "get {"]
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'") {'
         else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
         exact.append(content)
 
         if parent_para:
@@ -1866,11 +1878,11 @@ class ClassGenerator(object):
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Seq["+class_name+"]] {")
+        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Seq["+full_name+"]] {")
         if parent_para:
-            exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"List(" + parent_para_instance +", apiCtx)")
+            exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"List(" + parent_para_instance +", apiCtx)")
         else:
-            exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"List(apiCtx)")
+            exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"List(apiCtx)")
         exact.append(body_indent + "          }) {")
         exact.append(body_indent + "            case Success(result) => complete(JsonUtil.elementSeqToJson(result, classOf["+class_name+"]))")
         exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
@@ -1882,9 +1894,9 @@ class ClassGenerator(object):
         exact.append(body_indent + "} ~")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'" / "_total") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'" / "_total") {'
         else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'" / "_total") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'" / "_total") {'
         exact.append(content)
 
         if parent_para:
@@ -1896,9 +1908,9 @@ class ClassGenerator(object):
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Long] {")
         if parent_para:
-            exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"Count(" + parent_para_instance +", apiCtx)")
+            exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"Count(" + parent_para_instance +", apiCtx)")
         else:
-            exact.append(body_indent + "            "+lower_name+"ApiImpl.get"+class_name+"Count(apiCtx)")
+            exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"Count(apiCtx)")
         exact.append(body_indent + "          }) {")
         exact.append(body_indent + "            case Success(result) => complete(\"{\\\"total\\\":\" + result.toString + \"}\")")
         exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
@@ -1910,9 +1922,9 @@ class ClassGenerator(object):
         exact.append(body_indent + "} ~")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'=" ~ Rest) {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
         else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'=" ~ Rest) {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
         exact.append(content)
 
         if (len(key_arg.split(","))>1):
@@ -1932,19 +1944,19 @@ class ClassGenerator(object):
         exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "        intercept(apiCtx) {")
         exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+class_name+"]] {")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+full_name+"]] {")
 
 
         if parent_para:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.get"+class_name+ "ById("+parent_para_instance+", " + value + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".get"+object_name+ "ById("+parent_para_instance+", " + value + ", apiCtx)")
         else:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.get"+class_name+ "ById("+ value + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".get"+object_name+ "ById("+ value + ", apiCtx)")
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
         exact.append(body_indent + "                case Some(result) => complete(result.toJson(true))")
         exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
-        exact.append(body_indent + '                 complete("No '+ lower_name + ' object was found for id " + '+ keys +')')
+        exact.append(body_indent + '                 complete("No '+ object_name + ' object was found for id " + '+ keys +')')
         exact.append(body_indent + "                }")
         exact.append(body_indent + "               }")
         exact.append(body_indent + "              }")
@@ -1960,9 +1972,9 @@ class ClassGenerator(object):
         exact.append(indent + "post {")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'") {'
         else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
         exact.append(content)
 
         if parent_para:
@@ -1971,12 +1983,12 @@ class ClassGenerator(object):
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          entity(as["+class_name+"]) {" + lower_name +" =>")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet["+class_name+"] {")
+        exact.append(body_indent + "          entity(as["+full_name+"]) {" + lower_name +" =>")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet["+full_name+"] {")
         if parent_para:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.create"+class_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".create"+object_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
         else:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.create"+class_name+"(" + lower_name + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".create"+object_name+"(" + lower_name + ", apiCtx)")
 
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => complete(result.toJson(true))")
@@ -1993,9 +2005,9 @@ class ClassGenerator(object):
         exact.append(indent + "put {")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'") {'
         else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
         exact.append(content)
         if parent_para:
             exact.append(body_indent + '('+parent_key_name+') =>')
@@ -2003,18 +2015,18 @@ class ClassGenerator(object):
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          entity(as["+class_name+"]) {" + lower_name +" =>")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+class_name+"]] {")
+        exact.append(body_indent + "          entity(as["+full_name+"]) {" + lower_name +" =>")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+full_name+"]] {")
         if parent_para:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.update"+class_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
         else:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.update"+class_name+"(" + lower_name + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"(" + lower_name + ", apiCtx)")
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
         exact.append(body_indent + "                case Some(result) => complete(result.toJson(true))")
         exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
-        exact.append(body_indent + '                 complete("No '+ lower_name + ' object was found to update")')
+        exact.append(body_indent + '                 complete("No '+ object_name + ' object was found to update")')
         exact.append(body_indent + "                }")
         exact.append(body_indent + "               }")
         exact.append(body_indent + "              }")
@@ -2030,9 +2042,9 @@ class ClassGenerator(object):
         exact.append(indent + "delete {")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'=" ~ Rest) {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
         else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'=" ~ Rest) {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
         exact.append(content)
 
         if (len(key_arg.split(","))>1):
@@ -2055,9 +2067,9 @@ class ClassGenerator(object):
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Boolean] {")
 
         if parent_para:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.delete"+class_name+"(" + parent_para_instance+", " + value + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".delete"+object_name+"(" + parent_para_instance+", " + value + ", apiCtx)")
         else:
-            exact.append(body_indent + "              "+lower_name+"ApiImpl.delete"+class_name+ "("+ value + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".delete"+object_name+ "("+ value + ", apiCtx)")
 
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
@@ -2066,7 +2078,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "               }")
         exact.append(body_indent + "               else {")
         exact.append(body_indent + "                 respondWithStatus(StatusCodes.NotFound) {")
-        exact.append(body_indent + '                   complete("No '+ lower_name + ' object was found for id " + '+ keys +')')
+        exact.append(body_indent + '                   complete("No '+ object_name + ' object was found for id " + '+ keys +')')
         exact.append(body_indent + "                 }")
         exact.append(body_indent + "               }")
         exact.append(body_indent + "              }")
