@@ -1226,6 +1226,7 @@ class ClassGenerator(object):
                 self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
                 self.java_class.imports.add("spray.routing.HttpService")
                 self.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
+                self.java_class.imports.add("import com.tailf.jnc.{Prefix, PrefixMap}")
 
             write_file(path,
                    filename,
