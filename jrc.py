@@ -1841,8 +1841,8 @@ class ClassGenerator(object):
         api = [file_indent + 'lazy val '+api_impl_name+' = ApiImplRegistry.getImplementation(classOf['+full_api_name+'], classOf['+full_name+'])']
         apiimpl = JavaValue(api)
 
-        if api_package_name != self.package:
-            self.java_class.imports.add(api_package_name+'.'+class_name+"Api")
+        #if api_package_name != self.package:
+        #    self.java_class.imports.add(api_package_name+'.'+class_name+"Api")
 
         key_arg, value = self.get_stmt_key_route(stmt)
 
@@ -1885,7 +1885,7 @@ class ClassGenerator(object):
         else:
             exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"List(apiCtx)")
         exact.append(body_indent + "          }) {")
-        exact.append(body_indent + "            case Success(result) => complete(JsonUtil.elementSeqToJson(result, classOf["+class_name+"]))")
+        exact.append(body_indent + "            case Success(result) => complete(JsonUtil.elementSeqToJson(result, classOf["+full_name+"]))")
         exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -2100,7 +2100,7 @@ class ClassGenerator(object):
         self.java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
         self.java_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
         self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-        self.java_class.imports.add(package_name + '.' + class_name)
+
         self.java_class.imports.add("spray.http._")
         self.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
         self.java_class.imports.add("spray.routing.HttpService")
