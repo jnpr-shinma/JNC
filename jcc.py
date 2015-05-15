@@ -1073,7 +1073,7 @@ class ClassGenerator(object):
             if sub_stmt.i_orig_module.arg != stmt.i_orig_module.arg:
                     continue
             sub_stmt_arg = sub_stmt.arg.replace("_","-")
-            edge = search_one(sub_stmt, ('csp-common', 'edge'))
+            edge = search_one(sub_stmt, ('csp-common', 'has-edge'))
             if edge:
                 for property in search(sub_stmt, "leaf"):
                     if hasattr(property, "i_leafref"):
@@ -1081,13 +1081,25 @@ class ClassGenerator(object):
                         link_name = stmt.arg+'-'+name.replace("_", "-")
                         break
 
-                element = '<xsd:element name="'+link_name+'" type="'+normalize(sub_stmt_arg)+'"/>'
+                element = '<xsd:element name="'+link_name+'" />'
                 exact.append(file_indent + element)
                 exact.append(file_indent+ "<!--#IFMAP-SEMANTICS-IDL Link('"+link_name+"',"+"'"+stmt.arg+"', '"+name+"', ['has']) -->")
 
+            ref_edge = search_one(sub_stmt, ('csp-common', 'ref-edge'))
+            if ref_edge:
+                for property in search(sub_stmt, "leaf"):
+                    if hasattr(property, "i_leafref"):
+                        name = property.i_leafref.i_path_list[0][1].arg
+                        link_name = stmt.arg+'-'+name.replace("_", "-")
+                        break
+
+                element = '<xsd:element name="'+link_name+'"/>'
+                exact.append(file_indent + element)
+                exact.append(file_indent+ "<!--#IFMAP-SEMANTICS-IDL Link('"+link_name+"',"+"'"+stmt.arg+"', '"+name+"', ['ref']) -->")
+
             if sub_stmt.keyword == "list":
                 leaf_type_name = ""
-                exact.append(file_indent+'<xsd:complexType name="'+normalize(sub_stmt_arg)+'"/>')
+                exact.append(file_indent+'<xsd:complexType name="'+normalize(stmt.arg+sub_stmt_arg+"Type")+'"/>')
                 exact.append(indent+'<xsd:all>')
                 for property in search(sub_stmt, list(yangelement_stmts)):
                     if property.keyword == "leaf":
@@ -1098,6 +1110,8 @@ class ClassGenerator(object):
                             leaf_type_name = "xsd:string"
                         elif type.arg == "string":
                             leaf_type_name = "xsd:string"
+                        elif type.arg == "uint32":
+                            leaf_type_name = "xsd:integer"
 
                     exact.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+leaf_type_name+'"/>')
                 exact.append(indent+'</xsd:all>')
@@ -1116,6 +1130,20 @@ class ClassGenerator(object):
 
                 if type.arg == "int32":
                     exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+normalize(sub_stmt_arg+'Type')+'" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
+
+                if type.arg == "uint32":
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="xsd:integer" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
+
+                if type.arg == "enumeration":
+                    exact.append(file_indent+'<xsd:simpletype name="'+normalize(property_name+"-"+"type")+'" />')
+                    exact.append(indent+'<xsd:restriction base="xsd:string">')
+                    for enum in type.substmts:
+                        exact.append(body_indent+'<xsd:enumeration value="'+enum.arg+'" />')
+                    exact.append(indent+'</xsd:restriction>')
+                    exact.append(file_indent+'</xsd:simpleType>')
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+normalize(property_name+"-"+"type")+'" />')
                     exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
 
             if sub_stmt.keyword == "container":
