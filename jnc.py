@@ -1763,6 +1763,7 @@ class JavaClass(object):
             prevpkg = ''
             for import_ in self.imports.as_sorted_list():
                 pkg, _, cls = import_.rpartition('.')
+                cls = normalize(cls.replace("_", "-"))
                 if (cls != self.filename.split('.')[0]
                         and (pkg != 'com.tailf.jnc' or cls in com_tailf_jnc
                             or cls == '*')):
@@ -1927,6 +1928,7 @@ class JavaValue(object):
     def add_dependency(self, import_):
         """Adds import_ to list of imports needed for value to compile."""
         _, sep, class_name = import_.rpartition('.')
+        print "==================================="+import_
         if sep:
             if class_name not in java_built_in:
                 self.imports.add(import_)
@@ -2117,7 +2119,7 @@ class MethodGenerator(object):
 
         if self.rootpkg[:1] == ['src']:
             self.rootpkg = self.rootpkg[1:]  # src not part of package
-        self.rootpkg.append(camelize(self.module_stmt.arg))
+        self.rootpkg.append(camelize(self.module_stmt.arg.replace("_", "-")))
 
         self.is_container = stmt.keyword in ('container', 'notification', 'rpc', 'input', 'output')
         self.is_list = stmt.keyword == 'list'
@@ -2145,6 +2147,8 @@ class MethodGenerator(object):
         Does not handle Generics or Array types.
 
         """
+        print "canaical_import++++++++++++++++++++++++"+import_
+
         if import_ == self.root:
             return '.'.join(self.rootpkg + [import_])
         elif import_ in self.children:
@@ -2174,12 +2178,14 @@ class MethodGenerator(object):
                 if import_.rpartition('.')[2] in pkg_classes:
                     if (child and not import_.rpartition('.')[1]
                             and import_ != self.root):
+                        print "fix================================="+import_
                         imports.add('.'.join([self.pkg, import_]))
                     else:
                         imports.add(import_)
                         
 
         for dependency in imports:
+            print "method depedency---------------------"+dependency
             if dependency.startswith(('java.math', 'java.util',
                                       'com.tailf.jnc', self.basepkg)):
                 res.add(dependency)
