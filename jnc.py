@@ -2346,11 +2346,11 @@ class MethodGenerator(object):
         cond = ''
         for field in fields:  # could do reversed(fields) to preserve order
             add_child.add_line(''.join([cond, 'if (child instanceof ',
-                    normalize(field), ') ', camelize(field), ' = (',
-                    normalize(field), ')child;']))
+                    normalize(field.replace("_", "-")), ') ', camelize(field.replace("_","-")), ' = (',
+                    normalize(field.replace("_","-")), ')child;']))
             field_stmt = get_dependency_stmt(self.stmt, field)
             if field_stmt and not hasattr(field_stmt, 'i_uses') and field_stmt.keyword != "container":
-                add_child.add_dependency(normalize(field))
+                add_child.add_dependency(normalize(field.replace("_","-")))
             cond = 'else '
         return self.fix_imports(add_child)
 
