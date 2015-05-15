@@ -1101,8 +1101,8 @@ class ClassGenerator(object):
         self.prefix_name = prefix_name
         self.yang_types = yang_types
 
-        self.n = normalize(stmt.arg)
-        self.n2 = camelize(stmt.arg)
+        self.n = normalize(stmt.arg.replace("_", "-"))
+        self.n2 = camelize(stmt.arg.replace("_", "-"))
         if stmt.keyword in module_stmts:
             self.filename = normalize(search_one(stmt, 'prefix').arg) + '.java'
         elif stmt.keyword == 'input' or stmt.keyword == 'output':
@@ -1184,7 +1184,8 @@ class ClassGenerator(object):
 
         # Generate the typedef classes
         for stmt in typedef_stmts:
-            name = normalize(stmt.arg)
+            stmt_arg = stmt.arg.replace("_", "-")
+            name = normalize(stmt_arg)
             description = ''.join(['This class represents an element from ',
                                    '\n * the namespace ', self.ns,
                                    '\n * generated to "',
@@ -1762,6 +1763,8 @@ class JavaClass(object):
             prevpkg = ''
             for import_ in self.imports.as_sorted_list():
                 pkg, _, cls = import_.rpartition('.')
+                if cls == "Id_perms":
+                    cls = normalize(cls.replace("_", "-"))
                 if (cls != self.filename.split('.')[0]
                         and (pkg != 'com.tailf.jnc' or cls in com_tailf_jnc
                             or cls == '*')):
@@ -2088,12 +2091,13 @@ class MethodGenerator(object):
     def __init__(self, stmt, ctx):
         """Sets the attributes of the method generator, depending on stmt"""
         self.stmt = stmt
-        self.n = normalize(stmt.arg)
+        stmt_arg = stmt.arg.replace("_", "-")
+        self.n = normalize(stmt.arg.replace("_", "-"))
         if(stmt.keyword == 'input' or stmt.keyword == 'output'):
-             self.n = normalize(stmt.parent.arg)+normalize(stmt.arg)
+             self.n = normalize(stmt.parent.arg.replace("_","-"))+normalize(stmt_arg)
         else:
-             self.n = normalize(stmt.arg)
-        self.n2 = camelize(stmt.arg)
+             self.n = normalize(stmt_arg)
+        self.n2 = camelize(stmt_arg)
 
         self.children = [normalize(s.arg) for s in
                          search(stmt, yangelement_stmts | leaf_stmts)]
@@ -2115,7 +2119,7 @@ class MethodGenerator(object):
 
         if self.rootpkg[:1] == ['src']:
             self.rootpkg = self.rootpkg[1:]  # src not part of package
-        self.rootpkg.append(camelize(self.module_stmt.arg))
+        self.rootpkg.append(camelize(self.module_stmt.arg.replace("_", "-")))
 
         self.is_container = stmt.keyword in ('container', 'notification', 'rpc', 'input', 'output')
         self.is_list = stmt.keyword == 'list'
@@ -2344,11 +2348,11 @@ class MethodGenerator(object):
         cond = ''
         for field in fields:  # could do reversed(fields) to preserve order
             add_child.add_line(''.join([cond, 'if (child instanceof ',
-                    normalize(field), ') ', camelize(field), ' = (',
-                    normalize(field), ')child;']))
+                    normalize(field.replace("_", "-")), ') ', camelize(field.replace("_","-")), ' = (',
+                    normalize(field.replace("_","-")), ')child;']))
             field_stmt = get_dependency_stmt(self.stmt, field)
             if field_stmt and not hasattr(field_stmt, 'i_uses') and field_stmt.keyword != "container":
-                add_child.add_dependency(normalize(field))
+                add_child.add_dependency(normalize(field.replace("_","-")))
             cond = 'else '
         return self.fix_imports(add_child)
 
