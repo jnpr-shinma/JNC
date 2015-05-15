@@ -1225,6 +1225,7 @@ class ClassGenerator(object):
                 self.java_class.append_access_method("routing", res)
                 self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
                 self.java_class.imports.add("spray.routing.HttpService")
+                self.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
 
             write_file(path,
                    filename,
@@ -1246,6 +1247,7 @@ class ClassGenerator(object):
                 self.schema_class.append_access_method("routing", schema_res)
                 self.schema_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
                 self.schema_class.imports.add("spray.routing.HttpService")
+                self.schema_class.imports.add("com.typesafe.scalalogging.LazyLogging")
 
             write_file(path,
                    schema_route_filename,
