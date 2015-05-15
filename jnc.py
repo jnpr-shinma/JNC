@@ -1927,6 +1927,7 @@ class JavaValue(object):
     def add_dependency(self, import_):
         """Adds import_ to list of imports needed for value to compile."""
         _, sep, class_name = import_.rpartition('.')
+        class_name = class_name.replace("_", "-")
         if sep:
             if class_name not in java_built_in:
                 self.imports.add(import_)
