@@ -238,7 +238,7 @@ class JCCPlugin(plugin.PyangPlugin):
         src = ('module "' + module.arg + '", revision: "' +
             util.get_latest_revision(module) + '".')
         generator = ClassGenerator(module,
-            path=OSSep.join([self.ctx.opts.directory, 'api', subpkg]),
+            path=OSSep.join([self.ctx.opts.directory]),
             package=fullpkg, mopackage=mopkg, src=src, ctx=self.ctx)
         generator.generate()
 
@@ -1059,14 +1059,14 @@ class ClassGenerator(object):
     def generate_routes(self, stmt):
         add = self.java_class.append_access_method  # XXX: add is a function
 
-        file_indent = ' ' * 4
+        file_indent = '\t'
         indent = ' ' * 8
         body_indent = ' ' * 12
 
         exact = []
         uses_stmt = search_one(stmt, 'uses')
         if uses_stmt and uses_stmt.arg == "csp:entity":
-            element = '<xsd:element name="'+stmt.arg+'" type="ifmap:IdentityType"/>'
+            element = '<xsd:element name="'+stmt.arg+'" type="ifmap:IdentityType" />'
             exact.append(file_indent + element)
 
         for sub_stmt in search(stmt, list(yangelement_stmts)):
@@ -1083,8 +1083,7 @@ class ClassGenerator(object):
 
                 element = '<xsd:element name="'+link_name+'" type="'+normalize(sub_stmt_arg)+'"/>'
                 exact.append(file_indent + element)
-                exact.append(file_indent+ "<!--#IFMAP-SEMANTICS-IDL")
-                exact.append(file_indent+"Link('"+link_name+"',"+"'"+stmt.arg+"', '"+name+"', ['has']) -->")
+                exact.append(file_indent+ "<!--#IFMAP-SEMANTICS-IDL Link('"+link_name+"',"+"'"+stmt.arg+"', '"+name+"', ['has']) -->")
 
             if sub_stmt.keyword == "list":
                 leaf_type_name = ""
@@ -1106,27 +1105,18 @@ class ClassGenerator(object):
 
             if sub_stmt.keyword == "leaf":
                 type = search_one(sub_stmt, 'type')
+                property_name = stmt.arg+"-"+sub_stmt_arg
                 if type.arg == "string":
-                    exact.append(file_indent+'<xsd:element name="'+sub_stmt_arg+'" type="xsd:string"/>')
-                    exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL')
-                    exact.append(file_indent+"Property('"+sub_stmt_arg+"', '"+stmt.arg+"') -->")
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="xsd:string" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
 
                 if type.arg == "inet:ip-address":
-                    exact.append(file_indent+'<xsd:element name="'+sub_stmt_arg+'" type="smi:IpAddress"/>')
-                    exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL')
-                    exact.append(file_indent+"Property('"+sub_stmt_arg+"', '"+stmt.arg+"') -->")
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="smi:IpAddress" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
 
                 if type.arg == "int32":
-                    exact.append(file_indent+'<xsd:element name="'+sub_stmt_arg+'" type="'+normalize(sub_stmt_arg+'Type')+'"/>')
-                    exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL')
-                    exact.append(file_indent+"Property('"+sub_stmt_arg+"', '"+stmt.arg+"') -->")
-
-                    exact.append(file_indent+'<xsd:simpleType name="'+normalize(sub_stmt_arg+'Type')+'">')
-                    exact.append(indent+'<xsd:restriction base="xsd:integer">')
-                    exact.append(body_indent+'<xsd:minInclusive value="0"/>')
-                    exact.append(body_indent+'<xsd:maxInclusive value="7"/>')
-                    exact.append(indent+'</xsd:restriction>')
-                    exact.append(file_indent+'</xsd:simpleType>')
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+normalize(sub_stmt_arg+'Type')+'" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
 
             if sub_stmt.keyword == "container":
                 uses = search_one(sub_stmt, 'uses')
@@ -1441,10 +1431,9 @@ class JavaClass(object):
         header.append(' Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.')
         header.append(' -->')
 
-        header.append('<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:ifmap="http://www.trustedcomputinggroup.org/2010/IFMAP/2" xmlns:meta="')
-        header.append('http://www.trustedcomputinggroup.org/2010/IFMAP-METADATA/2" xmlns:ns1="http://www.contrailsystems.com/2012/VNC-CONFIG/0" targetNamespace="')
-        header.append('http://www.contrailsystems.com/2012/VNC-CONFIG/0">')
-
+        header.append('<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"')
+        header.append('\txmlns:ifmap="http://www.trustedcomputinggroup.org/2010/IFMAP/2"')
+        header.append('\txmlns:meta="http://www.trustedcomputinggroup.org/2010/IFMAP-METADATA/2">')
 
         return header  + self.get_body()
 
