@@ -1223,6 +1223,8 @@ class ClassGenerator(object):
                 routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiRouting = PLACE_HOLDER_ROUTE"]
                 res = JavaValue(routing)
                 self.java_class.append_access_method("routing", res)
+                self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
+                self.java_class.imports.add("spray.routing.HttpService")
 
             write_file(path,
                    filename,
@@ -1242,6 +1244,8 @@ class ClassGenerator(object):
                 schema_routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiSchemaRouting = PLACE_HOLDER_ROUTE"]
                 schema_res = JavaValue(schema_routing)
                 self.schema_class.append_access_method("routing", schema_res)
+                self.schema_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
+                self.schema_class.imports.add("spray.routing.HttpService")
 
             write_file(path,
                    schema_route_filename,

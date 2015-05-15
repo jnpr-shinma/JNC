@@ -984,7 +984,7 @@ class ClassGenerator(object):
 
         # Generate routes class
         if self.ctx.opts.verbose:
-            print('Generating REST API Routes class "' + filename + '"...')
+            print('Generating xsd file "' + filename + '"...')
 
         self.java_class = JavaClass(filename=filename,
                 package=package, description=('The routes class for namespace ' +
@@ -1041,7 +1041,12 @@ class ClassGenerator(object):
             for sub_stmt in search(stmt, list(yangelement_stmts)):
                 if sub_stmt.keyword == "leaf":
                     type = search_one(sub_stmt, 'type')
-                    if type and type.arg == "string":
+                    if type:
+                        if type.arg == "string":
+                            type_name = "xsd:string"
+                        else:
+                            type_name = type.arg
+                    else:
                         type_name = "xsd:string"
 
                     exact.append(body_indent+'<xsd:element name="'+sub_stmt.arg+'" type="'+type_name+'"/>')
@@ -1079,8 +1084,7 @@ class ClassGenerator(object):
                 element = '<xsd:element name="'+link_name+'" type="'+normalize(sub_stmt_arg)+'"/>'
                 exact.append(file_indent + element)
                 exact.append(file_indent+ "<!--#IFMAP-SEMANTICS-IDL")
-                exact.append(file_indent+"Link('"+link_name+"',")
-                exact.append(file_indent+"'"+stmt.arg+"', '"+name+"', ['has']) -->")
+                exact.append(file_indent+"Link('"+link_name+"',"+"'"+stmt.arg+"', '"+name+"', ['has']) -->")
 
             if sub_stmt.keyword == "list":
                 leaf_type_name = ""
