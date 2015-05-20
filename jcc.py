@@ -1054,7 +1054,8 @@ class ClassGenerator(object):
 
         exact.append(file_indent+'</xsd:complexType>')
 
-        self.java_class.body.extend(exact)
+        grouping = JavaValue(exact)
+        self.java_class.append_access_method("grouping", grouping)
 
     def generate_routes(self, stmt):
         add = self.java_class.append_access_method  # XXX: add is a function
@@ -1064,13 +1065,14 @@ class ClassGenerator(object):
         body_indent = '\t' * 3
 
         exact = []
+        complex_type = []
         uses_stmt = search_one(stmt, 'uses')
         if uses_stmt and uses_stmt.arg == "csp:entity":
             element = '<xsd:element name="'+stmt.arg+'" type="ifmap:IdentityType" />'
             exact.append(file_indent + element)
 
         for sub_stmt in search(stmt, list(yangelement_stmts)):
-            if sub_stmt.i_orig_module.arg != stmt.i_orig_module.arg:
+            if sub_stmt.i_orig_module.arg != stmt.i_orig_module.arg and sub_stmt.i_orig_module.arg == "csp-common":
                     continue
             sub_stmt_arg = sub_stmt.arg.replace("_","-")
             edge = search_one(sub_stmt, ('csp-common', 'has-edge'))
@@ -1097,10 +1099,11 @@ class ClassGenerator(object):
                 exact.append(file_indent + element)
                 exact.append(file_indent+ "<!--#IFMAP-SEMANTICS-IDL Link('"+link_name+"',"+"'"+stmt.arg+"', '"+name+"', ['ref']) -->")
 
-            if sub_stmt.keyword == "list":
+            if sub_stmt.keyword == "list" or sub_stmt.keyword == "container":
                 leaf_type_name = ""
-                exact.append(file_indent+'<xsd:complexType name="'+normalize(stmt.arg+sub_stmt_arg+"Type")+'"/>')
-                exact.append(indent+'<xsd:all>')
+                property_name = stmt.arg+"-"+sub_stmt_arg
+                complex_type.append(file_indent+'<xsd:complexType name="'+normalize(stmt.arg+sub_stmt_arg+"Type")+'"/>')
+                complex_type.append(indent+'<xsd:all>')
                 for property in search(sub_stmt, list(yangelement_stmts)):
                     if property.keyword == "leaf":
                         type = search_one(property, 'type')
@@ -1113,9 +1116,11 @@ class ClassGenerator(object):
                         elif type.arg == "uint32":
                             leaf_type_name = "xsd:integer"
 
-                    exact.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+leaf_type_name+'"/>')
-                exact.append(indent+'</xsd:all>')
-                exact.append(file_indent+'</xsd:complexType>')
+                    complex_type.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+leaf_type_name+'"/>')
+                complex_type.append(indent+'</xsd:all>')
+                complex_type.append(file_indent+'</xsd:complexType>')
+                exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+normalize(stmt.arg+sub_stmt_arg)+'Type"/>')
+                exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
 
             if sub_stmt.keyword == "leaf":
                 type = search_one(sub_stmt, 'type')
@@ -1123,70 +1128,72 @@ class ClassGenerator(object):
                 if type.arg == "string":
                     exact.append(file_indent+'<xsd:element name="'+property_name+'" type="xsd:string" />')
                     exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
-
-                if type.arg == "inet:ip-address":
+                elif type.arg == "inet:ip-address":
                     exact.append(file_indent+'<xsd:element name="'+property_name+'" type="smi:IpAddress" />')
                     exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
-
-                if type.arg == "int32":
+                elif type.arg == "int32":
                     exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+normalize(sub_stmt_arg+'Type')+'" />')
                     exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
-
-                if type.arg == "uint32":
+                elif type.arg == "uint32":
                     exact.append(file_indent+'<xsd:element name="'+property_name+'" type="xsd:integer" />')
                     exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
-
-                if type.arg == "enumeration":
-                    exact.append(file_indent+'<xsd:simpletype name="'+normalize(property_name+"-"+"type")+'" />')
-                    exact.append(indent+'<xsd:restriction base="xsd:string">')
+                elif type.arg == "enumeration":
+                    complex_type.append(file_indent+'<xsd:simpletype name="'+normalize(property_name+"-"+"type")+'" />')
+                    complex_type.append(indent+'<xsd:restriction base="xsd:string">')
                     for enum in type.substmts:
-                        exact.append(body_indent+'<xsd:enumeration value="'+enum.arg+'" />')
-                    exact.append(indent+'</xsd:restriction>')
-                    exact.append(file_indent+'</xsd:simpleType>')
+                        complex_type.append(body_indent+'<xsd:enumeration value="'+enum.arg+'" />')
+                    complex_type.append(indent+'</xsd:restriction>')
+                    complex_type.append(file_indent+'</xsd:simpleType>')
                     exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+normalize(property_name+"-"+"type")+'" />')
                     exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
-
-            if sub_stmt.keyword == "container":
-                uses = search_one(sub_stmt, 'uses')
-                if uses:
-                    exact.append(file_indent+'<xsd:complexType name="'+sub_stmt_arg+'" type="'+normalize(uses.arg)+'Type"/>')
-                    exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL')
-                    exact.append(file_indent+"Property('"+sub_stmt_arg+"', '"+stmt.arg+"') -->")
-                elif len(sub_stmt.i_children) == 1 and sub_stmt.i_children[0].keyword == "list":
-                    type_name = sub_stmt.i_children[0].arg
-                    exact.append(file_indent+'<xsd:complexType name="'+normalize(type_name)+'">')
-                    exact.append(indent+'<xsd:all>')
-                    for property in search(sub_stmt.i_children[0], "leaf"):
-                        exact.append(body_indent+'<xsd:element name="'+property.arg+'" type="xsd:string"/>')
-
-                    exact.append(indent+'</xsd:all>')
-                    exact.append(file_indent+'</xsd:complexType>')
-                    exact.append(file_indent+'<xsd:complexType name="PluginProperties">')
-                    exact.append(indent+'<xsd:all>')
-                    exact.append(body_indent+'<xsd:element name="plugin-property" type="PluginProperty" maxOccurs="unbounded"/>')
-                    exact.append(indent+'</xsd:all>')
-                    exact.append(file_indent+'</xsd:complexType>')
-                    exact.append(file_indent+'<xsd:element name="'+sub_stmt_arg+'" type="PluginProperties"/>')
-                    exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL')
-                    exact.append(file_indent+"Property('"+sub_stmt_arg+"', '"+stmt.arg+"') -->")
+                elif type.arg == "leafref":
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="xsd:string" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
                 else:
-                    exact.append(file_indent+'<xsd:complexType name="'+normalize(sub_stmt_arg)+'Type"/>')
-                    exact.append(indent+'<xsd:all>')
-                    for property in search(sub_stmt, "leaf"):
-                        type = search_one(property, 'type')
-                        if type.arg == "string":
-                            type_name = "xsd:string"
-                        elif type.arg == 'int32':
-                            type_name = "xsd:integer"
-                        exact.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+type_name+'"/>')
-                    exact.append(indent+'</xsd:all>')
-                    exact.append(file_indent+'</xsd:complexType>')
-                    exact.append(file_indent+'<xsd:element name="'+sub_stmt_arg+'" type="'+normalize(sub_stmt_arg)+'Type"/>')
-                    exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL')
-                    exact.append(file_indent+"Property('"+sub_stmt_arg+"', '"+stmt.arg+"') -->")
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+type.arg+'" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
 
-        self.java_class.body.extend(exact)
+            # if sub_stmt.keyword == "container":
+            #     uses = search_one(sub_stmt, 'uses')
+            #     if uses:
+            #         exact.append(file_indent+'<xsd:complexType name="'+sub_stmt_arg+'" type="'+normalize(uses.arg)+'Type"/>')
+            #         exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL Property("'+sub_stmt_arg+"', '"+stmt.arg+"') -->")
+            #     if len(sub_stmt.i_children) == 1 and sub_stmt.i_children[0].keyword == "list":
+            #         type_name = sub_stmt.i_children[0].arg
+            #         exact.append(file_indent+'<xsd:complexType name="'+normalize(type_name)+'">')
+            #         exact.append(indent+'<xsd:all>')
+            #         for property in search(sub_stmt.i_children[0], "leaf"):
+            #             exact.append(body_indent+'<xsd:element name="'+property.arg+'" type="xsd:string"/>')
+            #
+            #         exact.append(indent+'</xsd:all>')
+            #         exact.append(file_indent+'</xsd:complexType>')
+            #         exact.append(file_indent+'<xsd:complexType name="PluginProperties">')
+            #         exact.append(indent+'<xsd:all>')
+            #         exact.append(body_indent+'<xsd:element name="plugin-property" type="PluginProperty" maxOccurs="unbounded"/>')
+            #         exact.append(indent+'</xsd:all>')
+            #         exact.append(file_indent+'</xsd:complexType>')
+            #         exact.append(file_indent+'<xsd:element name="'+sub_stmt_arg+'" type="PluginProperties"/>')
+            #         exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL Property("'+sub_stmt_arg+"', '"+stmt.arg+"') -->")
+            #     else:
+            #         complex_type.append(file_indent+'<xsd:complexType name="'+normalize(sub_stmt_arg)+'Type"/>')
+            #         complex_type.append(indent+'<xsd:all>')
+            #         for property in search(sub_stmt, "leaf"):
+            #             type = search_one(property, 'type')
+            #             if type.arg == "string":
+            #                 type_name = "xsd:string"
+            #             elif type.arg == 'int32':
+            #                 type_name = "xsd:integer"
+            #             complex_type.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+type_name+'"/>')
+            #         complex_type.append(indent+'</xsd:all>')
+            #         complex_type.append(file_indent+'</xsd:complexType>')
+            #         exact.append(file_indent+'<xsd:element name="'+sub_stmt_arg+'" type="'+normalize(sub_stmt_arg)+'Type"/>')
+            #         exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL Property("'+sub_stmt_arg+"', '"+stmt.arg+"') -->")
 
+        complextype = JavaValue(complex_type)
+        self.java_class.append_access_method("type", complextype)
+
+        res = JavaValue(exact)
+        self.java_class.append_access_method("routing", res)
 
     def get_stmt_key(self, stmt):
         is_config_value = is_config(stmt)
@@ -1359,7 +1366,7 @@ class JavaClass(object):
         for i in range(len(imports)):
             self.imports.add(imports[i])
         self.description = description
-        self.body = []
+        self.body = None
         self.version = version
         self.superclass = superclass
         self.interfaces = interfaces
@@ -1428,7 +1435,20 @@ class JavaClass(object):
     def get_body(self):
         """Returns self.body. If it is None, fields and methods are added to it
         before it is returned."""
-        self.body.append("</xsd:schema>")
+        if self.body is None:
+             self.body = []
+             # if self.superclass is not None or 'Serializable' in self.interfaces:
+             #     self.body.extend(JavaValue(
+             #         modifiers=['private', 'static', 'final', 'long'],
+             #         name='serialVersionUID', value='1L').as_list())
+             #     self.body.append('')
+             for method in flatten(self.attrs):
+                 if hasattr(method, 'as_list'):
+                     self.body.extend(method.as_list())
+                 else:
+                     self.body.append(method)
+                 self.body.append('')
+             self.body.append("</xsd:schema>")
         return self.body
 
     def get_superclass_and_interfaces(self):
@@ -1462,6 +1482,7 @@ class JavaClass(object):
         header.append('<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"')
         header.append('\txmlns:ifmap="http://www.trustedcomputinggroup.org/2010/IFMAP/2"')
         header.append('\txmlns:meta="http://www.trustedcomputinggroup.org/2010/IFMAP-METADATA/2">')
+        header.append('')
 
         return header  + self.get_body()
 
