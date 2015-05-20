@@ -1069,6 +1069,8 @@ class ClassGenerator(object):
         prefixmap_def = [' ' * 4 + "private val prefixs = new PrefixMap(Array(new Prefix(\"\", modelNS),new Prefix(modelPrefix, modelNS)))"]
         prefixmap = JavaValue(prefixmap_def)
         self.java_class.append_access_method("prefixmap", prefixmap)
+        self.java_class.imports.add("com.tailf.jnc.Prefix")
+        self.java_class.imports.add("com.tailf.jnc.PrefixMap")
 
         module_prefix = normalize(search_one(self.stmt, 'prefix').arg)
         enable_def = [' ' * 4 + module_prefix+".enable"]
@@ -1077,6 +1079,7 @@ class ClassGenerator(object):
         self.java_class.imports.add(self.mopackage +"."+ normalize(module_prefix))
         self.schema_class.append_access_method("enable", enable_method)
         self.schema_class.imports.add(self.mopackage +"."+ normalize(module_prefix))
+
 
         api = [' ' * 4 + 'lazy val schemaReadFunctionApiImpl = new SchemaReadApiImpl()']
         apiimpl = JavaValue(api)
@@ -1134,8 +1137,6 @@ class ClassGenerator(object):
                 self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
                 self.java_class.imports.add("spray.routing.HttpService")
                 self.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
-                self.java_class.imports.add("com.tailf.jnc.Prefix")
-                self.java_class.imports.add("com.tailf.jnc.PrefixMap")
 
             write_file(path,
                    filename,
@@ -1705,8 +1706,6 @@ class ClassGenerator(object):
         self.java_class.imports.add("spray.routing.HttpService")
         self.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
         self.java_class.imports.add("scala.util.{Failure, Success}")
-        self.java_class.imports.add("com.tailf.jnc.PrefixMap")
-        self.java_class.imports.add("com.tailf.jnc.Prefix")
         self.java_class.imports.add("com.tailf.jnc.YangJsonParser")
 
         self.body.extend(exact)
@@ -1919,8 +1918,6 @@ class ClassGenerator(object):
         self.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
         self.java_class.imports.add("spray.routing.HttpService")
         self.java_class.imports.add("scala.util.{Failure, Success}")
-        self.java_class.imports.add("com.tailf.jnc.PrefixMap")
-        self.java_class.imports.add("com.tailf.jnc.Prefix")
         self.java_class.imports.add("com.tailf.jnc.YangJsonParser")
         self.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
 
