@@ -27,6 +27,7 @@ task distribution(dependsOn: ['build', 'sourceJar']) << {
 task copyPythonFiles(type: Copy) {
     from '../jnc.py'
     from '../jrc.py'
+    from '../jcc.py'
     into 'build/classes/main'
 }
 
