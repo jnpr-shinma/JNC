@@ -28,7 +28,7 @@ class ElementHandler extends DefaultHandler {
     private boolean leaf = false;
     private String leafNs;
     private String leafName;
-    private String leafValue;
+    public String leafValue;
 
     @Override
     public void startElement(String uri, String localName, String qName,

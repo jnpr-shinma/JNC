@@ -47,7 +47,7 @@ def pyang_plugin_init():
     """Registers an instance of the jnc plugin"""
     plugin.register_plugin(JNCPlugin())
 
-def ignore_modules(option, opt, value, parser):
+def include_modules(option, opt, value, parser):
     setattr(parser.values, option.dest, value.split(','))
 
 class JNCPlugin(plugin.PyangPlugin):
@@ -136,18 +136,18 @@ class JNCPlugin(plugin.PyangPlugin):
                 action='store_true',
                 help='Load schema files using classpath rather than location.'),
             optparse.make_option(
-                '--jnc-ignore-modules',
-                dest='ignore_modules',
+                '--jnc-include-modules',
+                dest='include_modules',
                 action='callback',
-                callback=ignore_modules,
+                callback=include_modules,
                 type='string',
                 default=[],
-                help='Ignore these modules when generate classes.'),
+                help='Generate classes for stmt which belongs to modules in this option, default is all modules'),
             optparse.make_option(
                 '--jnc-import-package',
                 dest='import_package',
                 default='net.juniper.yang.mo',
-                help='The root package name for imported packages, default is net.juniper.yang'),
+                help='The root package name for imported packages, default is net.juniper.yang.mo'),
             ]
         g = optparser.add_option_group('JNC output specific options')
         g.add_options(optlist)
@@ -219,17 +219,25 @@ class JNCPlugin(plugin.PyangPlugin):
                     print_warning(msg=(etag.lower() + ', aborting.'), key=etag)
                     self.fatal("%s contains errors" % epos.top.arg)
 
+        self.ctx.include_modules = set([])
         # Sweep, adding included and imported modules, until no change
         module_set = set(modules)
         num_modules = 0
         while num_modules != len(module_set):
             num_modules = len(module_set)
             for module in list(module_set):
+                self.ctx.include_modules.add(module.arg)
                 imported = map(lambda x: x.arg, search(module, 'import'))
                 included = map(lambda x: x.arg, search(module, 'include'))
                 for (module_stmt, rev) in self.ctx.modules:
-                    if module_stmt in (imported + included) and module_stmt not in self.ctx.opts.ignore_modules:
-                        module_set.add(self.ctx.modules[(module_stmt, rev)])
+                    if module_stmt in (imported + included):
+                        if self.ctx.opts.include_modules:
+                            if module_stmt in self.ctx.opts.include_modules:
+                                module_set.add(self.ctx.modules[(module_stmt, rev)])
+                                self.ctx.include_modules.add(module_stmt)
+                        else:
+                            module_set.add(self.ctx.modules[(module_stmt, rev)])
+                            self.ctx.include_modules.add(module_stmt)
 
         # Generate files from main modules
         for module in filter(lambda s: s.keyword == 'module', module_set):
@@ -573,10 +581,10 @@ def get_package(stmt, ctx):
             parent = get_parent(stmt)
             sub_packages.appendleft(camelize(stmt.arg))
 
-    if stmt.arg in ctx.opts.ignore_modules:
-        full_package = ctx.opts.import_package.split('.')
-    else:
+    if stmt.arg in ctx.include_modules:
         full_package = ctx.rootpkg.split(OSSep)
+    else:
+        full_package = ctx.opts.import_package.split('.')
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -899,10 +907,10 @@ def get_uses_package(stmt, ctx):
         parent = get_parent(stmt)
         sub_packages.appendleft(camelize(stmt.arg))
 
-    if stmt.arg in ctx.opts.ignore_modules:
-        full_package = ctx.opts.import_package.split('.')
-    else:
+    if stmt.arg in ctx.include_modules:
         full_package = ctx.rootpkg.split(OSSep)
+    else:
+        full_package = ctx.opts.import_package.split('.')
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -958,12 +966,33 @@ class SchemaNode(object):
         """Append "yang_node_type" and "yang_type" for schema node"""
         res.append('<yang_node_type>' + stmt.keyword + '</yang_node_type>')
 
-        if (stmt.keyword in leaf_stmts):
+        if stmt.keyword in leaf_stmts:
             typename = get_typename(stmt)
             type = search_one(stmt, 'type')
             jnc, primitive = get_types(type, self.ctx)
             res.append('<yang_type>' + typename + '</yang_type>')
             res.append('<yang_java_type>' + jnc + '</yang_java_type>')
+
+        if search_one(self.stmt, ('csp-common', 'vertex')):
+            res.append('<yang_graph_type>1</yang_graph_type>')
+        elif search_one(self.stmt, ('csp-common', 'edge')):
+            res.append('<yang_graph_type>2</yang_graph_type>')
+        else:
+            res.append('<yang_graph_type>0</yang_graph_type>')
+
+        if hasattr(stmt, 'i_orig_module') and stmt.i_orig_module:
+            if stmt.i_orig_module.arg == "csp-common":
+                res.append('<mapping_path>'+stmt.arg+'</mapping_path>')
+            else:
+                parent = get_parent(stmt)
+                if parent.keyword != "module":
+                    if search_one(parent, ('csp-common', 'has-edge')) or search_one(parent, ('csp-common', 'ref-edge')):
+                        map_name = stmt.arg
+                    else:
+                        map_name = parent.arg + "-" +stmt.arg
+                else:
+                    map_name = stmt.arg
+                res.append('<mapping_path>'+map_name+'</mapping_path>')
 
         if stmt.keyword in {'container', 'list'}:
             if hasattr(stmt, 'i_uses'):
@@ -1086,8 +1115,8 @@ class ClassGenerator(object):
         self.prefix_name = prefix_name
         self.yang_types = yang_types
 
-        self.n = normalize(stmt.arg)
-        self.n2 = camelize(stmt.arg)
+        self.n = normalize(stmt.arg.replace("_", "-"))
+        self.n2 = camelize(stmt.arg.replace("_", "-"))
         if stmt.keyword in module_stmts:
             self.filename = normalize(search_one(stmt, 'prefix').arg) + '.java'
         elif stmt.keyword == 'input' or stmt.keyword == 'output':
@@ -1169,7 +1198,8 @@ class ClassGenerator(object):
 
         # Generate the typedef classes
         for stmt in typedef_stmts:
-            name = normalize(stmt.arg)
+            stmt_arg = stmt.arg.replace("_", "-")
+            name = normalize(stmt_arg)
             description = ''.join(['This class represents an element from ',
                                    '\n * the namespace ', self.ns,
                                    '\n * generated to "',
@@ -1368,7 +1398,7 @@ class ClassGenerator(object):
             if ch.arg in ("input", "output") and len(ch.i_children) == 0:
                 continue
             field = self.generate_child(ch)
-            ch_arg = normalize(ch.arg)
+            ch_arg = normalize(ch.arg.replace("_", "-"))
             if field is not None:
                 package_generated = True
                 if ch_arg == self.n and not fully_qualified:
@@ -1464,14 +1494,16 @@ class ClassGenerator(object):
                 pkg = self.package + '.' + self.n2
                 path_name =self.path + OSSep + self.n2
             module_name = get_module(sub)
-            if module_name.arg not in self.ctx.opts.ignore_modules:
+
+            if module_name.arg in self.ctx.include_modules:
                 child_generator = ClassGenerator(stmt=sub, package=pkg,
                     path=path_name,
                     ns=None, prefix_name=None, parent=self)
                 child_generator.generate()
+
             child_gen = MethodGenerator(sub, self.ctx)
             if sub.keyword in ('container', 'notification'):
-                field = sub.arg
+                field = sub.arg.replace("_", "-")
                 self.java_class.add_field(child_gen.child_field())
             else:
                 field = ''
@@ -1745,6 +1777,8 @@ class JavaClass(object):
             prevpkg = ''
             for import_ in self.imports.as_sorted_list():
                 pkg, _, cls = import_.rpartition('.')
+                #if cls == "Id_perms":
+                #    cls = normalize(cls.replace("_", "-"))
                 if (cls != self.filename.split('.')[0]
                         and (pkg != 'com.tailf.jnc' or cls in com_tailf_jnc
                             or cls == '*')):
@@ -2071,12 +2105,13 @@ class MethodGenerator(object):
     def __init__(self, stmt, ctx):
         """Sets the attributes of the method generator, depending on stmt"""
         self.stmt = stmt
-        self.n = normalize(stmt.arg)
+        stmt_arg = stmt.arg.replace("_", "-")
+        self.n = normalize(stmt.arg.replace("_", "-"))
         if(stmt.keyword == 'input' or stmt.keyword == 'output'):
-             self.n = normalize(stmt.parent.arg)+normalize(stmt.arg)
+             self.n = normalize(stmt.parent.arg.replace("_","-"))+normalize(stmt_arg)
         else:
-             self.n = normalize(stmt.arg)
-        self.n2 = camelize(stmt.arg)
+             self.n = normalize(stmt_arg)
+        self.n2 = camelize(stmt_arg)
 
         self.children = [normalize(s.arg) for s in
                          search(stmt, yangelement_stmts | leaf_stmts)]
@@ -2091,14 +2126,14 @@ class MethodGenerator(object):
             self.pkg = get_package(stmt, ctx)
         self.basepkg = self.pkg.partition('.')[0]
 
-        if self.module_stmt.arg in ctx.opts.ignore_modules:
-            self.rootpkg = ctx.opts.import_package.split('.')
-        else:
+        if self.module_stmt.arg in ctx.include_modules:
             self.rootpkg = ctx.rootpkg.split(OSSep)
+        else:
+            self.rootpkg = ctx.opts.import_package.split('.')
 
         if self.rootpkg[:1] == ['src']:
             self.rootpkg = self.rootpkg[1:]  # src not part of package
-        self.rootpkg.append(camelize(self.module_stmt.arg))
+        self.rootpkg.append(camelize(self.module_stmt.arg.replace("_", "-")))
 
         self.is_container = stmt.keyword in ('container', 'notification', 'rpc', 'input', 'output')
         self.is_list = stmt.keyword == 'list'
