@@ -688,7 +688,8 @@ public class Element implements Serializable {
      * @return String value of the attribute.
      */
     public String getAttrValue(String name) {
-        return getAttr(name).getValue();
+        Attribute attr = getAttr(name);
+        return attr == null? null: attr.getValue();
     }
 
     /**
@@ -1813,15 +1814,18 @@ public class Element implements Serializable {
             }
             //Mark list node processed
             String processedNode = null;
+            String namespace = this.getRootElement().namespace;
+//            String d[]=childrenNames();
             for (final Element child : children) {
-                SchemaNode schemaNode = SchemaNode.get(child);
+                SchemaNode schemaNode=SchemaTree.lookup(namespace, new Tagpath(tagpath()+"/"+child.name));
+//                SchemaNode schemaNode = SchemaNode.get(child);
                 String childQName = child.qualifiedName();
                 if (schemaNode != null) {
                     if (processedNode != null && processedNode.equals(childQName)) {
                         continue;
                     }
-                    if (isList(schemaNode)) {
-                        processedNode = child.qualifiedName();
+                    processedNode = child.qualifiedName();
+                    if (isList(schemaNode) ) {
                         generator.writeArrayFieldStart(childQName);
                         //Add all children of a list being processed here
                         for (final Element peer : children) {
@@ -1832,7 +1836,27 @@ public class Element implements Serializable {
                             }
                         }
                         generator.writeEndArray();
-                    } else {
+                    }else if(isLeafList(schemaNode)){
+                        generator.writeArrayFieldStart(childQName);
+                        for (final Element peer : children) {
+                            if (peer.qualifiedName().equals(childQName)) {
+                                Object childValue=peer.value;
+                                if (childValue != null) {
+                                    if (childValue instanceof YangBaseInt) {
+                                        writeYangNumberTypes(generator, (YangBaseInt)childValue);
+                                    } else if (childValue instanceof  YangBoolean) {
+                                        generator.writeBoolean(((YangBoolean) childValue).getValue());
+                                    } else {
+                                        final String stringValue = childValue.toString().replaceAll("&",
+                                                "&amp;");
+                                        generator.writeString(stringValue);
+                                    }
+                                }
+                            }
+                        }
+                        generator.writeEndArray();
+                    }
+                    else {
                         child.toJsonString(generator);
                     }
                 } else {
@@ -1848,7 +1872,7 @@ public class Element implements Serializable {
         } else { // add value if any
             if (value != null) {
                 if (value instanceof YangBaseInt) {
-                    writeYangNumberTypes(generator, qName, (YangBaseInt)value);
+                    writeYangNumberTypesField(generator, qName, (YangBaseInt) value);
                 } else if (value instanceof  YangBoolean) {
                     generator.writeBooleanField(qName, ((YangBoolean) value).getValue());
                 } else {
@@ -1872,7 +1896,11 @@ public class Element implements Serializable {
        return schemaNode != null && ( schemaNode.yang_node_type.equals("list") || schemaNode.yang_node_type.equals("input") || schemaNode.yang_node_type.equals("output"));
     }
 
-    private void writeYangNumberTypes(JsonGenerator generator,String qName, YangBaseInt value) throws IOException {
+    private boolean isLeafList(SchemaNode schemaNode) {
+        return schemaNode != null && schemaNode.yang_node_type.equals("leaf-list");
+    }
+
+    private void writeYangNumberTypesField(JsonGenerator generator,String qName, YangBaseInt value) throws IOException {
         if (value instanceof YangDecimal64) {
             generator.writeNumberField(qName, ((YangDecimal64) value).getValue());
         } else if (value instanceof  YangInt64 || value instanceof YangUInt32 ) {
@@ -1889,6 +1917,25 @@ public class Element implements Serializable {
             generator.writeObjectField(qName, ((YangUInt16)value).getValue());
         } else {
             generator.writeStringField(qName, value.toString().replaceAll("&",
+                    "&amp;"));
+        }
+    }
+
+    private void writeYangNumberTypes(JsonGenerator generator,YangBaseInt value) throws IOException {
+        if (value instanceof YangDecimal64) {
+            generator.writeNumber(((YangDecimal64) value).getValue());
+        } else if (value instanceof  YangInt64 || value instanceof YangUInt32 ) {
+            generator.writeNumber(((YangInt64) value).getValue());
+        } else if (value instanceof YangUInt64) {
+            generator.writeNumber( ((YangUInt64)value).getValue());
+        } else if (value instanceof YangInt16) {
+            generator.writeNumber(((YangInt16)value).getValue());
+        } else if (value instanceof YangInt8){
+            generator.writeObject(((YangInt8) value).getValue());
+        } else if (value instanceof YangUInt8 || value instanceof YangUInt8){
+            generator.writeObject(((YangUInt16) value).getValue());
+        } else {
+            generator.writeString(value.toString().replaceAll("&",
                     "&amp;"));
         }
     }

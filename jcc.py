@@ -45,10 +45,10 @@ OSSep = "/"
 
 def pyang_plugin_init():
     """Registers an instance of the jnc plugin"""
-    plugin.register_plugin(JRCPlugin())
+    plugin.register_plugin(JCCPlugin())
 
 
-class JRCPlugin(plugin.PyangPlugin):
+class JCCPlugin(plugin.PyangPlugin):
     """The plug-in class of JRC.
 
     The methods of this class are invoked by pyang during initialization. The
@@ -68,73 +68,58 @@ class JRCPlugin(plugin.PyangPlugin):
 
         """
         self.multiple_modules = False
-        fmts['jrc'] = self
+        fmts['jcc'] = self
 
         args = sys.argv[1:]
         if not any(x in args for x in ('-f', '--format')):
-            if any(x in args for x in ('-d', '--jnc-output')):
+            if any(x in args for x in ('-d', '--jcc-output')):
                 sys.argv.insert(1, '--format')
-                sys.argv.insert(2, 'jrc')
+                sys.argv.insert(2, 'jcc')
 
     def add_opts(self, optparser):
         """Adds options to pyang, displayed in the pyang CLI help message"""
         optlist = [
             optparse.make_option(
-                '--jrc-output',
+                '--jcc-output',
                 dest='directory',
                 help='Generate output to DIRECTORY.'),
             optparse.make_option(
-                '--jrc-help',
-                dest='jrc_help',
+                '--jcc-help',
+                dest='jcc_help',
                 action='store_true',
                 help='Print help on usage of the JNC plugin and exit'),
             optparse.make_option(
-                '--jrc-serial',
+                '--jcc-serial',
                 dest='serial',
                 action='store_true',
                 help='Turn off usage of multiple threads.'),
             optparse.make_option(
-                '--jrc-verbose',
+                '--jcc-verbose',
                 dest='verbose',
                 action='store_true',
                 help='Verbose mode: Print detailed debug messages.'),
             optparse.make_option(
-                '--jrc-debug',
+                '--jcc-debug',
                 dest='debug',
                 action='store_true',
                 help='Print debug messages. Redundant if verbose mode is on.'),
             optparse.make_option(
-                '--jrc-no-classes',
-                dest='no_classes',
-                action='store_true',
-                help='Do not generate classes.'),
-            optparse.make_option(
-                '--jrc-no-schema',
-                dest='no_schema',
-                action='store_true',
-                help='Do not generate schema.'),
-            optparse.make_option(
-                '--jrc-no-pkginfo',
-                dest='no_pkginfo',
-                action='store_true',
-                help='Do not generate package-info files.'),
-            optparse.make_option(
-                '--jrc-ignore-errors',
+                '--jcc-ignore-errors',
                 dest='ignore',
                 action='store_true',
                 help='Ignore errors from validation.'),
             optparse.make_option(
-                '--jrc-import-on-demand',
+                '--jcc-import-on-demand',
                 dest='import_on_demand',
                 action='store_true',
                 help='Use non explicit imports where possible.'),
-           optparse.make_option(
-                '--jrc-classpath-schema-loading',
+            optparse.make_option(
+                '--jcc-classpath-schema-loading',
                 dest='classpath_schema_loading',
                 action='store_true',
                 help='Load schema files using classpath rather than location.')
             ]
-        g = optparser.add_option_group('JRC output specific options')
+        g = optparser.add_option_group('JCC output specific options')
         g.add_options(optlist)
 
     def setup_ctx(self, ctx):
@@ -148,7 +133,7 @@ class JRCPlugin(plugin.PyangPlugin):
         if ctx.opts.jnc_help:
             self.print_help()
             sys.exit(0)
-        if ctx.opts.format == 'jrc':
+        if ctx.opts.format == 'jcc':
             if not ctx.opts.directory:
                 ctx.opts.directory = 'src/gen'
                 print_warning(msg=('Option -d (or --java-package) not set, ' +
@@ -190,7 +175,7 @@ class JRCPlugin(plugin.PyangPlugin):
 
         """
         if ctx.opts.debug or ctx.opts.verbose:
-            print('JRC plugin starting')
+            print('JCC plugin starting')
         if not ctx.opts.ignore:
             for (epos, etag, _) in ctx.errors:
                 if (error.is_error(error.err_level(etag)) and
@@ -226,8 +211,7 @@ class JRCPlugin(plugin.PyangPlugin):
 
         # Print debug messages saying that we're done.
         if ctx.opts.debug or ctx.opts.verbose:
-            if not self.ctx.opts.no_classes:
-                print('Scala classes generation COMPLETE.')
+            print('XSD generation COMPLETE.')
             #if not self.ctx.opts.no_schema:
             #    print('Schema generation COMPLETE.')
 
@@ -249,43 +233,14 @@ class JRCPlugin(plugin.PyangPlugin):
         else:
             fullpkg = subpkg
         d = OSSep.join([self.d , subpkg])
-        if not self.ctx.opts.no_classes:
-            # Generate Java classes
-            src = ('module "' + module.arg + '", revision: "' +
-                util.get_latest_revision(module) + '".')
-            generator = ClassGenerator(module,
-                path=OSSep.join([self.ctx.opts.directory, 'api', subpkg]),
-                package=fullpkg, mopackage=mopkg, src=src, ctx=self.ctx)
-            generator.generate()
 
-        # if not self.ctx.opts.no_schema:
-        #     # Generate external schema
-        #     schema_nodes = ['<schema>']
-        #     stmts = search(module, node_stmts)
-        #     module_root = SchemaNode(module, '/')
-        #     schema_nodes.extend(module_root.as_list())
-        #     if self.ctx.opts.verbose:
-        #         print('Generating schema node "/"...')
-        #     schema_generator = SchemaGenerator(stmts, '/', self.ctx)
-        #     schema_nodes.extend(schema_generator.schema_nodes())
-        #     for i in range(1, len(schema_nodes)):
-        #         # Indent all but the first and last line
-        #         if schema_nodes[i] in ('<node>', '</node>'):
-        #             schema_nodes[i] = ' ' * 4 + schema_nodes[i]
-        #         else:
-        #             schema_nodes[i] = ' ' * 8 + schema_nodes[i]
-        #     schema_nodes.append('</schema>')
-        #
-        #     name = normalize(search_one(module, 'prefix').arg)
-        #     write_file(d, name + '.schema', '\n'.join(schema_nodes), self.ctx)
-
-        # if not self.ctx.opts.no_pkginfo:
-        #     # Generate package-info.java for javadoc
-        #     pkginfo_generator = PackageInfoGenerator(d, module, self.ctx)
-        #     pkginfo_generator.generate_package_info()
-
-        if self.ctx.opts.debug or self.ctx.opts.verbose:
-            print('pkg ' + fullpkg + ' generated')
+        # Generate Java classes
+        src = ('module "' + module.arg + '", revision: "' +
+            util.get_latest_revision(module) + '".')
+        generator = ClassGenerator(module,
+            path=OSSep.join([self.ctx.opts.directory]),
+            package=self.ctx.rootpkg, mopackage=mopkg, src=src, ctx=self.ctx)
+        generator.generate()
 
     def fatal(self, exitCode=1):
         """Raise an EmitError"""
@@ -400,7 +355,7 @@ java_built_in = java_reserved_words | java_literals | java_lang
 """Identifiers that shouldn't be imported in Java"""
 
 
-yangelement_stmts = {'container', 'list', 'notification', 'rpc'}
+yangelement_stmts = {'container', 'list', 'leaf', 'leaf-list'}
 """Keywords of statements that YangElement classes are generated from"""
 
 
@@ -637,7 +592,7 @@ def camelize(string):
                         camelized_str.append(character.upper())
                     else:
                         camelized_str.append(character.lower())
-            elif character in '-._':
+            elif character in '-.':
                 camelized_str.append(capitalize_first(next_character))
                 next(iterator)
             elif (character.isupper()
@@ -839,6 +794,8 @@ def search(stmt, keywords):
             keywords = old_keywords
         try:
             iterate(stmt.i_children, acc)
+            if not dict_:
+                iterate(stmt.substmts, acc)
         except AttributeError:
             iterate(stmt.substmts, acc)
 
@@ -896,6 +853,7 @@ def get_typename(stmt):
     else:
        return ''
 
+
 class YangType(object):
     """Provides an interface to maintain a list of defined yang types"""
 
@@ -945,8 +903,8 @@ class ClassGenerator(object):
         self.prefix_name = prefix_name
         self.yang_types = yang_types
 
-        self.n = normalize(stmt.arg.replace("_","-"))
-        self.n2 = camelize(stmt.arg.replace("_","-"))
+        self.n = normalize(stmt.arg)
+        self.n2 = camelize(stmt.arg)
 
         if stmt.keyword in module_stmts:
             self.filename = normalize(stmt.arg) + 'Routes.scala'
@@ -998,9 +956,9 @@ class ClassGenerator(object):
             module_stmts = set([])
         included = map(lambda x: x.arg, search(self.stmt, 'include'))
 
-        for (module, rev) in self.ctx.modules:
-             if module in included:
-                 module_stmts.add(self.ctx.modules[(module, rev)])
+        #for (module, rev) in self.ctx.modules:
+        #     if module in included:
+        #         module_stmts.add(self.ctx.modules[(module, rev)])
 
         for module in module_stmts:
             self.generate_routeclass(module)
@@ -1010,28 +968,23 @@ class ClassGenerator(object):
 
         module        -- A statement (sub)tree represent module or submodule, parsed from a YANG model
         """
-        filename = normalize(module.arg) + 'Routes.scala'
-        schema_route_filename = normalize(module.arg) + 'SchemaRoutes.scala'
-        self.body = []
-        self.schema_body = []
+        filename = module.arg.replace("-", "_") + '.xsd'
 
         if module.keyword == "module":
             path = self.path
-            mopackage = self.mopackage
             package = self.package
             namespace_stmt = search_one(module, "namespace")
-            namespace = namespace_stmt.arg
+
         elif module.keyword == "submodule":
             path = self.path + "/" + camelize(module.arg)
-            mopackage = self.mopackage + "." + camelize(module.arg)
             package = self.package + "." + camelize(module.arg)
             main_module = get_module(self.stmt)
             namespace_stmt = search_one(main_module, "namespace")
-            namespace = namespace_stmt.arg
+
 
         # Generate routes class
         if self.ctx.opts.verbose:
-            print('Generating REST API Routes class "' + filename + '"...')
+            print('Generating xsd file "' + filename + '"...')
 
         self.java_class = JavaClass(filename=filename,
                 package=package, description=('The routes class for namespace ' +
@@ -1039,680 +992,208 @@ class ClassGenerator(object):
                 source=module.arg,
                 superclass='EasyRestRoutingDSL with LazyLogging with HttpService')
 
-        self.schema_class = JavaClass(filename=schema_route_filename,
-                package=package, description=('The routes class for namespace ' +
-                    module.arg),
-                source=module.arg,
-                superclass='EasyRestRoutingDSL with LazyLogging with HttpService')
-
-        self.java_class.imports.add("net.juniper.easyrest.util.JsonUtil")
-        
         rpc_class = None
-
-        dispatcher_import = [' ' * 4 + "import net.juniper.easyrest.core.EasyRestActionSystem.system.dispatcher"]
-        dispatcher = JavaValue(dispatcher_import)
-        self.java_class.append_access_method("dispatcher", dispatcher)
-        self.schema_class.append_access_method("dispatcher", dispatcher)
-
-        namespace_def = [' ' * 4 + "private val modelNS = \"" + namespace + "\""]
-        namespace_str = JavaValue(namespace_def)
-        self.java_class.append_access_method("namespace", namespace_str)
-
-        schema_namespace_def = [' ' * 4 + "private val namespace = \"" + namespace + "\""]
-        schema_namespace = JavaValue(schema_namespace_def)
-        self.schema_class.append_access_method("namespace", schema_namespace)
-
-        model_def = [' ' * 4 + "private val modelPrefix = \"" + module.arg + "\""]
-        model = JavaValue(model_def)
-        self.java_class.append_access_method("model", model)
-
-        prefixmap_def = [' ' * 4 + "private val prefixs = new PrefixMap(Array(new Prefix(\"\", modelNS),new Prefix(modelPrefix, modelNS)))"]
-        prefixmap = JavaValue(prefixmap_def)
-        self.java_class.append_access_method("prefixmap", prefixmap)
-        self.java_class.imports.add("com.tailf.jnc.Prefix")
-        self.java_class.imports.add("com.tailf.jnc.PrefixMap")
-
-        module_prefix = normalize(search_one(self.stmt, 'prefix').arg)
-        enable_def = [' ' * 4 + module_prefix+".enable"]
-        enable_method = JavaValue(enable_def)
-        self.java_class.append_access_method("enable", enable_method)
-        self.java_class.imports.add(self.mopackage +"."+ normalize(module_prefix))
-        self.schema_class.append_access_method("enable", enable_method)
-        self.schema_class.imports.add(self.mopackage +"."+ normalize(module_prefix))
-
-
-        api = [' ' * 4 + 'lazy val schemaReadFunctionApiImpl = new SchemaReadApiImpl()']
-        apiimpl = JavaValue(api)
-        self.schema_class.append_access_method("api", apiimpl)
-        self.schema_class.imports.add("net.juniper.easyrest.yang.schema.SchemaReadApiImpl")
 
         import_rpc_impl = False
 
         res = search(module, list(yangelement_stmts | {'augment'}))
-
+        group =search(module, "grouping")
+        if (len(group) > 0):
+            for stmt in search(module, "grouping"):
+                self.generate_grouping(stmt)
         if (len(res) > 0):
             # Generate classes for children of module/submodule
             for stmt in search(module, list(yangelement_stmts)):
                 # Do not generate include stmt in submodule
                 if stmt.i_orig_module.arg == module.arg:
-                    if stmt.keyword == 'rpc':
-                        self.generate_rpc_routes(stmt)
-                        if rpc_class == None:
-                            rpc_class = JavaClass(filename=normalize(module.arg+"RpcApi")+".scala",
-                                package=package,
-                                description=''.join(['This class represents rpc api']),
-                                source=self.src)
-                        self.generate_rpc_class(stmt, rpc_class, mopackage)
-                        import_rpc_impl = True
-                    elif stmt.keyword == 'notification':
-                        self.generate_notification_routes(stmt)
-                    else:
-                        if search_one(stmt, ('csp-common', 'vertex')) or search_one(stmt, ('csp-common', 'edge')):
-                            self.generate_routes(stmt)
-                            self.generate_schema_routes(stmt)
-                            child_generator = ClassGenerator(stmt, path=path, package=package, mopackage=mopackage,
-                                                     ns=module.arg, prefix_name=module.arg, parent=self)
-                            child_generator.generate()
-
-            #self.path = path
-            if rpc_class is not None:
-                self.write_rpc_to_file(path, rpc_class)
-
-            if self.body:
-                if import_rpc_impl:
-                    rpcapi = [' ' * 4 + 'lazy val '+camelize(module.arg)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module.arg)+'RpcApi])']
-                    rpcapiimpl = JavaValue(rpcapi)
-                    self.java_class.append_access_method("apiimpl", rpcapiimpl)
-
-                routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
-                routing.extend(self.body)
-                routing[len(routing)-1] = ' ' * 6 + '}'
-                routing.append(' ' * 4 + '}')
-                res = JavaValue(routing)
-                self.java_class.append_access_method("routing", res)
-            else:
-                routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiRouting = PLACE_HOLDER_ROUTE"]
-                res = JavaValue(routing)
-                self.java_class.append_access_method("routing", res)
-                self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-                self.java_class.imports.add("spray.routing.HttpService")
-                self.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
+                    #if search_one(stmt, ('csp-common', 'vertex')) or search_one(stmt, ('csp-common', 'edge')):
+                    self.generate_routes(stmt)
 
             write_file(path,
-                   filename,
-                   self.java_class.as_list(),
-                   self.ctx)
+               filename,
+               self.java_class.as_list(),
+               self.ctx)
 
-            if self.schema_body:
-                schema_routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiSchemaRouting = compressResponseIfRequested(new RefFactoryMagnet()) {"]
-                schema_routing.append(' ' * 6 + 'get {')
-                schema_routing.extend(self.schema_body)
-                schema_routing[len(schema_routing)-1] = ' ' * 8 + '}'
-                schema_routing.append(' ' * 6 + '}')
-                schema_routing.append(' ' * 4 + '}')
-                schema_res = JavaValue(schema_routing)
-                self.schema_class.append_access_method("routing", schema_res)
-            else:
-                schema_routing = [' ' * 4 + "val " + camelize(module.arg) + "RestApiSchemaRouting = PLACE_HOLDER_ROUTE"]
-                schema_res = JavaValue(schema_routing)
-                self.schema_class.append_access_method("routing", schema_res)
-                self.schema_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-                self.schema_class.imports.add("spray.routing.HttpService")
-                self.schema_class.imports.add("com.typesafe.scalalogging.LazyLogging")
-
-            write_file(path,
-                   schema_route_filename,
-                   self.schema_class.as_list(),
-                   self.ctx)
-        else:
-            print('There is no list, container, rpc or notification in "'+ module.arg + '"')
-
-    def generate_class(self):
-        """Generates a Java class hierarchy providing an interface to a YANG
-        module. Uses mutual recursion with generate_child.
-
-        """
-        if self.stmt.keyword == "container":
-            return
-
-        stmt = self.stmt
-        stmt_arg = stmt.arg.replace("_","-")
-        if stmt.i_orig_module.keyword == "submodule":
-            source = stmt.i_orig_module.arg
-        else:
-            source = self.rootpkg[self.rootpkg.rfind('.') + 1:]
-
-        # If augment, add target module to augmented_modules dict
-        if stmt.keyword == 'augment':
-            if not hasattr(stmt, "i_target_node"):
-                warn_msg = 'Target missing from augment statement'
-                print_warning(warn_msg, warn_msg, self.ctx)
-            else:
-                target = stmt.i_target_node
-                target_module = get_module(target)
-                augmented_modules[target_module.arg] = target_module
-            return  # XXX: Do not generate a class for the augment statement
-
-        package_generated = False
-
-        for ch in search(stmt, list(yangelement_stmts)):
-            path_value = self.path+'/'+camelize(stmt_arg)
-            package_value = self.package+'.'+camelize(stmt_arg)
-            mopackage_value = self.mopackage+'.'+camelize(stmt_arg)
-            child_generator = ClassGenerator(ch, path=path_value, package=package_value, mopackage=mopackage_value, parent=self)
-            child_generator.generate()
-
-        self.java_class = JavaClass(filename=self.filename,
-                package=self.package,
-                description=''.join(['This class represents an element from ',
-                                     '\n * the namespace ', self.ns,
-                                     '\n * generated to "',
-                                     self.path, OSSep, stmt.arg,
-                                     '"\n * <p>\n * See line ',
-                                     str(stmt.pos.line), ' in\n * ',
-                                     stmt.pos.ref]),
-                source=source)
-
-        if self.ctx.opts.debug or self.ctx.opts.verbose:
-            if package_generated:
-                print('pkg ' + '.'.join([self.package, self.n2]) + ' generated')
-            if self.ctx.opts.verbose:
-                print('Generating "' + self.filename + '"...')
-
-        key_arg, value = self.get_stmt_key(stmt)
-
-        indent =  ' ' * 4
-        body_indent = ' ' * 6
-
-        parent_keyname_list = []
-
-        packages = get_parents(stmt)
-        while packages:
-            parent_stmt = packages.popleft()
-            parent_name = camelize(parent_stmt.arg)
-            parent_key, parent_keyclass = self.get_parent_stmt_key(parent_stmt, parent_name)
-            parent_keyname_list.append(parent_key)
-
-        parent_para= ', '.join(parent_keyname_list)
-
-        getall_body=[indent + "def get" + normalize(self.n2) + "List("]
-        if parent_para:
-            getall_body.append(body_indent+parent_para+',')
-        getall_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Seq[" +
-                                        normalize(self.n2) + "]]")
-        getall_field = JavaValue(getall_body)
-        self.java_class.add_field(getall_field)
-
-        getsize_body=[indent + "def get" + normalize(self.n2) + "Count("]
-        if parent_para:
-            getsize_body.append(body_indent+parent_para+',')
-        getsize_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Long]")
-        getsize_field = JavaValue(getsize_body)
-        self.java_class.add_field(getsize_field)
-
-        if len(key_arg.split(',')) > 1:
-            key_name = "Key"
-        else:
-            key_name = normalize(key_arg)
-        get_body=[indent + "def get" + normalize(self.n2) + "ById("]
-        if parent_para:
-            get_body.append(body_indent+parent_para+',')
-        get_body.append(body_indent + value + ",")
-        get_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[" +
-                                     normalize(self.n2) + "]]")
-        get_field = JavaValue(get_body)
-        self.java_class.add_field(get_field)
-
-        create_body = [indent + "def create" + normalize(self.n2) + "("]
-        if parent_para:
-            create_body.append(body_indent+parent_para+',')
-        create_body.append(body_indent + self.n2 + ": " + normalize(self.n2) + ",")
-        create_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[" +
-                                     normalize(self.n2) + "]")
-        create_field = JavaValue(create_body)
-        self.java_class.add_field(create_field)
-
-        update_body = [indent + "def update" + normalize(self.n2) + "("]
-        if parent_para:
-            update_body.append(body_indent+parent_para+',')
-        update_body.append(body_indent + self.n2 + ": " + normalize(self.n2) + ",")
-        update_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[" +
-                                     normalize(self.n2) + "]]")
-        update_field = JavaValue(update_body)
-        self.java_class.add_field(update_field)
-
-        delete_body = [indent + "def delete" + normalize(self.n2) + "("]
-        if parent_para:
-            delete_body.append(body_indent+parent_para+',')
-        delete_body.append(body_indent + value + ",")
-        delete_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Boolean]")
-        delete_field = JavaValue(delete_body)
-        self.java_class.add_field(delete_field)
-
-        self.java_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
-        self.java_class.imports.add(self.mopackage +  '.' + normalize(self.n2))
-        self.java_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
-
-        self.write_to_file()
-
-    def generate_rpc_class(self, stmt, rpc_class, mopackage):
-        rpc_name = normalize(stmt.arg.replace("_","-"))
-        add = rpc_class.append_access_method
-        if self.ctx.opts.debug or self.ctx.opts.verbose:
-            print('Generating "' + rpc_name+"Rpc" + '"...')
-
-        indent =  ' ' * 4
-        input_para = False
-        output_para = False
-        for sub in stmt.substmts:
-            if sub.keyword == "input":
-                input_para = True
-            elif sub.keyword == "output":
-                output_para = True
-
-        if input_para:
-            rpc_input = "(input: " + rpc_name + "Input, apiCtx: ApiContext)"
-            rpc_class.imports.add(mopackage+"."+rpc_name+"Input")
-        else:
-            rpc_input = "(apiCtx: ApiContext)"
-
-        if output_para:
-            rpc_output = "Future[" + rpc_name + "Output"+"]"
-            rpc_class.imports.add(mopackage+"."+rpc_name+"Output")
-        else:
-            rpc_output = "Future[Unit]"
-
-        rpc_method = JavaValue(exact=[indent + "def " + camelize(rpc_name) + "Rpc"+rpc_input + "(implicit ec: ExecutionContext): " + rpc_output])
-
-        add("rpc", rpc_method)
-
-        # Generate RPC API class
-        rpc_class.imports.add('net.juniper.easyrest.ctx.ApiContext')
-        rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
-
-    def generate_schema_routes(self, stmt):
-        add = self.schema_class.append_access_method  # XXX: add is a function
-
-        if stmt.keyword == "container":
-            return
-        module_name = get_module(stmt).arg
-        class_name = normalize(stmt.arg)
-
-        package_name = get_package(stmt, self.ctx)
-        api_package_name = get_api_package(stmt, self.ctx)
-
+    def generate_grouping(self, stmt):
         file_indent = ' ' * 4
-        indent = ' ' * 6
-        body_indent = ' ' * 8
-
-        if api_package_name != self.package:
-            self.java_class.imports.add(api_package_name+'.'+class_name+"Api")
-
-        key_arg, value = self.get_stmt_key_route(stmt)
-
-        if (len(key_arg.split(","))>1):
-            key_name = "Key"
-        else:
-            key_name = normalize(key_arg)
-
-        packages = get_parents(stmt)
-        parent_para = ""
-        parent_keyname_list = []
-        parent_paralist = []
-        while packages:
-            parent_stmt = packages.popleft()
-            parent_name = camelize(parent_stmt.arg)
-            parent_para = parent_para + '/ "'+module_name.lower()+":"+parent_stmt.arg+'=" ~ Rest'
-            parent_key_list, parent_para_list = self.get_parent_stmt_key_route(parent_stmt, parent_name)
-            parent_keyname_list.append(parent_key_list)
-            parent_paralist.append(parent_para_list)
-
+        indent = ' ' * 8
+        body_indent = ' ' * 12
         exact = []
-        if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_API_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt.arg.lower()+'") {'
+        exact.append(file_indent+'<xsd:complexType name="'+normalize(stmt.arg)+'Type">')
+        exact.append(indent+'<xsd:all>')
+        if len(stmt.i_children) == 1 and stmt.i_children[0].keyword == "list":
+            exact.append(body_indent+'<xsd:element name="'+stmt.i_children[0].arg+'" type="'+normalize(stmt.i_children[0].arg)+'Type" maxOccurs="unbounded"/>')
+            exact.append(indent+'</xsd:all>')
+            exact.append(file_indent+'</xsd:complexType>')
+            exact.append(file_indent+'<xsd:complexType name="'+normalize(stmt.i_children[0].arg)+'Type">')
+            for sub_stmt in search(stmt, list(yangelement_stmts)):
+                exact.append(indent+'<xsd:all>')
+                for property in search(sub_stmt, ["leaf", "container"]):
+                    type = search_one(property, 'type')
+                    if type and type.arg == "string":
+                        type_name = "xsd:string"
+                    uses = search_one(property, 'uses')
+                    if uses:
+                        type_name = uses.arg
+                    exact.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+type_name+'"/>')
+                exact.append(indent+'</xsd:all>')
         else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_API_PREFIX / "'+ module_name.lower()+":"+stmt.arg.lower()+'") {'
-        exact.append(content)
+            for sub_stmt in search(stmt, list(yangelement_stmts)):
+                if sub_stmt.keyword == "leaf":
+                    type = search_one(sub_stmt, 'type')
+                    if type:
+                        if type.arg == "string":
+                            type_name = "xsd:string"
+                        else:
+                            type_name = type.arg
+                    else:
+                        type_name = "xsd:string"
 
+                    exact.append(body_indent+'<xsd:element name="'+sub_stmt.arg+'" type="'+type_name+'"/>')
+            exact.append(indent+'</xsd:all>')
 
-        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
-        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
-        exact.append(body_indent + "      intercept(apiCtx) {")
-        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangApiMediaType) {")
-        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Option[String]] {")
-        exact.append(body_indent + '            schemaReadFunctionApiImpl.getschemaElements("'+stmt.arg.lower()+'", namespace)')
-        exact.append(body_indent + "          }) {")
-        exact.append(body_indent + "            case Success(result) => complete(result)")
-        exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
-        exact.append(body_indent + "          }")
-        exact.append(body_indent + "        }")
-        exact.append(body_indent + "      }")
-        exact.append(body_indent + "    }")
-        exact.append(body_indent + "  }")
-        exact.append(body_indent + "} ~")
+        exact.append(file_indent+'</xsd:complexType>')
 
-
-        self.schema_class.imports.add("com.typesafe.scalalogging.LazyLogging")
-        self.schema_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
-        self.schema_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
-        self.schema_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-        self.schema_class.imports.add(package_name + '.' + class_name)
-        self.schema_class.imports.add("spray.http._")
-        self.schema_class.imports.add("spray.routing.HttpService")
-        self.schema_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
-        self.schema_class.imports.add("scala.util.{Failure, Success}")
-
-        self.schema_body.extend(exact)
-
+        grouping = JavaValue(exact)
+        self.java_class.append_access_method("grouping", grouping)
 
     def generate_routes(self, stmt):
         add = self.java_class.append_access_method  # XXX: add is a function
-        stmt_arg = stmt.arg.replace("_", "-")
 
-        if stmt.keyword == "container":
-            return
-        module_name = get_module(stmt).arg
+        file_indent = '\t'
+        indent = '\t' * 2
+        body_indent = '\t' * 3
 
-        package_name = get_package(stmt, self.ctx)
-        api_package_name = get_api_package(stmt, self.ctx)
-        full_name = package_name+"."+normalize(stmt_arg)
-        full_api_name = api_package_name+"."+ normalize(stmt_arg)+"Api"
+        exact = []
+        complex_type = []
+        uses_stmt = search_one(stmt, 'uses')
+        if uses_stmt and uses_stmt.arg == "csp:entity":
+            element = '<xsd:element name="'+stmt.arg+'" type="ifmap:IdentityType" />'
+            exact.append(file_indent + element)
 
-        packages = get_parents(stmt)
-        parent_name = ""
-        while packages:
-            parent_stmt = packages.popleft()
-            parent_name = parent_name+normalize(parent_stmt.arg)
+        for sub_stmt in search(stmt, list(yangelement_stmts)):
+            if sub_stmt.i_orig_module.arg != stmt.i_orig_module.arg and sub_stmt.i_orig_module.arg == "csp-common":
+                    continue
+            sub_stmt_arg = sub_stmt.arg.replace("_","-")
+            edge = search_one(sub_stmt, ('csp-common', 'has-edge'))
+            if edge:
+                for property in search(sub_stmt, "leaf"):
+                    if hasattr(property, "i_leafref"):
+                        name = property.i_leafref.i_path_list[0][1].arg
+                        link_name = stmt.arg+'-'+name.replace("_", "-")
+                        break
 
-        class_name = parent_name + normalize(stmt_arg)
-        api_impl_name = camelize(class_name)+"ApiImpl"
-        lower_name = camelize(stmt_arg)
-        object_name = normalize(stmt_arg)
+                element = '<xsd:element name="'+link_name+'" />'
+                exact.append(file_indent + element)
+                exact.append(file_indent+ "<!--#IFMAP-SEMANTICS-IDL Link('"+link_name+"',"+"'"+stmt.arg+"', '"+name+"', ['has']) -->")
 
-        file_indent = ' ' * 4
-        indent = ' ' * 6
-        body_indent = ' ' * 8
+            ref_edge = search_one(sub_stmt, ('csp-common', 'ref-edge'))
+            if ref_edge:
+                for property in search(sub_stmt, "leaf"):
+                    if hasattr(property, "i_leafref"):
+                        name = property.i_leafref.i_path_list[0][1].arg
+                        link_name = stmt.arg+'-'+name.replace("_", "-")
+                        break
 
+                element = '<xsd:element name="'+link_name+'"/>'
+                exact.append(file_indent + element)
+                exact.append(file_indent+ "<!--#IFMAP-SEMANTICS-IDL Link('"+link_name+"',"+"'"+stmt.arg+"', '"+name+"', ['ref']) -->")
 
-        marshell = [file_indent + 'implicit object '+class_name+'UnMarshaller extends FromRequestUnmarshaller['+full_name+'] {']
-        marshell.append(file_indent + '  override def apply(req: HttpRequest): Deserialized['+full_name +
-                       '] = Right((new YangJsonParser()).parse("' + stmt_arg + '", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
-                        full_name + '])')
-        marshell.append(file_indent + '}')
-        marsheller = JavaValue(marshell)
+            if sub_stmt.keyword == "list" or sub_stmt.keyword == "container":
+                leaf_type_name = ""
+                property_name = stmt.arg+"-"+sub_stmt_arg
+                complex_type.append(file_indent+'<xsd:complexType name="'+normalize(stmt.arg+sub_stmt_arg+"Type")+'"/>')
+                complex_type.append(indent+'<xsd:all>')
+                for property in search(sub_stmt, list(yangelement_stmts)):
+                    if property.keyword == "leaf":
+                        type = search_one(property, 'type')
+                        if type.arg == "inet:uri":
+                            leaf_type_name = "inet:uri"
+                        elif type.arg == "leafref":
+                            leaf_type_name = "xsd:string"
+                        elif type.arg == "string":
+                            leaf_type_name = "xsd:string"
+                        elif type.arg == "uint32":
+                            leaf_type_name = "xsd:integer"
 
-        api = [file_indent + 'lazy val '+api_impl_name+' = ApiImplRegistry.getImplementation(classOf['+full_api_name+'], classOf['+full_name+'])']
-        apiimpl = JavaValue(api)
+                    complex_type.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+leaf_type_name+'"/>')
+                complex_type.append(indent+'</xsd:all>')
+                complex_type.append(file_indent+'</xsd:complexType>')
+                exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+normalize(stmt.arg+sub_stmt_arg)+'Type"/>')
+                exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
 
-        key_arg, value = self.get_stmt_key_route(stmt)
+            if sub_stmt.keyword == "leaf":
+                type = search_one(sub_stmt, 'type')
+                property_name = stmt.arg+"-"+sub_stmt_arg
+                if type.arg == "string":
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="xsd:string" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
+                elif type.arg == "inet:ip-address":
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="smi:IpAddress" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
+                elif type.arg == "int32":
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+normalize(sub_stmt_arg+'Type')+'" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
+                elif type.arg == "uint32":
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="xsd:integer" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
+                elif type.arg == "enumeration":
+                    complex_type.append(file_indent+'<xsd:simpletype name="'+normalize(property_name+"-"+"type")+'" />')
+                    complex_type.append(indent+'<xsd:restriction base="xsd:string">')
+                    for enum in type.substmts:
+                        complex_type.append(body_indent+'<xsd:enumeration value="'+enum.arg+'" />')
+                    complex_type.append(indent+'</xsd:restriction>')
+                    complex_type.append(file_indent+'</xsd:simpleType>')
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+normalize(property_name+"-"+"type")+'" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
+                elif type.arg == "leafref":
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="xsd:string" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
+                else:
+                    exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+type.arg+'" />')
+                    exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
 
-        if (len(key_arg.split(","))>1):
-            key_name = "Key"
-        else:
-            key_name = normalize(key_arg)
+            # if sub_stmt.keyword == "container":
+            #     uses = search_one(sub_stmt, 'uses')
+            #     if uses:
+            #         exact.append(file_indent+'<xsd:complexType name="'+sub_stmt_arg+'" type="'+normalize(uses.arg)+'Type"/>')
+            #         exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL Property("'+sub_stmt_arg+"', '"+stmt.arg+"') -->")
+            #     if len(sub_stmt.i_children) == 1 and sub_stmt.i_children[0].keyword == "list":
+            #         type_name = sub_stmt.i_children[0].arg
+            #         exact.append(file_indent+'<xsd:complexType name="'+normalize(type_name)+'">')
+            #         exact.append(indent+'<xsd:all>')
+            #         for property in search(sub_stmt.i_children[0], "leaf"):
+            #             exact.append(body_indent+'<xsd:element name="'+property.arg+'" type="xsd:string"/>')
+            #
+            #         exact.append(indent+'</xsd:all>')
+            #         exact.append(file_indent+'</xsd:complexType>')
+            #         exact.append(file_indent+'<xsd:complexType name="PluginProperties">')
+            #         exact.append(indent+'<xsd:all>')
+            #         exact.append(body_indent+'<xsd:element name="plugin-property" type="PluginProperty" maxOccurs="unbounded"/>')
+            #         exact.append(indent+'</xsd:all>')
+            #         exact.append(file_indent+'</xsd:complexType>')
+            #         exact.append(file_indent+'<xsd:element name="'+sub_stmt_arg+'" type="PluginProperties"/>')
+            #         exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL Property("'+sub_stmt_arg+"', '"+stmt.arg+"') -->")
+            #     else:
+            #         complex_type.append(file_indent+'<xsd:complexType name="'+normalize(sub_stmt_arg)+'Type"/>')
+            #         complex_type.append(indent+'<xsd:all>')
+            #         for property in search(sub_stmt, "leaf"):
+            #             type = search_one(property, 'type')
+            #             if type.arg == "string":
+            #                 type_name = "xsd:string"
+            #             elif type.arg == 'int32':
+            #                 type_name = "xsd:integer"
+            #             complex_type.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+type_name+'"/>')
+            #         complex_type.append(indent+'</xsd:all>')
+            #         complex_type.append(file_indent+'</xsd:complexType>')
+            #         exact.append(file_indent+'<xsd:element name="'+sub_stmt_arg+'" type="'+normalize(sub_stmt_arg)+'Type"/>')
+            #         exact.append(file_indent+'<!--#IFMAP-SEMANTICS-IDL Property("'+sub_stmt_arg+"', '"+stmt.arg+"') -->")
 
-        packages = get_parents(stmt)
-        parent_para = ""
-        parent_keyname_list = []
-        parent_paralist = []
-        while packages:
-            parent_stmt = packages.popleft()
-            parent_name = camelize(parent_stmt.arg)
-            parent_para = parent_para + '/ "'+module_name.lower()+":"+parent_stmt.arg+'=" ~ Rest'
-            parent_key_list, parent_para_list = self.get_parent_stmt_key_route(parent_stmt, parent_name)
-            parent_keyname_list.append(parent_key_list)
-            parent_paralist.append(parent_para_list)
+        complextype = JavaValue(complex_type)
+        self.java_class.append_access_method("type", complextype)
 
-        parent_key_name = ', '.join(parent_keyname_list)
-        parent_para_instance = ', '.join(parent_paralist)
-
-        exact = [indent + "get {"]
-        if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'") {'
-        else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
-        exact.append(content)
-
-        if parent_para:
-            exact.append(body_indent + '('+parent_key_name+') =>')
-        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
-        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
-        exact.append(body_indent + "      intercept(apiCtx) {")
-        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Seq["+full_name+"]] {")
-        if parent_para:
-            exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"List(" + parent_para_instance +", apiCtx)")
-        else:
-            exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"List(apiCtx)")
-        exact.append(body_indent + "          }) {")
-        exact.append(body_indent + "            case Success(result) => complete(JsonUtil.elementSeqToJson(result, classOf["+full_name+"]))")
-        exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
-        exact.append(body_indent + "          }")
-        exact.append(body_indent + "        }")
-        exact.append(body_indent + "      }")
-        exact.append(body_indent + "    }")
-        exact.append(body_indent + "  }")
-        exact.append(body_indent + "} ~")
-
-        if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'" / "_total") {'
-        else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'" / "_total") {'
-        exact.append(content)
-
-        if parent_para:
-            exact.append(body_indent + '('+parent_key_name+') =>')
-
-        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
-        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
-        exact.append(body_indent + "      intercept(apiCtx) {")
-        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Long] {")
-        if parent_para:
-            exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"Count(" + parent_para_instance +", apiCtx)")
-        else:
-            exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"Count(apiCtx)")
-        exact.append(body_indent + "          }) {")
-        exact.append(body_indent + "            case Success(result) => complete(\"{\\\"total\\\":\" + result.toString + \"}\")")
-        exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
-        exact.append(body_indent + "          }")
-        exact.append(body_indent + "        }")
-        exact.append(body_indent + "      }")
-        exact.append(body_indent + "    }")
-        exact.append(body_indent + "  }")
-        exact.append(body_indent + "} ~")
-
-        if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
-        else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
-        exact.append(content)
-
-        if (len(key_arg.split(","))>1):
-            keys = "keys"
-        else:
-            keys = key_arg
-
-        if parent_para:
-            exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
-        else:
-            exact.append(body_indent + '  (' + keys+ ') =>')
-
-        if (len(key_arg.split(","))>1):
-            exact.append(body_indent + '    val pair = keys.split(",")')
-
-        exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { apiCtx =>')
-        exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
-        exact.append(body_indent + "        intercept(apiCtx) {")
-        exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+full_name+"]] {")
-
-
-        if parent_para:
-            exact.append(body_indent + "              "+api_impl_name+".get"+object_name+ "ById("+parent_para_instance+", " + value + ", apiCtx)")
-        else:
-            exact.append(body_indent + "              "+api_impl_name+".get"+object_name+ "ById("+ value + ", apiCtx)")
-        exact.append(body_indent + "            }) {")
-        exact.append(body_indent + "              case Success(result) => {")
-        exact.append(body_indent + "               result match {")
-        exact.append(body_indent + "                case Some(result) => complete(result.toJson(true))")
-        exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
-        exact.append(body_indent + '                 complete("No '+ object_name + ' object was found for id " + '+ keys +')')
-        exact.append(body_indent + "                }")
-        exact.append(body_indent + "               }")
-        exact.append(body_indent + "              }")
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
-        exact.append(body_indent + "            }")
-        exact.append(body_indent + "          }")
-        exact.append(body_indent + "        }")
-        exact.append(body_indent + "      }")
-        exact.append(body_indent + "    }")
-        exact.append(body_indent + "}")
-        exact.append(indent + "} ~")
-
-        exact.append(indent + "post {")
-
-        if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'") {'
-        else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
-        exact.append(content)
-
-        if parent_para:
-            exact.append(body_indent + '('+parent_key_name+') =>')
-        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
-        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
-        exact.append(body_indent + "      intercept(apiCtx) {")
-        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          entity(as["+full_name+"]) {" + lower_name +" =>")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet["+full_name+"] {")
-        if parent_para:
-            exact.append(body_indent + "              "+api_impl_name+".create"+object_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
-        else:
-            exact.append(body_indent + "              "+api_impl_name+".create"+object_name+"(" + lower_name + ", apiCtx)")
-
-        exact.append(body_indent + "            }) {")
-        exact.append(body_indent + "              case Success(result) => complete(result.toJson(true))")
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
-        exact.append(body_indent + "            }")
-        exact.append(body_indent + "          }")
-        exact.append(body_indent + "        }")
-        exact.append(body_indent + "      }")
-        exact.append(body_indent + "    }")
-        exact.append(body_indent + "  }")
-        exact.append(body_indent + "}")
-        exact.append(indent + "} ~")
-
-        exact.append(indent + "put {")
-
-        if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'") {'
-        else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
-        exact.append(content)
-        if parent_para:
-            exact.append(body_indent + '('+parent_key_name+') =>')
-        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
-        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
-        exact.append(body_indent + "      intercept(apiCtx) {")
-        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "          entity(as["+full_name+"]) {" + lower_name +" =>")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+full_name+"]] {")
-        if parent_para:
-            exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
-        else:
-            exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"(" + lower_name + ", apiCtx)")
-        exact.append(body_indent + "            }) {")
-        exact.append(body_indent + "              case Success(result) => {")
-        exact.append(body_indent + "               result match {")
-        exact.append(body_indent + "                case Some(result) => complete(result.toJson(true))")
-        exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
-        exact.append(body_indent + '                 complete("No '+ object_name + ' object was found to update")')
-        exact.append(body_indent + "                }")
-        exact.append(body_indent + "               }")
-        exact.append(body_indent + "              }")
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
-        exact.append(body_indent + "            }")
-        exact.append(body_indent + "          }")
-        exact.append(body_indent + "        }")
-        exact.append(body_indent + "      }")
-        exact.append(body_indent + "    }")
-        exact.append(body_indent + "  }")
-        exact.append(body_indent + "}")
-        exact.append(indent + "} ~")
-        exact.append(indent + "delete {")
-
-        if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
-        else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
-        exact.append(content)
-
-        if (len(key_arg.split(","))>1):
-            keys = "keys"
-        else:
-            keys = key_arg
-
-        if parent_para:
-            exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
-        else:
-            exact.append(body_indent + '  (' + keys+ ') =>')
-
-        if (len(key_arg.split(","))>1):
-            exact.append(body_indent + '    val pair = keys.split(",")')
-
-        exact.append(body_indent + '    authenticate(EasyRestAuthenticator()) { apiCtx =>')
-        exact.append(body_indent + '      authorize(enforce(apiCtx)) {')
-        exact.append(body_indent + "        intercept(apiCtx) {")
-        exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
-        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Boolean] {")
-
-        if parent_para:
-            exact.append(body_indent + "              "+api_impl_name+".delete"+object_name+"(" + parent_para_instance+", " + value + ", apiCtx)")
-        else:
-            exact.append(body_indent + "              "+api_impl_name+".delete"+object_name+ "("+ value + ", apiCtx)")
-
-        exact.append(body_indent + "            }) {")
-        exact.append(body_indent + "              case Success(result) => {")
-        exact.append(body_indent + "               if(result.booleanValue) {")
-        exact.append(body_indent + '                 complete(\"{\\"id\\": \\"\" + ' + keys + ' + \"\\"}\")')
-        exact.append(body_indent + "               }")
-        exact.append(body_indent + "               else {")
-        exact.append(body_indent + "                 respondWithStatus(StatusCodes.NotFound) {")
-        exact.append(body_indent + '                   complete("No '+ object_name + ' object was found for id " + '+ keys +')')
-        exact.append(body_indent + "                 }")
-        exact.append(body_indent + "               }")
-        exact.append(body_indent + "              }")
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
-        exact.append(body_indent + "            }")
-        exact.append(body_indent + "          }")
-        exact.append(body_indent + "        }")
-        exact.append(body_indent + "      }")
-        exact.append(body_indent + "    }")
-        exact.append(body_indent + "}")
-        exact.append(indent + "} ~")
-
-        add('marsheller', marsheller)
-        add('apiimpl', apiimpl)
-
-        self.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
-        self.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
-        self.java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
-        self.java_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
-        self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-
-        self.java_class.imports.add("spray.http._")
-        self.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
-        self.java_class.imports.add("spray.routing.HttpService")
-        self.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
-        self.java_class.imports.add("scala.util.{Failure, Success}")
-        self.java_class.imports.add("com.tailf.jnc.YangJsonParser")
-
-        self.body.extend(exact)
-
-        for ch in search(stmt, list(yangelement_stmts)):
-            if search_one(ch, ('csp-common', 'vertex')) or search_one(ch, ('csp-common', 'edge')):
-                self.generate_routes(ch)
+        res = JavaValue(exact)
+        self.java_class.append_access_method("routing", res)
 
     def get_stmt_key(self, stmt):
         is_config_value = is_config(stmt)
@@ -1828,150 +1309,7 @@ class ClassGenerator(object):
 
         return ', '.join(key_arg), ', '.join(para)
 
-    def generate_rpc_routes(self, stmt):
-        add = self.java_class.append_access_method  # XXX: add is a function
 
-        if stmt.i_orig_module.keyword == "submodule":
-            module_name = stmt.i_orig_module.arg
-        else:
-            module_name = get_module(stmt).arg
-
-        input_para = False
-        output_para = False
-
-        package_name = get_package(stmt, self.ctx)
-
-        rpc_class_name = normalize(stmt.arg)
-        rpc_method_name = camelize(stmt.arg)
-
-        for sub in stmt.substmts:
-            if sub.keyword == "input":
-                input_para = True
-                self.java_class.imports.add(package_name+'.'+rpc_class_name+"Input")
-                marshell = [' ' * 4 + 'implicit object '+rpc_class_name+'InputUnMarshaller extends FromRequestUnmarshaller['+rpc_class_name+'Input] {']
-                marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+rpc_class_name+'Input' +
-                       '] = Right((new YangJsonParser()).parse("' + stmt.arg + '-input", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
-                        rpc_class_name+'Input])')
-                marshell.append(' ' * 4 + '}')
-                marsheller = JavaValue(marshell)
-                add('marsheller', marsheller)
-            elif sub.keyword == "output":
-                output_para = True
-                self.java_class.imports.add(package_name+'.'+rpc_class_name+"Output")
-                marshell = [' ' * 4 + 'implicit object '+rpc_class_name+'OutputUnMarshaller extends FromRequestUnmarshaller['+rpc_class_name+'Output] {']
-                marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+rpc_class_name+'Output' +
-                       '] = Right((new YangJsonParser()).parse("' + stmt.arg + '-output", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
-                        rpc_class_name+'Output])')
-                marshell.append(' ' * 4 + '}')
-                marsheller = JavaValue(marshell)
-                add('marsheller', marsheller)
-
-        indent = ' ' * 6
-        body_indent = ' ' * 8
-
-        exact = [indent + "post {"]
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+get_module(stmt).arg.lower()+':rpc" / "'+stmt.arg.lower()+'") {')
-        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
-        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
-        exact.append(body_indent + "      intercept(apiCtx) {")
-        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
-
-        if input_para:
-            exact.append(body_indent + "          entity(as["+rpc_class_name+"Input]) {input =>")
-
-        if output_para:
-            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet["+rpc_class_name+"Output] {")
-        else:
-            exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Unit] {")
-
-        if input_para:
-            exact.append(body_indent + "              "+camelize(module_name)+"RpcApiImpl."+rpc_method_name+"Rpc(input, apiCtx)")
-        else:
-            exact.append(body_indent + "              "+camelize(module_name)+"RpcApiImpl."+rpc_method_name+"Rpc(apiCtx)")
-            
-        exact.append(body_indent + "            }) {")
-
-        if output_para:
-            exact.append(body_indent + "              case Success(result) => complete(result.toJson(true))")
-        else:
-            exact.append(body_indent + '              case Success(result) => complete("")')
-
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
-        exact.append(body_indent + "            }")
-
-        if input_para:
-            exact.append(body_indent + "          }")
-        exact.append(body_indent + "        }")
-        exact.append(body_indent + "      }")
-        exact.append(body_indent + "    }")
-        exact.append(body_indent + "  }")
-        exact.append(body_indent + "}")
-        exact.append(indent + "} ~")
-
-        self.java_class.imports.add("com.tailf.jnc.{YangJsonParser, Prefix, PrefixMap}")
-        self.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
-        self.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
-        self.java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
-        self.java_class.imports.add("net.juniper.easyrest.mimetype.YangMediaType")
-        self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-        self.java_class.imports.add("spray.http.{HttpCharsets, HttpRequest}")
-        self.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
-        self.java_class.imports.add("spray.routing.HttpService")
-        self.java_class.imports.add("scala.util.{Failure, Success}")
-        self.java_class.imports.add("com.tailf.jnc.YangJsonParser")
-        self.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
-
-        self.body.extend(exact)
-
-    def generate_notification_routes(self, stmt):
-        add = self.java_class.append_access_method  # XXX: add is a function
-
-        streamregistry = [' ' * 4 + 'StreamRegistry.registerStream(']
-        streamregistry.append(' ' * 6 + 'StreamBuilder()')
-        streamregistry.append(' ' * 8 + '.name("'+stmt.arg+'")')
-        for sub in stmt.substmts:
-            if sub.keyword == 'description':
-                streamregistry.append(' ' * 8 + '.description("'+sub.arg+'")')
-        streamregistry.append(' ' * 8 + '.replaySupport("false")')
-        streamregistry.append(' ' * 8 + '.events("").build()')
-        streamregistry.append(' ' * 4 + ')')
-        streamregistry_value = JavaValue(streamregistry)
-
-        indent = ' ' * 6
-        body_indent = ' ' * 8
-
-        exact = [indent + "get {"]
-        exact.append(body_indent + 'path(ROUTING_PREFIX / ROUTING_STREAMS_PREFIX / ROUTING_STREAM_PREFIX / "'+ stmt.arg +'" / ROUTING_EVENTS_PREFIX) {')
-        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
-        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
-        exact.append(body_indent + "      intercept(apiCtx) {")
-        exact.append(body_indent + "        compressResponse(Gzip) {")
-        exact.append(body_indent + "          sse { (channel, lastEventId, ctx) =>")
-        exact.append(body_indent + "            {")
-        exact.append(body_indent + '              NotificationSubscriptionManager.addSubscriber(channel, "'+ stmt.arg+'", ctx.request.uri.query.get("stream-filter"))')
-        exact.append(body_indent + "            }")
-        exact.append(body_indent + "          }")
-        exact.append(body_indent + "        }")
-        exact.append(body_indent + "      }")
-        exact.append(body_indent + "    }")
-        exact.append(body_indent + "  }")
-        exact.append(body_indent + "}")
-        exact.append(indent + "} ~")
-
-        add('streamregistry', streamregistry_value)
-
-        self.java_class.imports.add("com.typesafe.scalalogging.LazyLogging")
-        self.java_class.imports.add("net.juniper.easyrest.notification.NotificationSubscriptionManager")
-        self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestRoutingDSL")
-        self.java_class.imports.add("net.juniper.easyrest.rest.EasyRestServerSideEventDirective._")
-        self.java_class.imports.add("net.juniper.easyrest.streams.spray.StreamRegistry")
-        self.java_class.imports.add("net.juniper.easyrest.streams.yang.StreamBuilder")
-        self.java_class.imports.add("spray.httpx.encoding.Gzip")
-        self.java_class.imports.add("spray.routing.HttpService")
-        self.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
-        self.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
-
-        self.body.extend(exact)
 
     def write_to_file(self):
         write_file(self.path,
@@ -1987,6 +1325,7 @@ class ClassGenerator(object):
             rpc_class.filename,
             rpc_class.as_list(),
             self.ctx)
+
 
 class JavaClass(object):
     """Encapsulates package name, imports, class declaration, constructors,
@@ -2027,7 +1366,7 @@ class JavaClass(object):
         for i in range(len(imports)):
             self.imports.add(imports[i])
         self.description = description
-        self.body = body
+        self.body = None
         self.version = version
         self.superclass = superclass
         self.interfaces = interfaces
@@ -2109,7 +1448,7 @@ class JavaClass(object):
                  else:
                      self.body.append(method)
                  self.body.append('')
-             self.body.append('}')
+             self.body.append("</xsd:schema>")
         return self.body
 
     def get_superclass_and_interfaces(self):
@@ -2135,65 +1474,17 @@ class JavaClass(object):
 
         """
         # The header is placed in the beginning of the Java file
-        header = [' '.join(['/* \n * @(#)' + self.filename, '      ',
-                            self.version, date.today().strftime('%d/%m/%y')])]
-        header.append(' *')
-        header.append(' * This file has been auto-generated by JRC, the')
-        header.append(' * Restconf output format plug-in of pyang.')
-        header.append(' * Origin: ' + self.source)
-        header.append(' */')
+        header = []
+        header.append('<!--')
+        header.append(' Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.')
+        header.append(' -->')
 
-        # package and import statement goes here
+        header.append('<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"')
+        header.append('\txmlns:ifmap="http://www.trustedcomputinggroup.org/2010/IFMAP/2"')
+        header.append('\txmlns:meta="http://www.trustedcomputinggroup.org/2010/IFMAP-METADATA/2">')
         header.append('')
-        header.append('package ' + self.package)# + ';')
-        if self.body is None:
-            for method in flatten(self.attrs):
-                if hasattr(method, 'imports'):
-                    self.imports |= method.imports
-                if hasattr(method, 'exceptions'):
-                    self.imports |= ['com.tailf.jnc.' + s for s in method.exceptions]
-        if self.superclass:
-            self.imports.add(get_import(self.superclass))
-        imported_classes = []
-        if self.imports:
-            prevpkg = ''
-            for import_ in self.imports.as_sorted_list():
-                pkg, _, cls = import_.rpartition('.')
-                #if (cls != self.filename.split('.')[0]
-                #        and (pkg != 'com.tailf.jnc' or cls in com_tailf_jnc
-                #            or cls == '*')):
-                if (pkg != 'com.tailf.jnc' or cls in com_tailf_jnc
-                            or cls == '*'):
-                    if cls in imported_classes and cls != "_":
-                        continue
-                    else:
-                        imported_classes.append(cls)
-                    basepkg = import_[:import_.find('.')]
-                    if basepkg != prevpkg:
-                        header.append('')
-                    header.append('import ' + import_) # + ';')
-                    prevpkg = basepkg
 
-        # Class doc-comment and declaration, with modifiers
-        header.append('')
-        header.append('/**')
-        header.append(' * ' + self.description)
-        header.append(' *')
-        header.append(' '.join([' * @version',
-                                self.version,
-                                date.today().isoformat()]))
-        header.append(' * @author Auto Generated')
-        header.append(' */')
-        if self.implement_class:
-            class_body = 'class '
-        else:
-            class_body = 'trait '
-        header.append(''.join([class_body,
-                               self.filename.split('.')[0],
-                               self.get_superclass_and_interfaces(),
-                               ' {']))
-        header.append('')
-        return header + self.get_body()
+        return header  + self.get_body()
 
 
 class JavaValue(object):

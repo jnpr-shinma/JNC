@@ -24,3 +24,4 @@ jnc/.gradle
 jnc.pyc
 **/.idea
 **/*.iml
+**/.DS_Store

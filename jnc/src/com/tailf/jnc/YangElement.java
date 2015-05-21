@@ -121,13 +121,26 @@ public abstract class YangElement extends Element {
     /**
      * Structure information. An array of the children names.
      */
-    abstract protected String[] childrenNames();
+    abstract public String[] childrenNames();
 
     /**
      * Structure information. An array of the names of the key children.
      */
-    abstract protected String[] keyNames();
+    abstract public String[] keyNames();
 
+    public Object[] keyValues() {
+        String[] kns = keyNames();
+        Object[] values = new Object[kns.length];
+        for(int i = 0;  i < kns.length; i ++) {
+            try{
+                values[i] = getValue(kns[i]);
+            }
+            catch(JNCException e) {
+                e.printStackTrace();
+            }
+        }
+        return values;
+    }
     /**
      * Constructor with namespace and name
      */
