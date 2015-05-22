@@ -1085,6 +1085,8 @@ class ClassGenerator(object):
         jsobject.append(' '*4 + '}')
         jsobject_marsheller = JavaValue(jsobject)
         self.java_class.imports.add("spray.json._")
+        self.schema_class.imports.add("spray.http._")
+        self.java_class.imports.add("spray.httpx.unmarshalling.{Deserialized, FromRequestUnmarshaller}")
 
         self.java_class.append_access_method("jsobject", jsobject_marsheller)
 
