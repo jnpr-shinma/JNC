@@ -1080,6 +1080,13 @@ class ClassGenerator(object):
         self.schema_class.append_access_method("enable", enable_method)
         self.schema_class.imports.add(self.mopackage +"."+ normalize(module_prefix))
 
+        jsobject = [' '*4 + 'implicit object JsObjectUnMarshaller extends FromRequestUnmarshaller[JsObject] {']
+        jsobject.append(' '*4 + '  override def apply(req: HttpRequest): Deserialized[JsObject] = Right(req.entity.asString(HttpCharsets.`UTF-8`).parseJson.asJsObject)')
+        jsobject.append(' '*4 + '}')
+        jsobject_marsheller = JavaValue(jsobject)
+        self.java_class.imports.add("spray.json._")
+
+        self.java_class.append_access_method("jsobject", jsobject_marsheller)
 
         api = [' ' * 4 + 'lazy val schemaReadFunctionApiImpl = new SchemaReadApiImpl()']
         apiimpl = JavaValue(api)
@@ -1275,11 +1282,22 @@ class ClassGenerator(object):
         update_body = [indent + "def update" + normalize(self.n2) + "("]
         if parent_para:
             update_body.append(body_indent+parent_para+',')
+        update_body.append(body_indent + value + ",")
         update_body.append(body_indent + self.n2 + ": " + normalize(self.n2) + ",")
         update_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[" +
                                      normalize(self.n2) + "]]")
         update_field = JavaValue(update_body)
         self.java_class.add_field(update_field)
+
+        replace_body = [indent + "def replace" + normalize(self.n2) + "("]
+        if parent_para:
+            replace_body.append(body_indent+parent_para+',')
+        replace_body.append(body_indent + value + ",")
+        replace_body.append(body_indent + self.n2 + ": " + normalize(self.n2) + ",")
+        replace_body.append(body_indent + "apiCtx: ApiContext)(implicit ec: ExecutionContext): Future[Option[" +
+                                     normalize(self.n2) + "]]")
+        replace_field = JavaValue(replace_body)
+        self.java_class.add_field(replace_field)
 
         delete_body = [indent + "def delete" + normalize(self.n2) + "("]
         if parent_para:
@@ -1600,18 +1618,56 @@ class ClassGenerator(object):
         exact.append(body_indent + "      }")
         exact.append(body_indent + "    }")
         exact.append(body_indent + "  }")
+        exact.append(body_indent + "}~")
+
+        content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'"/"_filter") {'
+        exact.append(content)
+
+        if parent_para:
+            exact.append(body_indent + '('+parent_key_name+') =>')
+        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
+        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
+        exact.append(body_indent + "      intercept(apiCtx) {")
+        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
+        exact.append(body_indent + '          entity(as[JsObject]){')
+        exact.append(body_indent + '           filter=>')
+        exact.append(body_indent + '            apiCtx.criteria.criteriaRawData = filter')
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Seq["+full_name+"]] {")
+        if parent_para:
+            exact.append(body_indent + "              "+api_impl_name+".get"+object_name+"List(" + parent_para_instance + ', '+"apiCtx)")
+        else:
+            exact.append(body_indent + "              "+api_impl_name+".get"+object_name+"List(apiCtx)")
+
+        exact.append(body_indent + "            }) {")
+        exact.append(body_indent + "              case Success(result) => complete(JsonUtil.elementSeqToJson(result, classOf["+full_name+']))')
+        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "            }")
+        exact.append(body_indent + "          }")
+        exact.append(body_indent + "        }")
+        exact.append(body_indent + "      }")
+        exact.append(body_indent + "    }")
+        exact.append(body_indent + "  }")
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
 
-        exact.append(indent + "put {")
+        exact.append(indent + "patch {")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
         else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
         exact.append(content)
+
+        if (len(key_arg.split(","))>1):
+            keys = "keys"
+        else:
+            keys = key_arg
+
         if parent_para:
-            exact.append(body_indent + '('+parent_key_name+') =>')
+            exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
+        else:
+            exact.append(body_indent + '  (' + keys+ ') =>')
+
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
@@ -1619,9 +1675,9 @@ class ClassGenerator(object):
         exact.append(body_indent + "          entity(as["+full_name+"]) {" + lower_name +" =>")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+full_name+"]] {")
         if parent_para:
-            exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"(" + parent_para_instance + value + ', '+lower_name + ", apiCtx)")
         else:
-            exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"(" + lower_name + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"("+ value+ ', '+ lower_name + ", apiCtx)")
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => {")
         exact.append(body_indent + "               result match {")
@@ -1640,6 +1696,54 @@ class ClassGenerator(object):
         exact.append(body_indent + "  }")
         exact.append(body_indent + "}")
         exact.append(indent + "} ~")
+
+        exact.append(indent + "put {")
+
+        if parent_para:
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
+        else:
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
+        exact.append(content)
+
+        if (len(key_arg.split(","))>1):
+            keys = "keys"
+        else:
+            keys = key_arg
+
+        if parent_para:
+            exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
+        else:
+            exact.append(body_indent + '  (' + keys+ ') =>')
+
+        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
+        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
+        exact.append(body_indent + "      intercept(apiCtx) {")
+        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
+        exact.append(body_indent + "          entity(as["+full_name+"]) {" + lower_name +" =>")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+full_name+"]] {")
+        if parent_para:
+            exact.append(body_indent + "              "+api_impl_name+".replace"+object_name+"(" + parent_para_instance+", " + value + ', '+lower_name+", apiCtx)")
+        else:
+            exact.append(body_indent + "              "+api_impl_name+".replace"+object_name+ "("+ value + ', '+lower_name+", apiCtx)")
+        exact.append(body_indent + "            }) {")
+        exact.append(body_indent + "              case Success(result) => {")
+        exact.append(body_indent + "               result match {")
+        exact.append(body_indent + "                case Some(result) => complete(result.toJson(true))")
+        exact.append(body_indent + "                case None => respondWithStatus(StatusCodes.NotFound) {")
+        exact.append(body_indent + '                 complete("No '+ object_name + ' object was found to update")')
+        exact.append(body_indent + "                }")
+        exact.append(body_indent + "               }")
+        exact.append(body_indent + "              }")
+        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "            }")
+        exact.append(body_indent + "          }")
+        exact.append(body_indent + "        }")
+        exact.append(body_indent + "      }")
+        exact.append(body_indent + "    }")
+        exact.append(body_indent + "  }")
+        exact.append(body_indent + "}")
+        exact.append(indent + "} ~")
+
         exact.append(indent + "delete {")
 
         if parent_para:
