@@ -1116,7 +1116,7 @@ class ClassGenerator(object):
                     elif stmt.keyword == 'notification':
                         self.generate_notification_routes(stmt)
                     else:
-                        if search_one(stmt, ('csp-common', 'vertex')) or search_one(stmt, ('csp-common', 'edge')):
+                        if search_one(stmt, ('csp-common', 'vertex')):
                             self.generate_routes(stmt)
                             self.generate_schema_routes(stmt)
                             child_generator = ClassGenerator(stmt, path=path, package=package, mopackage=mopackage,
@@ -1622,7 +1622,10 @@ class ClassGenerator(object):
         exact.append(body_indent + "  }")
         exact.append(body_indent + "}~")
 
-        content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'"/"_filter") {'
+        if parent_para:
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+ stmt_arg.lower()+'"/"_filter") {'
+        else:
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
         exact.append(content)
 
         if parent_para:
@@ -1655,7 +1658,7 @@ class ClassGenerator(object):
         exact.append(indent + "patch {")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+stmt_arg.lower()+'=" ~ Rest) {'
         else:
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
         exact.append(content)
@@ -1670,6 +1673,9 @@ class ClassGenerator(object):
         else:
             exact.append(body_indent + '  (' + keys+ ') =>')
 
+        if (len(key_arg.split(","))>1):
+            exact.append(body_indent + '  val pair = keys.split(",")')
+
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
@@ -1677,7 +1683,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "          entity(as["+full_name+"]) {" + lower_name +" =>")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+full_name+"]] {")
         if parent_para:
-            exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"(" + parent_para_instance + value + ', '+lower_name + ", apiCtx)")
+            exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"(" + parent_para_instance + ', '+value + ', '+lower_name + ", apiCtx)")
         else:
             exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"("+ value+ ', '+ lower_name + ", apiCtx)")
         exact.append(body_indent + "            }) {")
@@ -1716,6 +1722,9 @@ class ClassGenerator(object):
             exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
         else:
             exact.append(body_indent + '  (' + keys+ ') =>')
+
+        if (len(key_arg.split(","))>1):
+            exact.append(body_indent + '  val pair = keys.split(",")')
 
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
@@ -1817,7 +1826,7 @@ class ClassGenerator(object):
         self.body.extend(exact)
 
         for ch in search(stmt, list(yangelement_stmts)):
-            if search_one(ch, ('csp-common', 'vertex')) or search_one(ch, ('csp-common', 'edge')):
+            if search_one(ch, ('csp-common', 'vertex')):
                 self.generate_routes(ch)
 
     def get_stmt_key(self, stmt):
