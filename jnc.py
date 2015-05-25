@@ -988,8 +988,11 @@ class SchemaNode(object):
                 if parent.keyword != "module":
                     if search_one(parent, ('csp-common', 'has-edge')) or search_one(parent, ('csp-common', 'ref-edge')):
                         map_name = stmt.arg
+                    elif stmt.arg == "name":
+                        map_name = stmt.arg
                     else:
-                        map_name = parent.arg + "-" +stmt.arg
+                        map_name = parent.arg + "_" +stmt.arg
+                        map_name = map_name.replace("-", "_")
                 else:
                     map_name = stmt.arg
                 res.append('<mapping_path>'+map_name+'</mapping_path>')
