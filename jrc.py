@@ -1623,9 +1623,9 @@ class ClassGenerator(object):
         exact.append(body_indent + "}~")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+ stmt_arg.lower()+'"/"_filter") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+ stmt_arg.lower()+'" / "_filter") {'
         else:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'" / "_filter") {'
         exact.append(content)
 
         if parent_para:
