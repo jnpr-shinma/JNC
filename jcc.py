@@ -1078,6 +1078,7 @@ class ClassGenerator(object):
             edge = search_one(sub_stmt, ('csp-common', 'has-edge'))
             ref_edge = search_one(sub_stmt, ('csp-common', 'ref-edge'))
 
+            ignore_type = False
             if edge or ref_edge:
                 if edge:
                     link_type = "['has']"
