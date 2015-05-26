@@ -1636,7 +1636,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + '          entity(as[JsObject]){')
         exact.append(body_indent + '           filter=>')
-        exact.append(body_indent + '            apiCtx.criteria.criteriaRawData = filter')
+        exact.append(body_indent + '            apiCtx.criteria._criteriaRawData = filter')
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Seq["+full_name+"]] {")
         if parent_para:
             exact.append(body_indent + "              "+api_impl_name+".get"+object_name+"List(" + parent_para_instance + ', '+"apiCtx)")
