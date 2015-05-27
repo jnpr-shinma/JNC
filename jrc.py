@@ -980,8 +980,7 @@ class ClassGenerator(object):
         if self.stmt.keyword in ('module', 'submodule'):
             self.generate_classes()
         elif self.stmt.keyword in ('list', 'container'):
-            if search_one(self.stmt, ('csp-common', 'vertex')) or search_one(self.stmt, ('csp-common', 'edge')) :
-                self.generate_class()
+            self.generate_class()
 
     def generate_classes(self):
         """Generates a Java class hierarchy from a module statement, allowing
@@ -1105,7 +1104,7 @@ class ClassGenerator(object):
                 # Do not generate include stmt in submodule
                 if stmt.i_orig_module.arg == module.arg:
                     if stmt.keyword == 'rpc':
-                        self.generate_rpc_routes(stmt)
+                        #self.generate_rpc_routes(stmt)
                         if rpc_class == None:
                             rpc_class = JavaClass(filename=normalize(module.arg+"RpcApi")+".scala",
                                 package=package,
@@ -1116,12 +1115,11 @@ class ClassGenerator(object):
                     elif stmt.keyword == 'notification':
                         self.generate_notification_routes(stmt)
                     else:
-                        if search_one(stmt, ('csp-common', 'vertex')):
-                            self.generate_routes(stmt)
-                            self.generate_schema_routes(stmt)
-                            child_generator = ClassGenerator(stmt, path=path, package=package, mopackage=mopackage,
-                                                     ns=module.arg, prefix_name=module.arg, parent=self)
-                            child_generator.generate()
+                        self.generate_routes(stmt)
+                        self.generate_schema_routes(stmt)
+                        child_generator = ClassGenerator(stmt, path=path, package=package, mopackage=mopackage,
+                                                 ns=module.arg, prefix_name=module.arg, parent=self)
+                        child_generator.generate()
 
             #self.path = path
             if rpc_class is not None:
@@ -1181,9 +1179,6 @@ class ClassGenerator(object):
         module. Uses mutual recursion with generate_child.
 
         """
-        if self.stmt.keyword == "container":
-            return
-
         stmt = self.stmt
         stmt_arg = stmt.arg.replace("_","-")
         if stmt.i_orig_module.keyword == "submodule":
@@ -1210,6 +1205,12 @@ class ClassGenerator(object):
             mopackage_value = self.mopackage+'.'+camelize(stmt_arg)
             child_generator = ClassGenerator(ch, path=path_value, package=package_value, mopackage=mopackage_value, parent=self)
             child_generator.generate()
+
+        if search_one(self.stmt, ('csp-common', 'vertex')) or search_one(self.stmt, ('csp-common', 'edge')) :
+            if self.stmt.keyword == "container":
+                return
+        else:
+            return
 
         self.java_class = JavaClass(filename=self.filename,
                 package=self.package,
@@ -1239,8 +1240,9 @@ class ClassGenerator(object):
         while packages:
             parent_stmt = packages.popleft()
             parent_name = camelize(parent_stmt.arg)
-            parent_key, parent_keyclass = self.get_parent_stmt_key(parent_stmt, parent_name)
-            parent_keyname_list.append(parent_key)
+            if parent_stmt.keyword != "container":
+                parent_key, parent_keyclass = self.get_parent_stmt_key(parent_stmt, parent_name)
+                parent_keyname_list.append(parent_key)
 
         parent_para= ', '.join(parent_keyname_list)
 
@@ -1351,29 +1353,19 @@ class ClassGenerator(object):
         rpc_class.imports.add('scala.concurrent.{ExecutionContext, Future}')
 
     def generate_schema_routes(self, stmt):
-        add = self.schema_class.append_access_method  # XXX: add is a function
-
-        if stmt.keyword == "container":
+        if not search_one(stmt, ('csp-common', 'vertex')) or stmt.keyword == "container":
             return
+
         module_name = get_module(stmt).arg
         class_name = normalize(stmt.arg)
 
         package_name = get_package(stmt, self.ctx)
         api_package_name = get_api_package(stmt, self.ctx)
 
-        file_indent = ' ' * 4
-        indent = ' ' * 6
         body_indent = ' ' * 8
 
         if api_package_name != self.package:
             self.java_class.imports.add(api_package_name+'.'+class_name+"Api")
-
-        key_arg, value = self.get_stmt_key_route(stmt)
-
-        if (len(key_arg.split(","))>1):
-            key_name = "Key"
-        else:
-            key_name = normalize(key_arg)
 
         packages = get_parents(stmt)
         parent_para = ""
@@ -1426,11 +1418,14 @@ class ClassGenerator(object):
 
 
     def generate_routes(self, stmt):
+        if not search_one(stmt, ('csp-common', 'vertex')) or stmt.keyword == "container":
+            for ch in search(stmt, list(yangelement_stmts)):
+                self.generate_routes(ch)
+            return
+
         add = self.java_class.append_access_method  # XXX: add is a function
         stmt_arg = stmt.arg.replace("_", "-")
 
-        if stmt.keyword == "container":
-            return
         module_name = get_module(stmt).arg
 
         package_name = get_package(stmt, self.ctx)
@@ -1466,11 +1461,6 @@ class ClassGenerator(object):
 
         key_arg, value = self.get_stmt_key_route(stmt)
 
-        if (len(key_arg.split(","))>1):
-            key_name = "Key"
-        else:
-            key_name = normalize(key_arg)
-
         packages = get_parents(stmt)
         parent_para = ""
         parent_keyname_list = []
@@ -1478,13 +1468,17 @@ class ClassGenerator(object):
         while packages:
             parent_stmt = packages.popleft()
             parent_name = camelize(parent_stmt.arg)
-            parent_para = parent_para + '/ "'+module_name.lower()+":"+parent_stmt.arg+'=" ~ Rest'
-            parent_key_list, parent_para_list = self.get_parent_stmt_key_route(parent_stmt, parent_name)
-            parent_keyname_list.append(parent_key_list)
-            parent_paralist.append(parent_para_list)
-
-        parent_key_name = ', '.join(parent_keyname_list)
-        parent_para_instance = ', '.join(parent_paralist)
+            if parent_stmt.keyword != "container":
+                parent_para = parent_para + '/ "'+module_name.lower()+":"+parent_stmt.arg+'=" ~ Rest'
+                parent_key_list, parent_para_list = self.get_parent_stmt_key_route(parent_stmt, parent_name)
+                parent_keyname_list.append(parent_key_list)
+                parent_paralist.append(parent_para_list)
+                parent_key_name = ', '.join(parent_keyname_list)
+                parent_para_instance = ', '.join(parent_paralist)
+            else:
+                parent_para = parent_para + '/ "'+module_name.lower()+":"+parent_stmt.arg+'"'
+                parent_key_name = ''.join(parent_keyname_list)
+                parent_para_instance = ''.join(parent_paralist)
 
         exact = [indent + "get {"]
         if parent_para:
@@ -1493,14 +1487,14 @@ class ClassGenerator(object):
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
         exact.append(content)
 
-        if parent_para:
+        if parent_para and parent_key_name:
             exact.append(body_indent + '('+parent_key_name+') =>')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Seq["+full_name+"]] {")
-        if parent_para:
+        if parent_para and parent_para_instance:
             exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"List(" + parent_para_instance +", apiCtx)")
         else:
             exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"List(apiCtx)")
@@ -1520,7 +1514,7 @@ class ClassGenerator(object):
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'" / "_total") {'
         exact.append(content)
 
-        if parent_para:
+        if parent_para and parent_key_name:
             exact.append(body_indent + '('+parent_key_name+') =>')
 
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
@@ -1528,7 +1522,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "      intercept(apiCtx) {")
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          onComplete(OnCompleteFutureMagnet[Long] {")
-        if parent_para:
+        if parent_para and parent_para_instance:
             exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"Count(" + parent_para_instance +", apiCtx)")
         else:
             exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"Count(apiCtx)")
@@ -1553,7 +1547,7 @@ class ClassGenerator(object):
         else:
             keys = key_arg
 
-        if parent_para:
+        if parent_para and parent_key_name:
             exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
         else:
             exact.append(body_indent + '  (' + keys+ ') =>')
@@ -1568,7 +1562,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+full_name+"]] {")
 
 
-        if parent_para:
+        if parent_para and parent_para_instance:
             exact.append(body_indent + "              "+api_impl_name+".get"+object_name+ "ById("+parent_para_instance+", " + value + ", apiCtx)")
         else:
             exact.append(body_indent + "              "+api_impl_name+".get"+object_name+ "ById("+ value + ", apiCtx)")
@@ -1598,7 +1592,7 @@ class ClassGenerator(object):
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
         exact.append(content)
 
-        if parent_para:
+        if parent_para and parent_key_name:
             exact.append(body_indent + '('+parent_key_name+') =>')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
@@ -1606,7 +1600,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          entity(as["+full_name+"]) {" + lower_name +" =>")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet["+full_name+"] {")
-        if parent_para:
+        if parent_para and parent_para_instance:
             exact.append(body_indent + "              "+api_impl_name+".create"+object_name+"(" + parent_para_instance + ', '+lower_name + ", apiCtx)")
         else:
             exact.append(body_indent + "              "+api_impl_name+".create"+object_name+"(" + lower_name + ", apiCtx)")
@@ -1628,7 +1622,7 @@ class ClassGenerator(object):
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
         exact.append(content)
 
-        if parent_para:
+        if parent_para and parent_key_name:
             exact.append(body_indent + '('+parent_key_name+') =>')
         exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
         exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
@@ -1638,7 +1632,7 @@ class ClassGenerator(object):
         exact.append(body_indent + '           filter=>')
         exact.append(body_indent + '            apiCtx.criteria.criteriaRawData = filter')
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Seq["+full_name+"]] {")
-        if parent_para:
+        if parent_para and parent_para_instance:
             exact.append(body_indent + "              "+api_impl_name+".get"+object_name+"List(" + parent_para_instance + ', '+"apiCtx)")
         else:
             exact.append(body_indent + "              "+api_impl_name+".get"+object_name+"List(apiCtx)")
@@ -1668,7 +1662,7 @@ class ClassGenerator(object):
         else:
             keys = key_arg
 
-        if parent_para:
+        if parent_para and parent_key_name:
             exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
         else:
             exact.append(body_indent + '  (' + keys+ ') =>')
@@ -1682,7 +1676,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          entity(as["+full_name+"]) {" + lower_name +" =>")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+full_name+"]] {")
-        if parent_para:
+        if parent_para and parent_para_instance:
             exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"(" + parent_para_instance + ', '+value + ', '+lower_name + ", apiCtx)")
         else:
             exact.append(body_indent + "              "+api_impl_name+".update"+object_name+"("+ value+ ', '+ lower_name + ", apiCtx)")
@@ -1718,7 +1712,7 @@ class ClassGenerator(object):
         else:
             keys = key_arg
 
-        if parent_para:
+        if parent_para and parent_key_name:
             exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
         else:
             exact.append(body_indent + '  (' + keys+ ') =>')
@@ -1732,7 +1726,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "          entity(as["+full_name+"]) {" + lower_name +" =>")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Option["+full_name+"]] {")
-        if parent_para:
+        if parent_para and parent_para_instance:
             exact.append(body_indent + "              "+api_impl_name+".replace"+object_name+"(" + parent_para_instance+", " + value + ', '+lower_name+", apiCtx)")
         else:
             exact.append(body_indent + "              "+api_impl_name+".replace"+object_name+ "("+ value + ', '+lower_name+", apiCtx)")
@@ -1768,7 +1762,7 @@ class ClassGenerator(object):
         else:
             keys = key_arg
 
-        if parent_para:
+        if parent_para and parent_key_name:
             exact.append(body_indent + '  (' +parent_key_name + ', '+keys+ ') =>')
         else:
             exact.append(body_indent + '  (' + keys+ ') =>')
@@ -1782,7 +1776,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "          respondWithMediaType(YangMediaType.YangDataMediaType) {")
         exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Boolean] {")
 
-        if parent_para:
+        if parent_para and parent_para_instance:
             exact.append(body_indent + "              "+api_impl_name+".delete"+object_name+"(" + parent_para_instance+", " + value + ", apiCtx)")
         else:
             exact.append(body_indent + "              "+api_impl_name+".delete"+object_name+ "("+ value + ", apiCtx)")
@@ -1825,9 +1819,10 @@ class ClassGenerator(object):
 
         self.body.extend(exact)
 
-        for ch in search(stmt, list(yangelement_stmts)):
-            if search_one(ch, ('csp-common', 'vertex')):
-                self.generate_routes(ch)
+        if search_one(stmt, ('csp-common', 'vertex')) and stmt.keyword == "container":
+            for ch in search(stmt, list(yangelement_stmts)):
+                if search_one(ch, ('csp-common', 'vertex')):
+                    self.generate_routes(ch)
 
     def get_stmt_key(self, stmt):
         is_config_value = is_config(stmt)
