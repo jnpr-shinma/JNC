@@ -2294,7 +2294,7 @@ class MethodGenerator(object):
             cloner.return_type = self.n
             cloner.set_name('clone' + c[i])
             copy = ''.join(['new ', self.n, '(', keys, ')'])
-            if self.is_list and self.gen.is_config:
+            if self.is_list: # and self.gen.is_config:
                 cloner.add_line(self.n + ' copy;')
                 cloner.add_line('try {')
                 cloner.add_line('    copy = ' + copy + ';')
@@ -2322,7 +2322,7 @@ class MethodGenerator(object):
         method = JavaMethod(modifiers=['public'], name='keyNames')
         method.set_return_type('String[]')
         method.add_javadoc('@return An array with the identifiers of any key children')
-        if self.is_container or not self.gen.is_config:
+        if self.is_container: #or not self.gen.is_config:
             method.add_line('return null;')
         else:
             method.add_line('return new String[] {')
@@ -3008,12 +3008,12 @@ class ListMethodGenerator(MethodGenerator):
 
         self.is_config = is_config(stmt)
         self.keys = []
-        if self.is_config:
-            key = search_one(self.stmt, 'key')
-            try:
-                self.keys = key.arg.split(' ')
-            except AttributeError:
-                self.is_config = False  # is_config produced wrong value
+        #if self.is_config:
+        key = search_one(self.stmt, 'key')
+        try:
+            self.keys = key.arg.split(' ')
+        except AttributeError:
+            self.is_config = False  # is_config produced wrong value
 
         findkey = lambda k: search_one(self.stmt, 'leaf', arg=k)
         self.key_stmts = [findkey(k) for k in self.keys]
@@ -3023,7 +3023,7 @@ class ListMethodGenerator(MethodGenerator):
 
     def value_constructors(self):
         """Returns a list of constructors for configuration data lists"""
-        assert self.is_config, 'Only called with configuration data stmts'
+        #assert self.is_config, 'Only called with configuration data stmts'
 
         constructors = []
 
@@ -3044,9 +3044,9 @@ class ListMethodGenerator(MethodGenerator):
                 key_arg = camelize(key.arg)
                 key_type = search_one(key, 'type')
                 jnc, primitive = get_types(key_type, self.ctx)
-		#This seems a bug in original code, the return is only class name not include package name 
-		#jnc = constructor.add_dependency(jnc)
-		constructor.add_dependency(jnc)
+                #This seems a bug in original code, the return is only class name not include package name
+                #jnc = constructor.add_dependency(jnc)
+                constructor.add_dependency(jnc)
                 javadoc = ['@param ', key_arg, 'Value Key argument of child.']
                 constructor.add_javadoc(''.join(javadoc))
                 newLeaf = ['Leaf ', key_arg, ' = new Leaf']
@@ -3069,7 +3069,7 @@ class ListMethodGenerator(MethodGenerator):
                             setValue.append('"' + member_type + '", ')
                         setValue.append('}));')
                         constructor.add_line(''.join(setValue))
-                    elif jnc == 'YangEnumeration':
+                    elif jnc == 'YangEnumeration' or jnc == "com.tailf.jnc.YangEnumeration":
                         setValue.append(', new String [] {')
                         for enum in search(key_type, 'enum'):
                             setValue.append('"' + enum.arg + '", ')
