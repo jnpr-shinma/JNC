@@ -1104,7 +1104,7 @@ class ClassGenerator(object):
                 # Do not generate include stmt in submodule
                 if stmt.i_orig_module.arg == module.arg:
                     if stmt.keyword == 'rpc':
-                        #self.generate_rpc_routes(stmt)
+                        self.generate_rpc_routes(stmt)
                         if rpc_class == None:
                             rpc_class = JavaClass(filename=normalize(module.arg+"RpcApi")+".scala",
                                 package=package,
@@ -1482,7 +1482,7 @@ class ClassGenerator(object):
 
         exact = [indent + "get {"]
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+stmt_arg.lower()+'") {'
         else:
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
         exact.append(content)
@@ -1509,7 +1509,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "} ~")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'" / "_total") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+stmt_arg.lower()+'" / "_total") {'
         else:
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'" / "_total") {'
         exact.append(content)
@@ -1537,7 +1537,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "} ~")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+stmt_arg.lower()+'=" ~ Rest) {'
         else:
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
         exact.append(content)
@@ -1587,7 +1587,7 @@ class ClassGenerator(object):
         exact.append(indent + "post {")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'") {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+stmt_arg.lower()+'") {'
         else:
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'") {'
         exact.append(content)
@@ -1702,7 +1702,7 @@ class ClassGenerator(object):
         exact.append(indent + "put {")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX '+ parent_para+' / "'+stmt_arg.lower()+'=" ~ Rest) {'
         else:
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
         exact.append(content)
@@ -1752,7 +1752,7 @@ class ClassGenerator(object):
         exact.append(indent + "delete {")
 
         if parent_para:
-            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+stmt_arg.lower()+'=" ~ Rest) {'
         else:
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'=" ~ Rest) {'
         exact.append(content)
@@ -2080,6 +2080,7 @@ class ClassGenerator(object):
         self.java_class.imports.add("spray.routing.HttpService")
         self.java_class.imports.add("spray.routing.directives.{OnCompleteFutureMagnet, RefFactoryMagnet}")
         self.java_class.imports.add("net.juniper.easyrest.auth.EasyRestAuthenticator")
+        self.java_class.imports.add("net.juniper.easyrest.core.ApiImplRegistry")
 
         self.body.extend(exact)
 
