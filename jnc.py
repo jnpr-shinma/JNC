@@ -898,6 +898,11 @@ def get_uses_package(stmt, ctx):
     sub_packages = collections.deque()
     for uses in stmt.i_uses:
         for child in uses.i_grouping.i_children:
+            if child.keyword == 'choice':
+                for sub in child.i_children:
+                    if sub.arg == stmt.arg:
+                        stmt = child
+                        break
             if child.arg == stmt.arg:
                 stmt = child
                 break
@@ -923,6 +928,11 @@ def get_uses_path(stmt):
     sub_packages = collections.deque()
     for uses in stmt.i_uses:
         for child in uses.i_grouping.i_children:
+            if child.keyword == 'choice':
+                for sub in child.i_children:
+                    if sub.arg == stmt.arg:
+                        stmt = child
+                        break
             if child.arg == stmt.arg:
                 stmt = child
                 break
