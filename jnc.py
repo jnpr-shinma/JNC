@@ -1254,6 +1254,20 @@ class ClassGenerator(object):
             write_file(self.path, java_class.filename,
                        java_class.as_list(), self.ctx)
 
+        for group in self.stmt.i_groupings.values():
+            for stmt in search(group, list(yangelement_stmts | {'augment'})):
+                if group.i_orig_module.keyword == "submodule":
+                    ns = ns_arg+'/'+group.i_orig_module.arg+'/'+group.arg
+                    path = self.path+'/'+camelize(group.i_orig_module.arg)+'/'+camelize(group.arg)
+                    package = self.package+'.'+camelize(group.i_orig_module.arg)+'.'+camelize(group.arg)
+                else:
+                    ns = ns_arg+'/'+group.arg
+                    path = self.path+'/'+camelize(group.arg)
+                    package = self.package+'.'+camelize(group.arg)
+                child_generator = ClassGenerator(stmt, path=path, package=package,
+                    ns=ns, prefix_name=self.n, parent=self)
+                child_generator.generate()
+
         # Generate classes for children and keep track of augmented modules
         for stmt in search(self.stmt, list(yangelement_stmts | {'augment'})):
             if stmt.i_orig_module.keyword == "submodule":
