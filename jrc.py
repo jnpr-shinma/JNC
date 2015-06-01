@@ -1079,7 +1079,7 @@ class ClassGenerator(object):
         self.schema_class.append_access_method("enable", enable_method)
         self.schema_class.imports.add(self.mopackage +"."+ normalize(module_prefix))
 
-        jsobject = [' '*4 + 'implicit object JsObjectUnMarshaller extends FromRequestUnmarshaller[JsObject] {']
+        jsobject = [' '*4 + 'private implicit object JsObjectUnMarshaller extends FromRequestUnmarshaller[JsObject] {']
         jsobject.append(' '*4 + '  override def apply(req: HttpRequest): Deserialized[JsObject] = Right(req.entity.asString(HttpCharsets.`UTF-8`).parseJson.asJsObject)')
         jsobject.append(' '*4 + '}')
         jsobject_marsheller = JavaValue(jsobject)

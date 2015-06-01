@@ -1892,15 +1892,15 @@ public class Element implements Serializable {
      * @param schemaNode
      * @return
      */
-    private boolean isList(SchemaNode schemaNode) {
+    protected boolean isList(SchemaNode schemaNode) {
        return schemaNode != null && ( schemaNode.yang_node_type.equals("list") || schemaNode.yang_node_type.equals("input") || schemaNode.yang_node_type.equals("output"));
     }
 
-    private boolean isLeafList(SchemaNode schemaNode) {
+    protected boolean isLeafList(SchemaNode schemaNode) {
         return schemaNode != null && schemaNode.yang_node_type.equals("leaf-list");
     }
 
-    private void writeYangNumberTypesField(JsonGenerator generator,String qName, YangBaseInt value) throws IOException {
+    protected void writeYangNumberTypesField(JsonGenerator generator,String qName, YangBaseInt value) throws IOException {
         if (value instanceof YangDecimal64) {
             generator.writeNumberField(qName, ((YangDecimal64) value).getValue());
         } else if (value instanceof  YangInt64 || value instanceof YangUInt32 ) {
@@ -1921,7 +1921,7 @@ public class Element implements Serializable {
         }
     }
 
-    private void writeYangNumberTypes(JsonGenerator generator,YangBaseInt value) throws IOException {
+    protected void writeYangNumberTypes(JsonGenerator generator,YangBaseInt value) throws IOException {
         if (value instanceof YangDecimal64) {
             generator.writeNumber(((YangDecimal64) value).getValue());
         } else if (value instanceof  YangInt64 || value instanceof YangUInt32 ) {
