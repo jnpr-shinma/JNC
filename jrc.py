@@ -1617,6 +1617,37 @@ class ClassGenerator(object):
         exact.append(body_indent + "}~")
 
         if parent_para:
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+stmt_arg.lower()+'" / "_total") {'
+        else:
+            content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'" / "_total") {'
+        exact.append(content)
+
+        if parent_para and parent_key_name:
+            exact.append(body_indent + '('+parent_key_name+') =>')
+        exact.append(body_indent + '  authenticate(EasyRestAuthenticator()) { apiCtx =>')
+        exact.append(body_indent + '    authorize(enforce(apiCtx)) {')
+        exact.append(body_indent + "      intercept(apiCtx) {")
+        exact.append(body_indent + "        respondWithMediaType(YangMediaType.YangDataMediaType) {")
+        exact.append(body_indent + "          entity(as[JsObject]){filter=>")
+        exact.append(body_indent + "            apiCtx.criteria._criteriaRawData = filter")
+        exact.append(body_indent + "            onComplete(OnCompleteFutureMagnet[Long] {")
+        if parent_para and parent_para_instance:
+            exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"Count(" + parent_para_instance +", apiCtx)")
+        else:
+            exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"Count(apiCtx)")
+
+        exact.append(body_indent + "            }) {")
+        exact.append(body_indent + "              case Success(result) => complete(\"{\\\"total\\\":\" + result.toString + \"}\")")
+        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "            }")
+        exact.append(body_indent + "          }")
+        exact.append(body_indent + "        }")
+        exact.append(body_indent + "      }")
+        exact.append(body_indent + "    }")
+        exact.append(body_indent + "  }")
+        exact.append(body_indent + "}~")
+
+        if parent_para:
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX'+ parent_para+' / "'+ stmt_arg.lower()+'" / "_filter") {'
         else:
             content = body_indent + 'path(ROUTING_PREFIX / ROUTING_DATA_PREFIX / "'+ module_name.lower()+":"+stmt_arg.lower()+'" / "_filter") {'
