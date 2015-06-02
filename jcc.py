@@ -1025,7 +1025,7 @@ class ClassGenerator(object):
             #exact.append(body_indent+'<xsd:element name="'+stmt.i_children[0].arg+'" type="'+normalize(stmt.i_children[0].arg)+'Type" maxOccurs="unbounded"/>')
             #exact.append(indent+'</xsd:all>')
             #exact.append(file_indent+'</xsd:complexType>')
-            exact.append(file_indent+'<xsd:complexType name="'+normalize(stmt.arg+stmt.i_children[0].arg)+'Type">')
+            exact.append(file_indent+'<xsd:complexType name="'+normalize(stmt.i_children[0].arg)+'Type">')
             for sub_stmt in search(stmt, list(yangelement_stmts)):
                 exact.append(indent+'<xsd:all>')
                 for property in search(sub_stmt, ["leaf", "container"]):
@@ -1134,9 +1134,7 @@ class ClassGenerator(object):
                             leaf_type_name = normalize(property.arg+"-"+"type")
 
                     if property.keyword == "list":
-                        for sub in search(uses_stmt.parent, list(yangelement_stmts)):
-                            if sub.arg == property.arg:
-                                leaf_type_name = normalize(uses_stmt.parent.arg+property.arg)+"Type"
+                        leaf_type_name = normalize(property.arg)+"Type"
 
                     complex_type.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+leaf_type_name+'"/>')
                 complex_type.append(indent+'</xsd:all>')
