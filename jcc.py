@@ -1019,12 +1019,12 @@ class ClassGenerator(object):
         indent = ' ' * 8
         body_indent = ' ' * 12
         exact = []
-        exact.append(file_indent+'<xsd:complexType name="'+normalize(stmt.arg)+'Type">')
-        exact.append(indent+'<xsd:all>')
+        #exact.append(file_indent+'<xsd:complexType name="'+normalize(stmt.arg)+'Type">')
+        #exact.append(indent+'<xsd:all>')
         if len(stmt.i_children) == 1 and stmt.i_children[0].keyword == "list":
-            exact.append(body_indent+'<xsd:element name="'+stmt.i_children[0].arg+'" type="'+normalize(stmt.i_children[0].arg)+'Type" maxOccurs="unbounded"/>')
-            exact.append(indent+'</xsd:all>')
-            exact.append(file_indent+'</xsd:complexType>')
+            #exact.append(body_indent+'<xsd:element name="'+stmt.i_children[0].arg+'" type="'+normalize(stmt.i_children[0].arg)+'Type" maxOccurs="unbounded"/>')
+            #exact.append(indent+'</xsd:all>')
+            #exact.append(file_indent+'</xsd:complexType>')
             exact.append(file_indent+'<xsd:complexType name="'+normalize(stmt.i_children[0].arg)+'Type">')
             for sub_stmt in search(stmt, list(yangelement_stmts)):
                 exact.append(indent+'<xsd:all>')
@@ -1037,22 +1037,22 @@ class ClassGenerator(object):
                         type_name = uses.arg
                     exact.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+type_name+'"/>')
                 exact.append(indent+'</xsd:all>')
-        else:
-            for sub_stmt in search(stmt, list(yangelement_stmts)):
-                if sub_stmt.keyword == "leaf":
-                    type = search_one(sub_stmt, 'type')
-                    if type:
-                        if type.arg == "string":
-                            type_name = "xsd:string"
-                        else:
-                            type_name = type.arg
-                    else:
-                        type_name = "xsd:string"
+        #else:
+        #    for sub_stmt in search(stmt, list(yangelement_stmts)):
+        #        if sub_stmt.keyword == "leaf":
+        #            type = search_one(sub_stmt, 'type')
+        #            if type:
+        #                if type.arg == "string":
+        #                    type_name = "xsd:string"
+        #                else:
+        #                    type_name = type.arg
+        #            else:
+        #                type_name = "xsd:string"
 
-                    exact.append(body_indent+'<xsd:element name="'+sub_stmt.arg+'" type="'+type_name+'"/>')
-            exact.append(indent+'</xsd:all>')
+        #            exact.append(body_indent+'<xsd:element name="'+sub_stmt.arg+'" type="'+type_name+'"/>')
+            #exact.append(indent+'</xsd:all>')
 
-        exact.append(file_indent+'</xsd:complexType>')
+            exact.append(file_indent+'</xsd:complexType>')
 
         grouping = JavaValue(exact)
         self.java_class.append_access_method("grouping", grouping)
@@ -1064,6 +1064,7 @@ class ClassGenerator(object):
 
         exact = []
         complex_type = []
+        enum_type = []
         uses_stmt = search_one(stmt, 'uses')
         if uses_stmt and uses_stmt.arg == "csp:entity":
             element = '<xsd:element name="'+stmt.arg+'" type="ifmap:IdentityType" />'
@@ -1107,9 +1108,10 @@ class ClassGenerator(object):
                     continue
 
             if sub_stmt.keyword in ("list", "container") :
-                leaf_type_name = ""
+                uses_stmt = search_one(sub_stmt, 'uses')
+                leaf_type_name = "xsd:string"
                 property_name = stmt.arg+"-"+sub_stmt_arg
-                complex_type.append(file_indent+'<xsd:complexType name="'+normalize(stmt.arg+sub_stmt_arg+"Type")+'"/>')
+                complex_type.append(file_indent+'<xsd:complexType name="'+normalize(stmt.arg+sub_stmt_arg+"Type")+'">')
                 complex_type.append(indent+'<xsd:all>')
                 for property in search(sub_stmt, list(yangelement_stmts)):
                     if property.keyword == "leaf":
@@ -1122,6 +1124,17 @@ class ClassGenerator(object):
                             leaf_type_name = "xsd:string"
                         elif type.arg == "uint32":
                             leaf_type_name = "xsd:integer"
+                        elif type.arg == "enumeration":
+                            enum_type.append(file_indent+'<xsd:simpleType name="'+normalize(property.arg+"-"+"type")+'" >')
+                            enum_type.append(indent+'<xsd:restriction base="xsd:string">')
+                            for enum in type.substmts:
+                                enum_type.append(body_indent+'<xsd:enumeration value="'+enum.arg+'" />')
+                            enum_type.append(indent+'</xsd:restriction>')
+                            enum_type.append(file_indent+'</xsd:simpleType>')
+                            leaf_type_name = normalize(property.arg+"-"+"type")
+
+                    if property.keyword == "list":
+                        leaf_type_name = normalize(property.arg)+"Type"
 
                     complex_type.append(body_indent+'<xsd:element name="'+property.arg+'" type="'+leaf_type_name+'"/>')
                 complex_type.append(indent+'</xsd:all>')
@@ -1141,7 +1154,7 @@ class ClassGenerator(object):
                 elif type.arg == "uint32":
                     exact.append(file_indent+'<xsd:element name="'+property_name+'" type="xsd:integer" />')
                 elif type.arg == "enumeration":
-                    complex_type.append(file_indent+'<xsd:simpletype name="'+normalize(property_name+"-"+"type")+'" />')
+                    complex_type.append(file_indent+'<xsd:simpleType name="'+normalize(property_name+"-"+"type")+'" >')
                     complex_type.append(indent+'<xsd:restriction base="xsd:string">')
                     for enum in type.substmts:
                         complex_type.append(body_indent+'<xsd:enumeration value="'+enum.arg+'" />')
@@ -1154,6 +1167,9 @@ class ClassGenerator(object):
                     exact.append(file_indent+'<xsd:element name="'+property_name+'" type="'+type.arg+'" />')
 
                 exact.append(file_indent+"<!--#IFMAP-SEMANTICS-IDL Property('"+property_name+"', '"+stmt.arg+"') -->")
+
+        enumtype = JavaValue(enum_type)
+        self.java_class.append_access_method("enumtype", enumtype)
 
         complextype = JavaValue(complex_type)
         self.java_class.append_access_method("type", complextype)
