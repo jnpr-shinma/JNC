@@ -17,9 +17,14 @@ import java.io.InputStream;
  *
  */
 public class YangJsonParser {
+    private ElementHandler elementHandler = null;
+    public YangJsonParser (){
+        elementHandler = new ElementHandler();
+    }
 
-
-    private final ElementHandler elementHandler = new ElementHandler();
+    public YangJsonParser(ElementHandler handler){
+        elementHandler = handler;
+    }
 
     private final Attributes attr  = new AttributesImpl();
     /**
@@ -137,8 +142,8 @@ public class YangJsonParser {
      * @param jp
      * @param nameSpace
      * @param name
-     * @throws IOException
-     * @throws SAXException
+     * @throws java.io.IOException
+     * @throws org.xml.sax.SAXException
      */
     private void processArray(final JsonParser jp, final String nameSpace, final String name) throws IOException, SAXException {
         while (jp.nextToken() != JsonToken.END_ARRAY) {
