@@ -1,0 +1,181 @@
+{
+            "uuid": "b961e1ec-63a0-4d8c-ad0c-55e1c6cd4f75",
+            "nsd": {
+                "nsd-uuid": "b961e1ec-63a0-4d8c-ad0c-55e1c6cd4f75",
+                "vld": [
+                    {
+                        "id": "left_11",
+                        "vld-ref": "vld-ref-TODO"
+                    },
+                    {
+                        "id": "internal_14",
+                        "vld-ref": "vld-ref-TODO"
+                    },
+                    {
+                        "id": "right_13",
+                        "vld-ref": "vld-ref-TODO"
+                    }
+                ],
+                "vl": [
+                    {
+                        "id": "vl id TODO"
+                    }
+                ],
+                "vnfd": [
+                    {
+                        "id": "LxCIPtable_2",
+                        "vnfd-ref": "ccb91a35-03a8-11e5-8a06-a45e60be9005",
+                        "internal-function-chain-name": "NAT"
+                    },
+                    {
+                        "id": "vFF_6",
+                        "vnfd-ref": "ccb91585-03a8-11e5-8b28-a45e60be9005",
+                        "internal-function-chain-name": "Firewall"
+                    }
+                ],
+                "monitoring-parameter": [
+                    {
+                        "param-id": "num-sessions",
+                        "description": "Total sessions for the Network Service"
+                    }
+                ],
+                "connection-point": [
+                    {
+                        "id": "ns-mgmt"
+                    },
+                    {
+                        "id": "ns-entry",
+                        "type": "L3-VPN"
+                    },
+                    {
+                        "id": "ns-exit"
+                    }
+                ],
+                "forwarding-graph": [
+                    {
+                        "id": "site-access",
+                        "number-of-end-points": 6,
+                        "number-of-virtual-links": 3,
+                        "dependent-virtual-link": [
+                            {
+                                "id": "left"
+                            },
+                            {
+                                "id": "internal"
+                            },
+                            {
+                                "id": "right"
+                            }
+                        ],
+                        "network-forwarding-path": [
+                            {
+                                "id": "1",
+                                "policy": {
+                                    "proto": "",
+                                    "src-ip-net": "",
+                                    "dst-ip-net": "",
+                                    "min-port": "",
+                                    "max-port": ""
+                                },
+                                "connection": [
+                                    "0",
+                                    "1",
+                                    "2",
+                                    "3",
+                                    "4",
+                                    "5"
+                                ]
+                            }
+                        ],
+                        "connection-point": [
+                            {
+                                "id": "0",
+                                "vl": "left_11",
+                                "cp": "ns-entry"
+                            },
+                            {
+                                "id": "1",
+                                "vl": "left_11",
+                                "vnfd-cp": {
+                                    "vnfd-id": "LxCIPtable_2",
+                                    "cp-id": "left-cp"
+                                }
+                            },
+                            {
+                                "id": "2",
+                                "vl": "internal_14",
+                                "vnfd-cp": {
+                                    "vnfd-id": "LxCIPtable_2",
+                                    "cp-id": "right-cp"
+                                }
+                            },
+                            {
+                                "id": "3",
+                                "vl": "internal_14",
+                                "vnfd-cp": {
+                                    "vnfd-id": "vFF_6",
+                                    "cp-id": "left-interface"
+                                }
+                            },
+                            {
+                                "id": "4",
+                                "vl": "right_13",
+                                "vnfd-cp": {
+                                    "vnfd-id": "vFF_6",
+                                    "cp-id": "right-interface"
+                                }
+                            },
+                            {
+                                "id": "5",
+                                "vl": "right_13",
+                                "cp": "ns-exit"
+                            }
+                        ],
+                        "constituent-vnfs": [
+                            "LxCIPtable_2",
+                            "vFF_6"
+                        ]
+                    }
+                ]
+            },
+            "vnf-config": [
+                {
+                    "vnfd-id": "LxCIPtable_2",
+                    "vnfd-uuid": "ccb91a35-03a8-11e5-8a06-a45e60be9005",
+                    "advanced-config": [
+                        {
+                            "function-name": "NAT",
+                            "config-template": "ccb90bc2-03a8-11e5-b3d9-a45e60be9005"
+                        }
+                    ]
+                },
+                {
+                    "vnfd-id": "vFF_6",
+                    "vnfd-uuid": "ccb91585-03a8-11e5-8b28-a45e60be9005",
+                    "advanced-config": [
+                        {
+                            "function-name": "Firewall",
+                            "config-template": "ccb90a51-03a8-11e5-ad12-a45e60be9005"
+                        }
+                    ]
+                }
+            ],
+            "nsd-instantiation-template": {
+                "data-plane": {
+                    "ingress": "ingress",
+                    "egress": "egress"
+                },
+                "mgt-plane": {
+                    "mgt": "mgt"
+                },
+                "control-plane": {
+                    "control": "control"
+                }
+            },
+            "name": "Network_Service_001",
+            "fd-uuid": "ccb83287-03a8-11e5-9559-a45e60be9005",
+            "timestamp": "Tue May 26 2015 21:12:15 GMT+0800 (CST)",
+            "status": "in-progress",
+            "fd": "Virneo_Security_Gold",
+            "customer": "Virneo"
+        }
