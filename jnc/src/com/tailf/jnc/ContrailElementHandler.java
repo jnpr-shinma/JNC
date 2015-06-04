@@ -2,47 +2,44 @@ package com.tailf.jnc;
 
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
-import org.xml.sax.helpers.DefaultHandler;
 
-/**
- * A SAX parser, for parsing for example NETCONF messages,
- * into a simple {@link Element Element} tree.
- * <p>
- * This parser is data model aware and will try to construct
- * classes that are generated from the JNC pyang plugin.
- * <p>
- */
+import java.util.HashMap;
+import java.util.Map;
 
-/**
- * The handler with hooks for startElement etc. The SAX parser will build up
- * the parse tree, by calling these hooks.
- */
-class ElementHandler extends DefaultHandler {
+public class ContrailElementHandler extends ElementHandler {
 
-    // pointer to current element (node)
-    public Element current;
-    public Element top;
-    public PrefixMap prefixes = null;
-    public int unknownLevel = 0;
+    private Map<String, Tagpath> library = new HashMap<String, Tagpath>();
 
-    protected boolean leaf = false;
-    protected String leafNs;
-    protected String leafName;
-    public String leafValue;
+    public ContrailElementHandler(String namespace,String name) {
+        initLibrary(namespace, name);
+    }
+
+    private void initLibrary(String namespace,String tagpath){
+        SchemaNode node= SchemaTree.lookup(namespace, new Tagpath(tagpath));
+        if(node!=null){
+            if(node.mapping_path!=null&&node.mapping_path.trim().equals("")==false){
+                this.library.put(node.mapping_path.trim().replaceAll("-","_"),new Tagpath(tagpath));
+            }
+            for(String childPath:node.yang_children){
+                if(childPath!=null&&childPath.trim().equals("")==false){
+                initLibrary(namespace,tagpath+"/"+childPath);}
+            }
+        }
+    }
 
     @Override
     public void startElement(String uri, String localName, String qName,
                              Attributes attributes) throws SAXException {
-
+        String convertName = elenmentConverter(localName);
         if (unknownLevel > 0) {
-            unkownStartElement(uri, localName, attributes);
+            unkownStartElement(uri, convertName, attributes);
             return;
         }
         final Element parent = current;
         Element child;
 
         try {
-            child = YangElement.createInstance(this, parent, uri, localName);
+            child = YangElement.createInstance(this, parent, uri, convertName);
         } catch (final JNCException e) {
             e.printStackTrace();
             throw new SAXException(e.toString());
@@ -54,7 +51,7 @@ class ElementHandler extends DefaultHandler {
 
         if (child == null && unknownLevel == 1) {
             // we're entering XML data that's not in the schema
-            unkownStartElement(uri, localName, attributes);
+            unkownStartElement(uri, convertName, attributes);
             return;
         }
 
@@ -63,7 +60,7 @@ class ElementHandler extends DefaultHandler {
             // it'll be handled in the endElement method
             leaf = true;
             leafNs = uri;
-            leafName = localName;
+            leafName = convertName;
             leafValue = "";
             return;
         }
@@ -74,7 +71,8 @@ class ElementHandler extends DefaultHandler {
     }
 
     private void unkownStartElement(String uri, String localName, Attributes attributes) throws SAXException {
-        final Element child = new Element(uri, localName);
+        String convertName = elenmentConverter(localName);
+        final Element child = new Element(uri, convertName);
         child.prefixes = prefixes;
         prefixes = null;
         addOtherAttributes(attributes, child);
@@ -171,5 +169,19 @@ class ElementHandler extends DefaultHandler {
             prefixes = new PrefixMap();
         }
         prefixes.add(new Prefix(prefix, uri));
+    }
+
+    public String elenmentConverter(String localName)  throws SAXException {
+        String key = null;
+        if (library.containsKey(localName)) {
+            String tagpath = library.get(localName).toString();
+            key = tagpath.substring(tagpath.lastIndexOf("/")+1);
+        }
+        if (key == null) {
+            System.err.println("can't find the tagpath for : " + localName);
+            //throw new SAXException ("can't find the tagpath for : "+localName);
+            key=localName;
+        }
+        return key;
     }
 }
