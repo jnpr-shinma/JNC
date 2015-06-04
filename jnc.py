@@ -2319,12 +2319,15 @@ class MethodGenerator(object):
             cloner.set_name('clone' + c[i])
             copy = ''.join(['new ', self.n, '(', keys, ')'])
             if self.is_list: # and self.gen.is_config:
-                cloner.add_line(self.n + ' copy;')
-                cloner.add_line('try {')
-                cloner.add_line('    copy = ' + copy + ';')
-                cloner.add_line('} catch (JNCException e) {')
-                cloner.add_line('    copy = null;')
-                cloner.add_line('}')
+                if keys:
+                    cloner.add_line(self.n + ' copy;')
+                    cloner.add_line('try {')
+                    cloner.add_line('    copy = ' + copy + ';')
+                    cloner.add_line('} catch (JNCException e) {')
+                    cloner.add_line('    copy = null;')
+                    cloner.add_line('}')
+                else:
+                    cloner.add_line('copy = ' + copy + ';')
                 copy = 'copy'
             cloner.add_line(''.join(['return (', self.n, ')clone', c[i],
                                      'Content(', copy, ');']))
