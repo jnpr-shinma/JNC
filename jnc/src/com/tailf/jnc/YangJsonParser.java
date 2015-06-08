@@ -122,19 +122,22 @@ public class YangJsonParser {
                     processArray(jp, nameSpace, name);
                     continue;
                 }
-                elementHandler.startElement(nameSpace, name, name, attr);
-                if (jsonToken.isScalarValue()) {
-                    elementHandler.characters(jp.getTextCharacters(), 0, jp.getTextLength());
+                if(elementHandler.verify(nameSpace, name)){
+                    elementHandler.startElement(nameSpace, name, name, attr);
+                    if (jsonToken.isScalarValue()) {
+                        elementHandler.characters(jp.getTextCharacters(), 0, jp.getTextLength());
+                    }
+                    if (jsonToken == JsonToken.START_OBJECT) {
+                        parseObject(jp, nameSpace);
+                    }
+                    elementHandler.endElement(nameSpace, name, name);
                 }
-                if (jsonToken == JsonToken.START_OBJECT) {
-                    parseObject(jp, nameSpace);
-                }
-                elementHandler.endElement(nameSpace, name, name);
             } else {
                 jp.nextToken();
             }
         }
     }
+
 
     /**
      * process json array. In case of Json an array is presented as  {{{ "abc": [{"test": 1},{"test":2}] }}} This needs
@@ -142,18 +145,20 @@ public class YangJsonParser {
      * @param jp
      * @param nameSpace
      * @param name
-     * @throws java.io.IOException
-     * @throws org.xml.sax.SAXException
+     * @throws IOException
+     * @throws SAXException
      */
     private void processArray(final JsonParser jp, final String nameSpace, final String name) throws IOException, SAXException {
         while (jp.nextToken() != JsonToken.END_ARRAY) {
-            elementHandler.startElement(nameSpace, name, name, attr);
-            String text = jp.getText();
-            if(!text.startsWith("{"))
-                this.elementHandler.leafValue = text;
-            else
-                parseObject(jp, nameSpace);
-            elementHandler.endElement(nameSpace, name, name);
+            if(elementHandler.verify(nameSpace, name)){
+                elementHandler.startElement(nameSpace, name, name, attr);
+                String text = jp.getText();
+                if(!text.startsWith("{"))
+                    this.elementHandler.leafValue = text;
+                else
+                    parseObject(jp, nameSpace);
+                elementHandler.endElement(nameSpace, name, name);
+            }
         }
     }
 

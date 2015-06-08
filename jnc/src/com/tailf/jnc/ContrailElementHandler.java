@@ -8,7 +8,7 @@ import java.util.Map;
 
 public class ContrailElementHandler extends ElementHandler {
 
-    private Map<String, Tagpath> library = new HashMap<String, Tagpath>();
+    private Map<String, Tagpath> library = new HashMap<>();
 
     public ContrailElementHandler(String namespace,String name) {
         initLibrary(namespace, name);
@@ -17,12 +17,12 @@ public class ContrailElementHandler extends ElementHandler {
     private void initLibrary(String namespace,String tagpath){
         SchemaNode node= SchemaTree.lookup(namespace, new Tagpath(tagpath));
         if(node!=null){
-            if(node.mapping_path!=null&&node.mapping_path.trim().equals("")==false){
+            if(node.mapping_path!=null&&!node.mapping_path.trim().equals("")){
                 this.library.put(node.mapping_path.trim().replaceAll("-","_"),new Tagpath(tagpath));
             }
             for(String childPath:node.yang_children){
-                if(childPath!=null&&childPath.trim().equals("")==false){
-                initLibrary(namespace,tagpath+"/"+childPath);}
+                if(childPath!=null&&!childPath.trim().equals("")){
+                    initLibrary(namespace,tagpath+"/"+childPath);}
             }
         }
     }
@@ -30,9 +30,9 @@ public class ContrailElementHandler extends ElementHandler {
     @Override
     public void startElement(String uri, String localName, String qName,
                              Attributes attributes) throws SAXException {
-        String convertName = elenmentConverter(localName);
+        String convertName = elementConverter(localName);
         if (unknownLevel > 0) {
-            unkownStartElement(uri, convertName, attributes);
+            unknownStartElement(uri, convertName, attributes);
             return;
         }
         final Element parent = current;
@@ -51,7 +51,7 @@ public class ContrailElementHandler extends ElementHandler {
 
         if (child == null && unknownLevel == 1) {
             // we're entering XML data that's not in the schema
-            unkownStartElement(uri, convertName, attributes);
+            unknownStartElement(uri, convertName, attributes);
             return;
         }
 
@@ -70,8 +70,8 @@ public class ContrailElementHandler extends ElementHandler {
         current = child; // step down
     }
 
-    private void unkownStartElement(String uri, String localName, Attributes attributes) throws SAXException {
-        String convertName = elenmentConverter(localName);
+    private void unknownStartElement(String uri, String localName, Attributes attributes) throws SAXException {
+        String convertName = elementConverter(localName);
         final Element child = new Element(uri, convertName);
         child.prefixes = prefixes;
         prefixes = null;
@@ -171,7 +171,7 @@ public class ContrailElementHandler extends ElementHandler {
         prefixes.add(new Prefix(prefix, uri));
     }
 
-    public String elenmentConverter(String localName)  throws SAXException {
+    public String elementConverter(String localName)  {
         String key = null;
         if (library.containsKey(localName)) {
             String tagpath = library.get(localName).toString();
@@ -179,9 +179,22 @@ public class ContrailElementHandler extends ElementHandler {
         }
         if (key == null) {
             System.err.println("can't find the tagpath for : " + localName);
-            //throw new SAXException ("can't find the tagpath for : "+localName);
             key=localName;
         }
         return key;
+    }
+
+    protected Boolean verify(String namespace, String name){
+        Tagpath tagpath=null;
+        if(current==null){
+            tagpath=new Tagpath(elementConverter(name));
+        }else{
+            tagpath=new Tagpath(current.tagpath()+"/"+elementConverter(name));
+        }
+        SchemaNode node= SchemaTree.lookup(namespace, tagpath);
+        if(node!=null)
+            return true;
+        else
+            return false;
     }
 }
