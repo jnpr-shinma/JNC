@@ -1729,7 +1729,7 @@ public class Element implements Serializable {
      * @throws IOException
      */
 
-    public void toJson(OutputStream outputStream, boolean prettyPrint,boolean dropRoot) throws IOException {
+    public void toJsonString(OutputStream outputStream, boolean prettyPrint,boolean dropRoot) throws IOException {
         try (JsonGenerator generator = YangJsonFactory.jsonFactory().createGenerator(outputStream)) {
             if (prettyPrint) generator.useDefaultPrettyPrinter();
             generator.writeStartObject();
@@ -1753,7 +1753,7 @@ public class Element implements Serializable {
      * @param dropRoot
      * @throws IOException
      */
-    public void toJson(StringWriter outputStream, boolean prettyPrint, boolean dropRoot) throws IOException {
+    public void toJsonString(StringWriter outputStream, boolean prettyPrint, boolean dropRoot) throws IOException {
         try (JsonGenerator generator = YangJsonFactory.jsonFactory().createGenerator(outputStream)) {
             if (prettyPrint) generator.useDefaultPrettyPrinter();
             generator.writeStartObject();
@@ -1774,9 +1774,9 @@ public class Element implements Serializable {
      * @return
      * @throws IOException
      */
-    public String toJson(boolean prettyPrint) throws IOException {
+    public String toJsonString(boolean prettyPrint) throws IOException {
         StringWriter writer = new StringWriter();
-        toJson(writer, prettyPrint,true);
+        toJsonString(writer, prettyPrint,true);
         return writer.toString();
     }
 
@@ -1789,7 +1789,7 @@ public class Element implements Serializable {
      */
     public String toJsonWithRootNode(boolean prettyPrint) throws IOException {
         StringWriter writer = new StringWriter();
-        toJson(writer, prettyPrint,false);
+        toJsonString(writer, prettyPrint,false);
         return writer.toString();
     }
 
