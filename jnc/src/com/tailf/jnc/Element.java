@@ -1859,6 +1859,8 @@ public class Element implements Serializable {
                     else {
                         child.toJsonString(generator);
                     }
+                } else {
+                    child.toJsonString(generator);
                 }
             }
 

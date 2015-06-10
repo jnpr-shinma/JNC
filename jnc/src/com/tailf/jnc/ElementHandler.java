@@ -172,18 +172,18 @@ class ElementHandler extends DefaultHandler {
         }
         prefixes.add(new Prefix(prefix, uri));
     }
-    protected Boolean verify(String namespace, String name){
-        Tagpath tagpath=null;
-        if(current==null){
-            tagpath=new Tagpath(name);
-        }else{
-            tagpath=new Tagpath(current.tagpath()+"/"+name);
+
+    protected Boolean evaluateTagpath(String namespace, String name) throws JNCException {
+        Tagpath tagpath = null;
+        if (current == null) {
+            tagpath = new Tagpath(name);
+        } else {
+            tagpath = new Tagpath(current.tagpath() + "/" + name);
         }
-        SchemaNode node= SchemaTree.lookup(namespace, tagpath);
-        if(node!=null)
+        SchemaNode node = SchemaTree.lookup(namespace, tagpath);
+        if (node != null)
             return true;
         else
-            return false;
+            throw new JNCException(JNCException.PARSER_ERROR,tagpath+" is not a supported tagpath in schema");
     }
-
 }

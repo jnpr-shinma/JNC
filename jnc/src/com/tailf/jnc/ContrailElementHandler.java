@@ -178,13 +178,13 @@ public class ContrailElementHandler extends ElementHandler {
             key = tagpath.substring(tagpath.lastIndexOf("/")+1);
         }
         if (key == null) {
-            System.err.println("can't find the tagpath for : " + localName);
+            System.out.println("can't find the tagpath for : " + localName);
             key=localName;
         }
         return key;
     }
 
-    protected Boolean verify(String namespace, String name){
+    protected Boolean evaluateTagpath(String namespace, String name){
         Tagpath tagpath=null;
         if(current==null){
             tagpath=new Tagpath(elementConverter(name));
