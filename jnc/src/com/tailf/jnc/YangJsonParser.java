@@ -110,7 +110,7 @@ public class YangJsonParser {
     }
 
 
-    private void parseObject(final JsonParser jp, final String nameSpace) throws IOException, SAXException {
+    private void parseObject(final JsonParser jp, final String nameSpace) throws IOException, SAXException, JNCException {
         while(jp.nextToken() != JsonToken.END_OBJECT) {
             String name = jp.getCurrentName();
             if (name != null) {
@@ -122,14 +122,16 @@ public class YangJsonParser {
                     processArray(jp, nameSpace, name);
                     continue;
                 }
-                elementHandler.startElement(nameSpace, name, name, attr);
-                if (jsonToken.isScalarValue()) {
-                    elementHandler.characters(jp.getTextCharacters(), 0, jp.getTextLength());
+                if(elementHandler.evaluateTagpath(nameSpace, name)) {
+                    elementHandler.startElement(nameSpace, name, name, attr);
+                    if (jsonToken.isScalarValue()) {
+                        elementHandler.characters(jp.getTextCharacters(), 0, jp.getTextLength());
+                    }
+                    if (jsonToken == JsonToken.START_OBJECT) {
+                        parseObject(jp, nameSpace);
+                    }
+                    elementHandler.endElement(nameSpace, name, name);
                 }
-                if (jsonToken == JsonToken.START_OBJECT) {
-                    parseObject(jp, nameSpace);
-                }
-                elementHandler.endElement(nameSpace, name, name);
             } else {
                 jp.nextToken();
             }
@@ -145,15 +147,17 @@ public class YangJsonParser {
      * @throws java.io.IOException
      * @throws org.xml.sax.SAXException
      */
-    private void processArray(final JsonParser jp, final String nameSpace, final String name) throws IOException, SAXException {
+    private void processArray(final JsonParser jp, final String nameSpace, final String name) throws IOException, SAXException, JNCException {
         while (jp.nextToken() != JsonToken.END_ARRAY) {
-            elementHandler.startElement(nameSpace, name, name, attr);
-            String text = jp.getText();
-            if(!text.startsWith("{"))
-                this.elementHandler.leafValue = text;
-            else
-                parseObject(jp, nameSpace);
-            elementHandler.endElement(nameSpace, name, name);
+            if(elementHandler.evaluateTagpath(nameSpace, name)) {
+                elementHandler.startElement(nameSpace, name, name, attr);
+                String text = jp.getText();
+                if (!text.startsWith("{"))
+                    this.elementHandler.leafValue = text;
+                else
+                    parseObject(jp, nameSpace);
+                elementHandler.endElement(nameSpace, name, name);
+            }
         }
     }
 
