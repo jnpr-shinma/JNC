@@ -2186,8 +2186,8 @@ class MethodGenerator(object):
 
         if self.module_stmt.arg in ctx.include_modules:
             self.rootpkg = ctx.rootpkg.split(OSSep)
-        #else:
-        #    self.rootpkg = ctx.opts.import_package.split('.')
+        else:
+            self.rootpkg = ctx.rootpkg.split(OSSep)
 
         if self.rootpkg[:1] == ['src']:
             self.rootpkg = self.rootpkg[1:]  # src not part of package
