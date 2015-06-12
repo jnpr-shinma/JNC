@@ -611,8 +611,8 @@ def get_package(stmt, ctx):
             full_package = str(package).split('.')
         else:
             full_package = ctx.rootpkg.split(OSSep)
-    #else:
-    #    full_package = ctx.opts.import_package.split('.')
+    else:
+        full_package = ctx.rootpkg.split(OSSep)
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -942,8 +942,8 @@ def get_uses_package(stmt, ctx):
 
     if stmt.arg in ctx.include_modules:
         full_package = ctx.rootpkg.split(OSSep)
-    #else:
-    #    full_package = ctx.opts.import_package.split('.')
+    else:
+        full_package = ctx.rootpkg.split(OSSep)
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
