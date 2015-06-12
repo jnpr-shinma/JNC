@@ -241,7 +241,7 @@ class JNCPlugin(plugin.PyangPlugin):
                             self.ctx.include_modules.add(module_stmt)
 
         data_file_name = "module-mapping.json"
-        path = os.path.realpath(os.getcwd() + "/../module/" + data_file_name)
+        path = os.path.realpath(os.getcwd() + "/../modules/" + data_file_name)
         try:
             with open(path) as data_file:
                 self.ctx.data = json.load(data_file)
