@@ -37,6 +37,7 @@ import errno
 import sys
 import collections
 import re
+import json
 
 from datetime import date
 from pyang import plugin, util, error
@@ -238,6 +239,15 @@ class JNCPlugin(plugin.PyangPlugin):
                         else:
                             module_set.add(self.ctx.modules[(module_stmt, rev)])
                             self.ctx.include_modules.add(module_stmt)
+
+        data_file_name = "module-mapping.json"
+        path = os.path.realpath(os.getcwd() + "/../modules/" + data_file_name)
+        try:
+            with open(path) as data_file:
+                self.ctx.data = json.load(data_file)
+        except EnvironmentError:
+            print_warning("Uanble to open file "+data_file_name+"\n")
+
 
         # Generate files from main modules
         for module in filter(lambda s: s.keyword == 'module', module_set):
@@ -569,6 +579,12 @@ def get_package(stmt, ctx):
     """
     sub_packages = collections.deque()
     parent = get_parent(stmt)
+    package = ""
+    modules = ctx.data["modules"]
+    for sub in modules:
+        if parent.arg == sub['name']:
+            package = sub['package']
+
     while parent is not None:
         if hasattr(stmt, "i_orig_module") and stmt.i_orig_module.keyword == "submodule" \
                 and stmt.keyword != "typedef" and get_parent(parent) is None:
@@ -582,7 +598,10 @@ def get_package(stmt, ctx):
             sub_packages.appendleft(camelize(stmt.arg))
 
     if stmt.arg in ctx.include_modules:
-        full_package = ctx.rootpkg.split(OSSep)
+        if package:
+            full_package = str(package).split('.')
+        else:
+            full_package = ctx.rootpkg.split(OSSep)
     else:
         full_package = ctx.opts.import_package.split('.')
 
