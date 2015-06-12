@@ -1089,7 +1089,7 @@ class ClassGenerator(object):
 
         self.java_class.append_access_method("jsobject", jsobject_marsheller)
 
-        api = [' ' * 4 + 'lazy val schemaReadFunctionApiImpl = new SchemaReadApiImpl()']
+        api = [' ' * 4 + 'private lazy val schemaReadFunctionApiImpl = new SchemaReadApiImpl()']
         apiimpl = JavaValue(api)
         self.schema_class.append_access_method("api", apiimpl)
         self.schema_class.imports.add("net.juniper.easyrest.yang.schema.SchemaReadApiImpl")
@@ -1127,7 +1127,7 @@ class ClassGenerator(object):
 
             if self.body:
                 if import_rpc_impl:
-                    rpcapi = [' ' * 4 + 'lazy val '+camelize(module.arg)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module.arg)+'RpcApi])']
+                    rpcapi = [' ' * 4 + 'private lazy val '+camelize(module.arg)+'RpcApiImpl = ApiImplRegistry.getImplementation(classOf['+normalize(module.arg)+'RpcApi])']
                     rpcapiimpl = JavaValue(rpcapi)
                     self.java_class.append_access_method("apiimpl", rpcapiimpl)
 
@@ -1449,14 +1449,14 @@ class ClassGenerator(object):
         body_indent = ' ' * 8
 
 
-        marshell = [file_indent + 'implicit object '+class_name+'UnMarshaller extends FromRequestUnmarshaller['+full_name+'] {']
+        marshell = [file_indent + 'private implicit object '+class_name+'UnMarshaller extends FromRequestUnmarshaller['+full_name+'] {']
         marshell.append(file_indent + '  override def apply(req: HttpRequest): Deserialized['+full_name +
                        '] = Right((new YangJsonParser()).parse("' + stmt_arg + '", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
                         full_name + '])')
         marshell.append(file_indent + '}')
         marsheller = JavaValue(marshell)
 
-        api = [file_indent + 'lazy val '+api_impl_name+' = ApiImplRegistry.getImplementation(classOf['+full_api_name+'], classOf['+full_name+'])']
+        api = [file_indent + 'private lazy val '+api_impl_name+' = ApiImplRegistry.getImplementation(classOf['+full_api_name+'], classOf['+full_name+'])']
         apiimpl = JavaValue(api)
 
         key_arg, value = self.get_stmt_key_route(stmt)
@@ -1989,7 +1989,7 @@ class ClassGenerator(object):
             if sub.keyword == "input":
                 input_para = True
                 self.java_class.imports.add(package_name+'.'+rpc_class_name+"Input")
-                marshell = [' ' * 4 + 'implicit object '+rpc_class_name+'InputUnMarshaller extends FromRequestUnmarshaller['+rpc_class_name+'Input] {']
+                marshell = [' ' * 4 + 'private implicit object '+rpc_class_name+'InputUnMarshaller extends FromRequestUnmarshaller['+rpc_class_name+'Input] {']
                 marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+rpc_class_name+'Input' +
                        '] = Right((new YangJsonParser()).parse("' + stmt.arg + '-input", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
                         rpc_class_name+'Input])')
@@ -1999,7 +1999,7 @@ class ClassGenerator(object):
             elif sub.keyword == "output":
                 output_para = True
                 self.java_class.imports.add(package_name+'.'+rpc_class_name+"Output")
-                marshell = [' ' * 4 + 'implicit object '+rpc_class_name+'OutputUnMarshaller extends FromRequestUnmarshaller['+rpc_class_name+'Output] {']
+                marshell = [' ' * 4 + 'private implicit object '+rpc_class_name+'OutputUnMarshaller extends FromRequestUnmarshaller['+rpc_class_name+'Output] {']
                 marshell.append(' ' * 4 + '  override def apply(req: HttpRequest): Deserialized['+rpc_class_name+'Output' +
                        '] = Right((new YangJsonParser()).parse("' + stmt.arg + '-output", req.entity.asString(HttpCharsets.`UTF-8`), prefixs).asInstanceOf[' +
                         rpc_class_name+'Output])')

@@ -1000,6 +1000,9 @@ class SchemaNode(object):
                         map_name = stmt.arg
                     elif stmt.arg == "name":
                         map_name = stmt.arg
+                    elif search_one(stmt, ('csp-common', 'has-edge')) or search_one(stmt, ('csp-common', 'ref-edge')):
+                        map_name = parent.arg + "_" +stmt.arg+"s"
+                        map_name = map_name.replace("-", "_")
                     else:
                         map_name = parent.arg + "_" +stmt.arg
                         map_name = map_name.replace("-", "_")
