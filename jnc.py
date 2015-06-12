@@ -618,7 +618,7 @@ def get_package(stmt, ctx):
         modules = ctx.data["modules"]
         for sub in modules:
             if parent.arg == sub['name']:
-                package = sub['package']
+                package = sub['package']+".mo"
 
     while parent is not None:
         if hasattr(stmt, "i_orig_module") and stmt.i_orig_module.keyword == "submodule" \
