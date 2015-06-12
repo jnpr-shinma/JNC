@@ -51,6 +51,32 @@ def pyang_plugin_init():
 def include_modules(option, opt, value, parser):
     setattr(parser.values, option.dest, value.split(','))
 
+def _decode_list(data):
+    rv = []
+    for item in data:
+        if isinstance(item, unicode):
+            item = item.encode('utf-8')
+        elif isinstance(item, list):
+            item = _decode_list(item)
+        elif isinstance(item, dict):
+            item = _decode_dict(item)
+        rv.append(item)
+    return rv
+
+def _decode_dict(data):
+    rv = {}
+    for key, value in data.iteritems():
+        if isinstance(key, unicode):
+            key = key.encode('utf-8')
+        if isinstance(value, unicode):
+            value = value.encode('utf-8')
+        elif isinstance(value, list):
+            value = _decode_list(value)
+        elif isinstance(value, dict):
+            value = _decode_dict(value)
+        rv[key] = value
+    return rv
+
 class JNCPlugin(plugin.PyangPlugin):
     """The plug-in class of JNC.
 
@@ -252,7 +278,7 @@ class JNCPlugin(plugin.PyangPlugin):
         path = os.path.realpath(self.cur_file_path() + "/../modules/" + data_file_name)
         try:
             with open(path) as data_file:
-                self.ctx.data = json.load(data_file)
+                self.ctx.data = json.load(data_file, object_hook=_decode_dict)
         except EnvironmentError:
             print_warning("Uanble to open file "+data_file_name+" in "+path+"\n")
 
@@ -606,11 +632,8 @@ def get_package(stmt, ctx):
             parent = get_parent(stmt)
             sub_packages.appendleft(camelize(stmt.arg))
 
-    if stmt.arg in ctx.include_modules:
-        if package:
-            full_package = str(package).split('.')
-        else:
-            full_package = ctx.rootpkg.split(OSSep)
+    if package:
+        full_package = package.split('.')
     else:
         full_package = ctx.rootpkg.split(OSSep)
 
@@ -940,10 +963,7 @@ def get_uses_package(stmt, ctx):
         parent = get_parent(stmt)
         sub_packages.appendleft(camelize(stmt.arg))
 
-    if stmt.arg in ctx.include_modules:
-        full_package = ctx.rootpkg.split(OSSep)
-    else:
-        full_package = ctx.rootpkg.split(OSSep)
+    full_package = ctx.rootpkg.split(OSSep)
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -2184,10 +2204,7 @@ class MethodGenerator(object):
             self.pkg = get_package(stmt, ctx)
         self.basepkg = self.pkg.partition('.')[0]
 
-        if self.module_stmt.arg in ctx.include_modules:
-            self.rootpkg = ctx.rootpkg.split(OSSep)
-        else:
-            self.rootpkg = ctx.rootpkg.split(OSSep)
+        self.rootpkg = ctx.rootpkg.split(OSSep)
 
         if self.rootpkg[:1] == ['src']:
             self.rootpkg = self.rootpkg[1:]  # src not part of package
