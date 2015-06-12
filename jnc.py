@@ -144,11 +144,11 @@ class JNCPlugin(plugin.PyangPlugin):
                 type='string',
                 default=[],
                 help='Generate classes for stmt which belongs to modules in this option, default is all modules'),
-            optparse.make_option(
-                '--jnc-import-package',
-                dest='import_package',
-                default='net.juniper.yang.mo',
-                help='The root package name for imported packages, default is net.juniper.yang.mo'),
+            #optparse.make_option(
+                # '--jnc-import-package',
+                # dest='import_package',
+                # default='net.juniper.yang.mo',
+                # help='The root package name for imported packages, default is net.juniper.yang.mo'),
             ]
         g = optparser.add_option_group('JNC output specific options')
         g.add_options(optlist)
@@ -611,8 +611,8 @@ def get_package(stmt, ctx):
             full_package = str(package).split('.')
         else:
             full_package = ctx.rootpkg.split(OSSep)
-    else:
-        full_package = ctx.opts.import_package.split('.')
+    #else:
+    #    full_package = ctx.opts.import_package.split('.')
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -942,8 +942,8 @@ def get_uses_package(stmt, ctx):
 
     if stmt.arg in ctx.include_modules:
         full_package = ctx.rootpkg.split(OSSep)
-    else:
-        full_package = ctx.opts.import_package.split('.')
+    #else:
+    #    full_package = ctx.opts.import_package.split('.')
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -2186,8 +2186,8 @@ class MethodGenerator(object):
 
         if self.module_stmt.arg in ctx.include_modules:
             self.rootpkg = ctx.rootpkg.split(OSSep)
-        else:
-            self.rootpkg = ctx.opts.import_package.split('.')
+        #else:
+        #    self.rootpkg = ctx.opts.import_package.split('.')
 
         if self.rootpkg[:1] == ['src']:
             self.rootpkg = self.rootpkg[1:]  # src not part of package
