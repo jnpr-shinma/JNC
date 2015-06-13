@@ -37,6 +37,7 @@ import errno
 import sys
 import collections
 import re
+import json
 
 from datetime import date
 from pyang import plugin, util, error
@@ -47,6 +48,31 @@ def pyang_plugin_init():
     """Registers an instance of the jnc plugin"""
     plugin.register_plugin(JRCPlugin())
 
+def _decode_list(data):
+    rv = []
+    for item in data:
+        if isinstance(item, unicode):
+            item = item.encode('utf-8')
+        elif isinstance(item, list):
+            item = _decode_list(item)
+        elif isinstance(item, dict):
+            item = _decode_dict(item)
+        rv.append(item)
+    return rv
+
+def _decode_dict(data):
+    rv = {}
+    for key, value in data.iteritems():
+        if isinstance(key, unicode):
+            key = key.encode('utf-8')
+        if isinstance(value, unicode):
+            value = value.encode('utf-8')
+        elif isinstance(value, list):
+            value = _decode_list(value)
+        elif isinstance(value, dict):
+            value = _decode_dict(value)
+        rv[key] = value
+    return rv
 
 class JRCPlugin(plugin.PyangPlugin):
     """The plug-in class of JRC.
@@ -172,6 +198,14 @@ class JRCPlugin(plugin.PyangPlugin):
         """Disables implicit errors for the Context"""
         ctx.implicit_errors = False
 
+    def cur_file_path(self):
+        path = sys.path[0]
+
+        if os.path.isdir(path):
+            return path
+        elif os.path.isfile(path):
+            return os.path.dirname(path)
+
     def emit(self, ctx, modules, fd):
         """Generates Java classes from the YANG module supplied to pyang.
 
@@ -215,6 +249,14 @@ class JRCPlugin(plugin.PyangPlugin):
         #         for (module_stmt, rev) in self.ctx.modules:
         #             if module_stmt in (imported + included):
         #                 module_set.add(self.ctx.modules[(module_stmt, rev)])
+
+        data_file_name = "module-mapping.json"
+        path = os.path.realpath(self.cur_file_path() + "/../modules/" + data_file_name)
+        try:
+            with open(path) as data_file:
+                self.ctx.data = json.load(data_file, object_hook=_decode_dict)
+        except EnvironmentError:
+            print_warning("Uanble to open file "+data_file_name+" in "+path+"\n")
 
         # Generate files from main modules
         for module in filter(lambda s: s.keyword == 'module', module_set):
@@ -547,6 +589,13 @@ def get_package(stmt, ctx):
     """
     sub_packages = collections.deque()
     parent = get_parent(stmt)
+    package = ""
+    if hasattr(ctx, "data"):
+        modules = ctx.data["modules"]
+        for sub in modules:
+            if parent.arg == sub['name']:
+                package = sub['package']
+
     while parent is not None:
         if stmt.i_orig_module.keyword == "submodule" and stmt.keyword != "typedef" and get_parent(parent) is None:
             sub_packages.appendleft(camelize(stmt.i_orig_module.arg))
@@ -554,7 +603,10 @@ def get_package(stmt, ctx):
         parent = get_parent(stmt)
         sub_packages.appendleft(camelize(stmt.arg))
 
-    full_package = ctx.rootpkg.split(OSSep)
+    if package:
+        full_package = package.split('.')
+    else:
+        full_package = ctx.rootpkg.split(OSSep)
     full_package.extend(['mo'])
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -1395,7 +1447,7 @@ class ClassGenerator(object):
         exact.append(body_indent + '            schemaReadFunctionApiImpl.getschemaElements("'+stmt.arg.lower()+'", namespace)')
         exact.append(body_indent + "          }) {")
         exact.append(body_indent + "            case Success(result) => complete(result)")
-        exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "            case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
         exact.append(body_indent + "      }")
@@ -1500,7 +1552,7 @@ class ClassGenerator(object):
             exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"List(apiCtx)")
         exact.append(body_indent + "          }) {")
         exact.append(body_indent + "            case Success(result) => complete(JsonUtil.elementSeqToJson(result, classOf["+full_name+"]))")
-        exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "            case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
         exact.append(body_indent + "      }")
@@ -1528,7 +1580,7 @@ class ClassGenerator(object):
             exact.append(body_indent + "            "+api_impl_name+".get"+object_name+"Count(apiCtx)")
         exact.append(body_indent + "          }) {")
         exact.append(body_indent + "            case Success(result) => complete(\"{\\\"total\\\":\" + result.toString + \"}\")")
-        exact.append(body_indent + "            case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "            case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
         exact.append(body_indent + "      }")
@@ -1575,7 +1627,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "                }")
         exact.append(body_indent + "               }")
         exact.append(body_indent + "              }")
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "              case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1607,7 +1659,7 @@ class ClassGenerator(object):
 
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => complete(result.toJson(true))")
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "              case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1638,7 +1690,7 @@ class ClassGenerator(object):
 
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => complete(\"{\\\"total\\\":\" + result.toString + \"}\")")
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "              case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1670,7 +1722,7 @@ class ClassGenerator(object):
 
         exact.append(body_indent + "            }) {")
         exact.append(body_indent + "              case Success(result) => complete(JsonUtil.elementSeqToJson(result, classOf["+full_name+']))')
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "              case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1720,7 +1772,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "                }")
         exact.append(body_indent + "               }")
         exact.append(body_indent + "              }")
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "              case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1770,7 +1822,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "                }")
         exact.append(body_indent + "               }")
         exact.append(body_indent + "              }")
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "              case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -1823,7 +1875,7 @@ class ClassGenerator(object):
         exact.append(body_indent + "                 }")
         exact.append(body_indent + "               }")
         exact.append(body_indent + "              }")
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "              case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "            }")
         exact.append(body_indent + "          }")
         exact.append(body_indent + "        }")
@@ -2037,7 +2089,7 @@ class ClassGenerator(object):
         else:
             exact.append(body_indent + '              case Success(result) => complete("")')
 
-        exact.append(body_indent + "              case Failure(ex) => failWith(ex)")
+        exact.append(body_indent + "              case Failure(ex) => failRequest(ex)")
         exact.append(body_indent + "            }")
 
         if input_para:

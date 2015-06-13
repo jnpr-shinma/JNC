@@ -1,0 +1,16 @@
+{
+  "modules": [
+    {
+      "name": "ietf-yang-types",
+      "prefix": "yang",
+      "namespace": "urn:ietf:params:xml:ns:yang:ietf-yang-types",
+      "package": "net.juniper.yang"
+    },
+    {
+      "name": "ietf-inet-types",
+      "prefix": "inet",
+      "namespace": "urn:ietf:params:xml:ns:yang:ietf-inet-types",
+      "package": "net.juniper.yang"
+    }
+  ]
+}
