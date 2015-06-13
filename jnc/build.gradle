@@ -2,7 +2,7 @@ description = "JNC Library"
 apply plugin: "java"
 apply plugin: "application"
 apply plugin: "maven-publish"
-version = "0.7.1"
+version = "0.7.2"
 defaultTasks "clean", "build"
 
 sourceSets {
@@ -28,7 +28,6 @@ task copyPythonFiles(type: Copy) {
     from '../jnc.py'
     from '../jrc.py'
     from '../jcc.py'
-    from '../module-mapping.json'
     into 'build/classes/main'
 }
 
