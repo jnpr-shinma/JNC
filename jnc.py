@@ -37,6 +37,7 @@ import errno
 import sys
 import collections
 import re
+import json
 
 from datetime import date
 from pyang import plugin, util, error
@@ -49,6 +50,32 @@ def pyang_plugin_init():
 
 def include_modules(option, opt, value, parser):
     setattr(parser.values, option.dest, value.split(','))
+
+def _decode_list(data):
+    rv = []
+    for item in data:
+        if isinstance(item, unicode):
+            item = item.encode('utf-8')
+        elif isinstance(item, list):
+            item = _decode_list(item)
+        elif isinstance(item, dict):
+            item = _decode_dict(item)
+        rv.append(item)
+    return rv
+
+def _decode_dict(data):
+    rv = {}
+    for key, value in data.iteritems():
+        if isinstance(key, unicode):
+            key = key.encode('utf-8')
+        if isinstance(value, unicode):
+            value = value.encode('utf-8')
+        elif isinstance(value, list):
+            value = _decode_list(value)
+        elif isinstance(value, dict):
+            value = _decode_dict(value)
+        rv[key] = value
+    return rv
 
 class JNCPlugin(plugin.PyangPlugin):
     """The plug-in class of JNC.
@@ -143,11 +170,11 @@ class JNCPlugin(plugin.PyangPlugin):
                 type='string',
                 default=[],
                 help='Generate classes for stmt which belongs to modules in this option, default is all modules'),
-            optparse.make_option(
-                '--jnc-import-package',
-                dest='import_package',
-                default='net.juniper.yang.mo',
-                help='The root package name for imported packages, default is net.juniper.yang.mo'),
+            #optparse.make_option(
+                # '--jnc-import-package',
+                # dest='import_package',
+                # default='net.juniper.yang.mo',
+                # help='The root package name for imported packages, default is net.juniper.yang.mo'),
             ]
         g = optparser.add_option_group('JNC output specific options')
         g.add_options(optlist)
@@ -186,6 +213,14 @@ class JNCPlugin(plugin.PyangPlugin):
     def setup_fmt(self, ctx):
         """Disables implicit errors for the Context"""
         ctx.implicit_errors = False
+
+    def cur_file_path(self):
+        path = sys.path[0]
+
+        if os.path.isdir(path):
+            return path
+        elif os.path.isfile(path):
+            return os.path.dirname(path)
 
     def emit(self, ctx, modules, fd):
         """Generates Java classes from the YANG module supplied to pyang.
@@ -238,6 +273,15 @@ class JNCPlugin(plugin.PyangPlugin):
                         else:
                             module_set.add(self.ctx.modules[(module_stmt, rev)])
                             self.ctx.include_modules.add(module_stmt)
+
+        data_file_name = "module-mapping.json"
+        path = os.path.realpath(self.cur_file_path() + "/../modules/" + data_file_name)
+        try:
+            with open(path) as data_file:
+                self.ctx.data = json.load(data_file, object_hook=_decode_dict)
+        except EnvironmentError:
+            print_warning("Uanble to open file "+data_file_name+" in "+path+"\n")
+
 
         # Generate files from main modules
         for module in filter(lambda s: s.keyword == 'module', module_set):
@@ -569,6 +613,13 @@ def get_package(stmt, ctx):
     """
     sub_packages = collections.deque()
     parent = get_parent(stmt)
+    package = ""
+    if hasattr(ctx, "data"):
+        modules = ctx.data["modules"]
+        for sub in modules:
+            if parent.arg == sub['name']:
+                package = sub['package']+".mo"
+
     while parent is not None:
         if hasattr(stmt, "i_orig_module") and stmt.i_orig_module.keyword == "submodule" \
                 and stmt.keyword != "typedef" and get_parent(parent) is None:
@@ -581,10 +632,10 @@ def get_package(stmt, ctx):
             parent = get_parent(stmt)
             sub_packages.appendleft(camelize(stmt.arg))
 
-    if stmt.arg in ctx.include_modules:
-        full_package = ctx.rootpkg.split(OSSep)
+    if package:
+        full_package = package.split('.')
     else:
-        full_package = ctx.opts.import_package.split('.')
+        full_package = ctx.rootpkg.split(OSSep)
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -912,10 +963,7 @@ def get_uses_package(stmt, ctx):
         parent = get_parent(stmt)
         sub_packages.appendleft(camelize(stmt.arg))
 
-    if stmt.arg in ctx.include_modules:
-        full_package = ctx.rootpkg.split(OSSep)
-    else:
-        full_package = ctx.opts.import_package.split('.')
+    full_package = ctx.rootpkg.split(OSSep)
 
     full_package.extend(sub_packages)
     return '.'.join(full_package)
@@ -1000,6 +1048,9 @@ class SchemaNode(object):
                         map_name = stmt.arg
                     elif stmt.arg == "name":
                         map_name = stmt.arg
+                    elif search_one(stmt, ('csp-common', 'has-edge')) or search_one(stmt, ('csp-common', 'ref-edge')):
+                        map_name = parent.arg + "_" +stmt.arg+"s"
+                        map_name = map_name.replace("-", "_")
                     else:
                         map_name = parent.arg + "_" +stmt.arg
                         map_name = map_name.replace("-", "_")
@@ -2153,10 +2204,7 @@ class MethodGenerator(object):
             self.pkg = get_package(stmt, ctx)
         self.basepkg = self.pkg.partition('.')[0]
 
-        if self.module_stmt.arg in ctx.include_modules:
-            self.rootpkg = ctx.rootpkg.split(OSSep)
-        else:
-            self.rootpkg = ctx.opts.import_package.split('.')
+        self.rootpkg = ctx.rootpkg.split(OSSep)
 
         if self.rootpkg[:1] == ['src']:
             self.rootpkg = self.rootpkg[1:]  # src not part of package
@@ -2319,12 +2367,15 @@ class MethodGenerator(object):
             cloner.set_name('clone' + c[i])
             copy = ''.join(['new ', self.n, '(', keys, ')'])
             if self.is_list: # and self.gen.is_config:
-                cloner.add_line(self.n + ' copy;')
-                cloner.add_line('try {')
-                cloner.add_line('    copy = ' + copy + ';')
-                cloner.add_line('} catch (JNCException e) {')
-                cloner.add_line('    copy = null;')
-                cloner.add_line('}')
+                if keys:
+                    cloner.add_line(self.n + ' copy;')
+                    cloner.add_line('try {')
+                    cloner.add_line('    copy = ' + copy + ';')
+                    cloner.add_line('} catch (JNCException e) {')
+                    cloner.add_line('    copy = null;')
+                    cloner.add_line('}')
+                else:
+                    cloner.add_line('copy = ' + copy + ';')
                 copy = 'copy'
             cloner.add_line(''.join(['return (', self.n, ')clone', c[i],
                                      'Content(', copy, ');']))
