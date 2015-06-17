@@ -17,7 +17,7 @@ public class SchemaNode {
     public String yang_java_type;
     public String mapping_path;
     public int yang_graph_type;
-    public String yang_ref_path;
+    public String yang_leafref_path;
     public int primitive_type; // C_*
     public int min_occurs;
     public int max_occurs;

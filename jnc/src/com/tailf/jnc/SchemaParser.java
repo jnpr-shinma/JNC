@@ -154,8 +154,8 @@ public class SchemaParser {
                 node.mapping_path= value;
             } else if (localName.equals("yang_graph_type")) {
                 node.yang_graph_type=Integer.parseInt(value);
-            } else if (localName.equals("yang_ref_path")) {
-                node.yang_ref_path= value;
+            } else if (localName.equals("yang_leafref_path")) {
+                node.yang_leafref_path = value;
             }
 
 
