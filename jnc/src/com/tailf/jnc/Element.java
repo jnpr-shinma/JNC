@@ -1807,9 +1807,7 @@ public class Element implements Serializable {
         // add children elements if any
         SchemaNode currentSchemaNode = SchemaNode.get(this);
         if (flag) {
-            if (!isList(currentSchemaNode)) {
-                generator.writeObjectFieldStart(qName);
-            } else if (currentSchemaNode == null) {
+            if (qName.equals("$edge")||(currentSchemaNode != null && !isList(currentSchemaNode))) {
                 generator.writeObjectFieldStart(qName);
             }
             //Mark list node processed
@@ -1859,14 +1857,25 @@ public class Element implements Serializable {
                     else {
                         child.toJsonString(generator);
                     }
+                } else if (qName.equals("$edge")) {
+
+                    generator.writeArrayFieldStart(childQName);
+                    //Add all children of a list being processed here
+                    for (final Element peer : children) {
+                        if (peer.qualifiedName().equals(childQName)) {
+                            generator.writeStartObject();
+                            peer.toJsonString(generator);
+                            generator.writeEndObject();
+                        }
+                    }
+                    generator.writeEndArray();
+
                 } else {
                     child.toJsonString(generator);
                 }
             }
 
-            if ( !isList(currentSchemaNode) ) {
-                generator.writeEndObject();
-            } else if(currentSchemaNode == null) {
+            if (qName.equals("$edge")||(currentSchemaNode != null && !isList(currentSchemaNode))) {
                 generator.writeEndObject();
             }
         } else { // add value if any
